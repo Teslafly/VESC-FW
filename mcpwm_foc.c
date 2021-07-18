@@ -167,7 +167,10 @@ typedef struct {
 	float m_pos_i_term;
 	float m_pos_prev_error;
 	float m_pos_dt_int;
+	float m_pos_prev_proc;
+	float m_pos_dt_int_proc;
 	float m_pos_d_filter;
+	float m_pos_d_filter_proc;
 	float m_speed_i_term;
 	float m_speed_prev_error;
 	float m_speed_d_filter;
@@ -198,7 +201,7 @@ static void control_current(volatile motor_all_state_t *motor, float dt);
 static void update_valpha_vbeta(volatile motor_all_state_t *motor, float mod_alpha, float mod_beta);
 static void svm(float alpha, float beta, uint32_t PWMHalfPeriod,
 				uint32_t* tAout, uint32_t* tBout, uint32_t* tCout, uint32_t *svm_sector);
-static void run_pid_control_pos(float angle_now, float angle_set, float dt, volatile motor_all_state_t *motor);
+static void run_pid_control_pos(float dt, volatile motor_all_state_t *motor);
 static void run_pid_control_speed(float dt, volatile motor_all_state_t *motor);
 static void stop_pwm_hw(volatile motor_all_state_t *motor);
 static void start_pwm_hw(volatile motor_all_state_t *motor);
@@ -219,6 +222,10 @@ static volatile bool timer_thd_stop;
 static THD_WORKING_AREA(hfi_thread_wa, 1024);
 static THD_FUNCTION(hfi_thread, arg);
 static volatile bool hfi_thd_stop;
+
+static THD_WORKING_AREA(pid_thread_wa, 512);
+static THD_FUNCTION(pid_thread, arg);
+static volatile bool pid_thd_stop;
 
 // Macros
 #ifdef HW_HAS_3_SHUNTS
@@ -669,6 +676,9 @@ void mcpwm_foc_init(volatile mc_configuration *conf_m1, volatile mc_configuratio
 	hfi_thd_stop = false;
 	chThdCreateStatic(hfi_thread_wa, sizeof(hfi_thread_wa), NORMALPRIO, hfi_thread, NULL);
 
+	pid_thd_stop = false;
+	chThdCreateStatic(pid_thread_wa, sizeof(pid_thread_wa), NORMALPRIO, pid_thread, NULL);
+
 	// Check if the system has resumed from IWDG reset
 	if (timeout_had_IWDG_reset()) {
 		mc_interface_fault_stop(FAULT_CODE_BOOTING_FROM_WATCHDOG_RESET, false, false);
@@ -703,6 +713,11 @@ void mcpwm_foc_deinit(void) {
 
 	hfi_thd_stop = true;
 	while (hfi_thd_stop) {
+		chThdSleepMilliseconds(1);
+	}
+
+	pid_thd_stop = true;
+	while (pid_thd_stop) {
 		chThdSleepMilliseconds(1);
 	}
 
@@ -3049,11 +3064,6 @@ void mcpwm_foc_adc_int_handler(void *p, uint32_t flags) {
 		utils_norm_angle((float*)&motor_now->m_pos_pid_now);
 	}
 
-	// Run position control
-	if (motor_now->m_state == MC_STATE_RUNNING) {
-		run_pid_control_pos(motor_now->m_pos_pid_now, motor_now->m_pos_pid_set, dt, motor_now);
-	}
-
 #ifdef AD2S1205_SAMPLE_GPIO
 	// Release sample in the AD2S1205 resolver IC.
 	palSetPad(AD2S1205_SAMPLE_GPIO, AD2S1205_SAMPLE_PIN);
@@ -3348,11 +3358,6 @@ static THD_FUNCTION(timer_thread, arg) {
 
 		input_current_offset_measurement();
 
-		run_pid_control_speed(dt, &m_motor_1);
-#ifdef HW_HAS_DUAL_MOTORS
-		run_pid_control_speed(dt, &m_motor_2);
-#endif
-
 		chThdSleepMilliseconds(1);
 	}
 }
@@ -3498,6 +3503,43 @@ static THD_FUNCTION(hfi_thread, arg) {
 #endif
 
 		chThdSleepMicroseconds(500);
+	}
+}
+
+static THD_FUNCTION(pid_thread, arg) {
+	(void)arg;
+
+	chRegSetThreadName("foc pid");
+
+	uint32_t last_time = timer_time_now();
+
+	for(;;) {
+		if (pid_thd_stop) {
+			pid_thd_stop = false;
+			return;
+		}
+
+		switch (m_motor_1.m_conf->sp_pid_loop_rate) {
+		case PID_RATE_25_HZ: chThdSleepMicroseconds(1000000 / 25); break;
+		case PID_RATE_50_HZ: chThdSleepMicroseconds(1000000 / 50); break;
+		case PID_RATE_100_HZ: chThdSleepMicroseconds(1000000 / 100); break;
+		case PID_RATE_250_HZ: chThdSleepMicroseconds(1000000 / 250); break;
+		case PID_RATE_500_HZ: chThdSleepMicroseconds(1000000 / 500); break;
+		case PID_RATE_1000_HZ: chThdSleepMicroseconds(1000000 / 1000); break;
+		case PID_RATE_2500_HZ: chThdSleepMicroseconds(1000000 / 2500); break;
+		case PID_RATE_5000_HZ: chThdSleepMicroseconds(1000000 / 5000); break;
+		case PID_RATE_10000_HZ: chThdSleepMicroseconds(1000000 / 10000); break;
+		}
+
+		float dt = timer_seconds_elapsed_since(last_time);
+		last_time = timer_time_now();
+
+		run_pid_control_pos(dt, &m_motor_1);
+		run_pid_control_speed(dt, &m_motor_1);
+#ifdef HW_HAS_DUAL_MOTORS
+		run_pid_control_pos(dt, &m_motor_2);
+		run_pid_control_speed(dt, &m_motor_2);
+#endif
 	}
 }
 
@@ -3715,12 +3757,12 @@ static void control_current(volatile motor_all_state_t *motor, float dt) {
 	// Saturation and anti-windup. Notice that the d-axis has priority as it controls field
 	// weakening and the efficiency.
 	float vd_presat = state_m->vd;
-	utils_truncate_number((float*)&state_m->vd, -max_v_mag, max_v_mag);
+	utils_truncate_number_abs((float*)&state_m->vd, max_v_mag);
 	state_m->vd_int += (state_m->vd - vd_presat);
 
 	float max_vq = sqrtf(SQ(max_v_mag) - SQ(state_m->vd));
 	float vq_presat = state_m->vq;
-	utils_truncate_number((float*)&state_m->vq, -max_vq, max_vq);
+	utils_truncate_number_abs((float*)&state_m->vq, max_vq);
 	state_m->vq_int += (state_m->vq - vq_presat);
 
 	utils_saturate_vector_2d((float*)&state_m->vd, (float*)&state_m->vq, max_v_mag);
@@ -4120,10 +4162,15 @@ static void svm(float alpha, float beta, uint32_t PWMHalfPeriod,
 	*svm_sector = sector;
 }
 
-static void run_pid_control_pos(float angle_now, float angle_set, float dt, volatile motor_all_state_t *motor) {
+static void run_pid_control_pos(float dt, volatile motor_all_state_t *motor) {
 	volatile mc_configuration *conf_now = motor->m_conf;
+
+	float angle_now = motor->m_pos_pid_now;
+	float angle_set = motor->m_pos_pid_set;
+
 	float p_term;
 	float d_term;
+	float d_term_proc;
 
 	// PID is off. Return.
 	if (motor->m_control_mode != CONTROL_MODE_POS) {
@@ -4134,16 +4181,20 @@ static void run_pid_control_pos(float angle_now, float angle_set, float dt, vola
 
 	// Compute parameters
 	float error = utils_angle_difference(angle_set, angle_now);
+	float error_sign = 1.0;
 
 	if (encoder_is_configured()) {
 		if (conf_now->foc_encoder_inverted) {
-			error = -error;
+			error_sign = -1.0;
 		}
 	}
+
+	error *= error_sign;
 
 	float kp = conf_now->p_pid_kp;
 	float ki = conf_now->p_pid_ki;
 	float kd = conf_now->p_pid_kd;
+	float kd_proc = conf_now->p_pid_kd_proc;
 
 	if (conf_now->p_pid_gain_dec_angle > 0.1) {
 		float min_error = conf_now->p_pid_gain_dec_angle / conf_now->p_pid_ang_div;
@@ -4154,6 +4205,7 @@ static void run_pid_control_pos(float angle_now, float angle_set, float dt, vola
 			kp *= scale;
 			ki *= scale;
 			kd *= scale;
+			kd_proc *= scale;
 		}
 	}
 
@@ -4176,6 +4228,18 @@ static void run_pid_control_pos(float angle_now, float angle_set, float dt, vola
 	UTILS_LP_FAST(motor->m_pos_d_filter, d_term, conf_now->p_pid_kd_filter);
 	d_term = motor->m_pos_d_filter;
 
+	// Process D term
+	motor->m_pos_dt_int_proc += dt;
+	if (angle_now == motor->m_pos_prev_proc) {
+		d_term_proc = 0.0;
+	} else {
+		d_term_proc = -utils_angle_difference(angle_now, motor->m_pos_prev_proc) * error_sign * (kd_proc / motor->m_pos_dt_int_proc);
+		motor->m_pos_dt_int_proc = 0.0;
+	}
+
+	// Filter D process
+	UTILS_LP_FAST(motor->m_pos_d_filter_proc, d_term_proc, conf_now->p_pid_kd_filter);
+	d_term_proc = motor->m_pos_d_filter_proc;
 
 	// I-term wind-up protection
 	float p_tmp = p_term;
@@ -4184,9 +4248,10 @@ static void run_pid_control_pos(float angle_now, float angle_set, float dt, vola
 
 	// Store previous error
 	motor->m_pos_prev_error = error;
+	motor->m_pos_prev_proc = angle_now;
 
 	// Calculate output
-	float output = p_term + motor->m_pos_i_term + d_term;
+	float output = p_term + motor->m_pos_i_term + d_term + d_term_proc;
 	utils_truncate_number(&output, -1.0, 1.0);
 
 	if (encoder_is_configured()) {
@@ -4239,14 +4304,18 @@ static void run_pid_control_speed(float dt, volatile motor_all_state_t *motor) {
 	motor->m_speed_prev_error = error;
 
 	// Calculate output
+	utils_truncate_number_abs(&p_term, 1.0);
+	utils_truncate_number_abs(&d_term, 1.0);
 	float output = p_term + motor->m_speed_i_term + d_term;
 	float pre_output = output;
-
-	utils_truncate_number(&output, -1.0, 1.0);
+	utils_truncate_number_abs(&output, 1.0);
 
 	float output_saturation = output - pre_output;
 
 	motor->m_speed_i_term += error * (conf_now->s_pid_ki * dt) * (1.0 / 20.0) + output_saturation;
+	if (conf_now->s_pid_ki < 1e-9) {
+		motor->m_speed_i_term = 0.0;
+	}
 
 	// Optionally disable braking
 	if (!conf_now->s_pid_allow_braking) {

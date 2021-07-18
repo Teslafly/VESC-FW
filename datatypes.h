@@ -72,6 +72,12 @@ typedef enum {
 	OUT_AUX_MODE_UNUSED,
 	OUT_AUX_MODE_ON_WHEN_RUNNING,
 	OUT_AUX_MODE_ON_WHEN_NOT_RUNNING,
+	OUT_AUX_MODE_MOTOR_50,
+	OUT_AUX_MODE_MOSFET_50,
+	OUT_AUX_MODE_MOTOR_70,
+	OUT_AUX_MODE_MOSFET_70,
+	OUT_AUX_MODE_MOTOR_MOSFET_50,
+	OUT_AUX_MODE_MOTOR_MOSFET_70,
 } out_aux_mode;
 
 // Temperature sensor type
@@ -285,6 +291,18 @@ typedef struct {
 	bool is_charge_allowed;
 } bms_soc_soh_temp_stat;
 
+typedef enum {
+	PID_RATE_25_HZ = 0,
+	PID_RATE_50_HZ,
+	PID_RATE_100_HZ,
+	PID_RATE_250_HZ,
+	PID_RATE_500_HZ,
+	PID_RATE_1000_HZ,
+	PID_RATE_2500_HZ,
+	PID_RATE_5000_HZ,
+	PID_RATE_10000_HZ,
+} PID_RATE;
+
 typedef struct {
 	// Limits
 	float l_current_max;
@@ -409,6 +427,8 @@ typedef struct {
 	float gpd_current_kp;
 	float gpd_current_ki;
 
+	PID_RATE sp_pid_loop_rate;
+
 	// Speed PID
 	float s_pid_kp;
 	float s_pid_ki;
@@ -422,9 +442,11 @@ typedef struct {
 	float p_pid_kp;
 	float p_pid_ki;
 	float p_pid_kd;
+	float p_pid_kd_proc;
 	float p_pid_kd_filter;
 	float p_pid_ang_div;
 	float p_pid_gain_dec_angle;
+	float p_pid_offset;
 
 	// Current controller
 	float cc_startup_boost_duty;
@@ -1057,6 +1079,7 @@ typedef enum {
 	CAN_PACKET_BMS_HW_DATA_5,
 	CAN_PACKET_BMS_AH_WH_CHG_TOTAL,
 	CAN_PACKET_BMS_AH_WH_DIS_TOTAL,
+	CAN_PACKET_UPDATE_PID_POS_OFFSET,
 	CAN_PACKET_MAKE_ENUM_32_BITS = 0xFFFFFFFF
 } CAN_PACKET_ID;
 

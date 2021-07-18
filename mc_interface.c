@@ -338,6 +338,10 @@ void mc_interface_set_configuration(mc_configuration *configuration) {
 			encoder_init_as5047p_spi();
 			break;
 
+		case SENSOR_PORT_MODE_MT6816_SPI:
+			encoder_init_mt6816_spi();
+			break;
+
 		case SENSOR_PORT_MODE_AD2S1205:
 			encoder_init_ad2s1205_spi();
 			break;
@@ -655,6 +659,7 @@ void mc_interface_set_pid_pos(float pos) {
 
 	motor_now()->m_position_set = pos;
 
+	pos += motor_now()->m_conf.p_pid_offset;
 	pos *= DIR_MULT;
 	utils_norm_angle(&pos);
 
@@ -1359,9 +1364,29 @@ float mc_interface_get_pid_pos_now(void) {
 	}
 
 	ret *= DIR_MULT;
+	ret -= motor_now()->m_conf.p_pid_offset;
 	utils_norm_angle(&ret);
 
 	return ret;
+}
+
+/**
+ * Update the offset such that the current angle becomes angle_now
+ */
+void mc_interface_update_pid_pos_offset(float angle_now, bool store) {
+	mc_configuration *mcconf = mempools_alloc_mcconf();
+	*mcconf = *mc_interface_get_configuration();
+
+	mcconf->p_pid_offset += mc_interface_get_pid_pos_now() - angle_now;
+	utils_norm_angle(&mcconf->p_pid_offset);
+
+	if (store) {
+		conf_general_store_mc_configuration(mcconf, mc_interface_get_motor_thread() == 2);
+	}
+
+	mc_interface_set_configuration(mcconf);
+
+	mempools_free_mcconf(mcconf);
 }
 
 float mc_interface_get_last_sample_adc_isr_duration(void) {
@@ -2302,6 +2327,9 @@ static void run_timer_tasks(volatile motor_if_state_t *motor) {
 
 	// Update auxiliary output
 	switch (motor->m_conf.m_out_aux_mode) {
+	case OUT_AUX_MODE_UNUSED:
+		break;
+
 	case OUT_AUX_MODE_OFF:
 		AUX_OFF();
 		break;
@@ -2340,7 +2368,30 @@ static void run_timer_tasks(volatile motor_if_state_t *motor) {
 		}
 		break;
 
-	default:
+	case OUT_AUX_MODE_MOTOR_50:
+		if (mc_interface_temp_motor_filtered() > 50.0) {AUX_ON();} else {AUX_OFF();}
+		break;
+
+	case OUT_AUX_MODE_MOSFET_50:
+		if (mc_interface_temp_fet_filtered() > 50.0) {AUX_ON();} else {AUX_OFF();}
+		break;
+
+	case OUT_AUX_MODE_MOTOR_70:
+		if (mc_interface_temp_motor_filtered() > 70.0) {AUX_ON();} else {AUX_OFF();}
+		break;
+
+	case OUT_AUX_MODE_MOSFET_70:
+		if (mc_interface_temp_fet_filtered() > 70.0) {AUX_ON();} else {AUX_OFF();}
+		break;
+
+	case OUT_AUX_MODE_MOTOR_MOSFET_50:
+		if (mc_interface_temp_motor_filtered() > 50.0 ||
+				mc_interface_temp_fet_filtered() > 50.0) {AUX_ON();} else {AUX_OFF();}
+		break;
+
+	case OUT_AUX_MODE_MOTOR_MOSFET_70:
+		if (mc_interface_temp_motor_filtered() > 70.0 ||
+				mc_interface_temp_fet_filtered() > 70.0) {AUX_ON();} else {AUX_OFF();}
 		break;
 	}
 
@@ -2416,7 +2467,7 @@ static void run_timer_tasks(volatile motor_if_state_t *motor) {
 	if (!motor->m_conf.foc_sample_high_current) { // This won't work when high current sampling is used
 		motor->m_motor_current_unbalance = mc_interface_get_abs_motor_current_unbalance();
 
-		if (motor->m_motor_current_unbalance > MCCONF_MAX_CURRENT_UNBALANCE) {
+		if (fabsf(motor->m_motor_current_unbalance) > fabsf(MCCONF_MAX_CURRENT_UNBALANCE)) {
 			UTILS_LP_FAST(motor->m_motor_current_unbalance_error_rate, 1.0, (1 / 1000.0));
 		} else {
 			UTILS_LP_FAST(motor->m_motor_current_unbalance_error_rate, 0.0, (1 / 1000.0));
