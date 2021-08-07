@@ -45,13 +45,13 @@
 #define MCCONF_L_IN_CURRENT_MAX			99.0	// Input current limit in Amperes (Upper)
 #endif
 #ifndef MCCONF_L_IN_CURRENT_MIN
-#define MCCONF_L_IN_CURRENT_MIN			-60.0	// Input current limit in Amperes (Lower)
+#define MCCONF_L_IN_CURRENT_MIN			-20.0	// Input current limit in Amperes (Lower)
 #endif
 #ifndef MCCONF_L_MAX_ABS_CURRENT
 #define MCCONF_L_MAX_ABS_CURRENT		130.0	// The maximum absolute current above which a fault is generated
 #endif
 #ifndef MCCONF_L_MIN_VOLTAGE
-#define MCCONF_L_MIN_VOLTAGE			8.0		// Minimum input voltage
+#define MCCONF_L_MIN_VOLTAGE			16.0		// Minimum input voltage
 #endif
 #ifndef MCCONF_L_MAX_VOLTAGE
 #define MCCONF_L_MAX_VOLTAGE			57.0	// Maximum input voltage
@@ -87,16 +87,16 @@
 #define MCCONF_L_CURR_MAX_RPM_FBRAKE_CC	1500	// Maximum electrical RPM to use full brake at with current control
 #endif
 #ifndef MCCONF_L_LIM_TEMP_FET_START
-#define MCCONF_L_LIM_TEMP_FET_START		85.0	// MOSFET temperature where current limiting should begin
+#define MCCONF_L_LIM_TEMP_FET_START		80.0	// MOSFET temperature where current limiting should begin
 #endif
 #ifndef MCCONF_L_LIM_TEMP_FET_END
-#define MCCONF_L_LIM_TEMP_FET_END		100.0	// MOSFET temperature where everything should be shut off
+#define MCCONF_L_LIM_TEMP_FET_END		90.0	// MOSFET temperature where everything should be shut off
 #endif
 #ifndef MCCONF_L_LIM_TEMP_MOTOR_START
-#define MCCONF_L_LIM_TEMP_MOTOR_START	85.0	// MOTOR temperature where current limiting should begin
+#define MCCONF_L_LIM_TEMP_MOTOR_START	75.0	// MOTOR temperature where current limiting should begin
 #endif
 #ifndef MCCONF_L_LIM_TEMP_MOTOR_END
-#define MCCONF_L_LIM_TEMP_MOTOR_END		100.0	// MOTOR temperature where everything should be shut off
+#define MCCONF_L_LIM_TEMP_MOTOR_END		90.0	// MOTOR temperature where everything should be shut off
 #endif
 #ifndef MCCONF_L_LIM_TEMP_ACCEL_DEC
 #define MCCONF_L_LIM_TEMP_ACCEL_DEC		0.15	// Decrease temperature limits this much during acceleration
@@ -527,7 +527,7 @@
 #define MCCONF_SI_MOTOR_POLES			14 // Motor pole count
 #endif
 #ifndef MCCONF_SI_GEAR_RATIO
-#define MCCONF_SI_GEAR_RATIO			3 // Gear ratio
+#define MCCONF_SI_GEAR_RATIO			5.5 // Gear ratio
 #endif
 #ifndef MCCONF_SI_WHEEL_DIAMETER
 #define MCCONF_SI_WHEEL_DIAMETER		0.083 // Wheel Diameter
@@ -536,10 +536,10 @@
 #define MCCONF_SI_BATTERY_TYPE			BATTERY_TYPE_LIION_3_0__4_2 // Battery Type
 #endif
 #ifndef MCCONF_SI_BATTERY_CELLS
-#define MCCONF_SI_BATTERY_CELLS			3 // Battery Cells
+#define MCCONF_SI_BATTERY_CELLS			13 // Battery Cells
 #endif
 #ifndef MCCONF_SI_BATTERY_AH
-#define MCCONF_SI_BATTERY_AH			6.0 // Battery amp hours
+#define MCCONF_SI_BATTERY_AH			15.0 // Battery amp hours
 #endif
 
 // BMS

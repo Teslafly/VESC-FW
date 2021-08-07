@@ -158,8 +158,9 @@
 
 // Override dead time. See the stm32f4 reference manual for calculating this value.
 // measure this on moxxie drive!
-#define HW_DEAD_TIME_NSEC		660.0
-
+#define HW_DEAD_TIME_NSEC		1400.0
+#define HW_GATE_DRIVER_SUPPLY_MAX_VOLTAGE	13.0
+#define HW_GATE_DRIVER_SUPPLY_MIN_VOLTAGE	10.0
 
 // ADC macros and settings
 
@@ -176,16 +177,14 @@
 #ifndef CURRENT_AMP_GAIN
 // #define CURRENT_AMP_GAIN		0.020 
 // #define CURRENT_AMP_GAIN        (20 / 1000) // volts/amp, acs758, 100a bidirectional
-#define CURRENT_AMP_GAIN        (-13.33 / 1000)  // volts/amp, acs758, 150a bidirectional
+#define CURRENT_AMP_GAIN        (13.33 / 1000)  // volts/amp, acs758, 150a bidirectional // at 3.3v, this gives ~124A full scale.
+#define INVERTED_SHUNT_POLARITY
                                                 // at 3.3v, this gives ~124A full scale.
 #endif
 #ifndef CURRENT_SHUNT_RES
 #define CURRENT_SHUNT_RES		1 // hall effect current sensor
 #endif
 
-// #define hall_current_gain         (20 / 1000) // volts/amp, acs758, 100a bidirectional
-// #define hall_current_gain         (13.33 / 1000)  // volts/amp, acs758, 150a bidirectional
-// at 3.3v, this gives ~124A full scale.
 
 // Input voltage
 #define GET_INPUT_VOLTAGE()		((V_REG / 4095.0) * (float)ADC_Value[ADC_IND_VIN_SENS] * ((VIN_R1 + VIN_R2) / VIN_R2))
@@ -213,13 +212,13 @@
 // Double samples in beginning and end for positive current measurement.
 // Useful when the shunt sense traces have noise that causes offset.
 #ifndef CURR1_DOUBLE_SAMPLE
-#define CURR1_DOUBLE_SAMPLE		0
+#define CURR1_DOUBLE_SAMPLE		1
 #endif
 #ifndef CURR2_DOUBLE_SAMPLE
-#define CURR2_DOUBLE_SAMPLE		0
+#define CURR2_DOUBLE_SAMPLE		1
 #endif
 #ifndef CURR3_DOUBLE_SAMPLE
-#define CURR3_DOUBLE_SAMPLE		0
+#define CURR3_DOUBLE_SAMPLE		1
 #endif
 
 // Execute FOC loop once every "FOC_CONTROL_LOOP_FREQ_DIVIDER" ADC ISR calls
@@ -346,6 +345,10 @@
 #ifndef MCCONF_FOC_F_SW
 #define MCCONF_FOC_F_SW					20000.0
 #endif
+
+#define MCCONF_L_CURRENT_MAX			60.0	// Current limit in Amperes (Upper)
+#define MCCONF_L_CURRENT_MIN			-60.0	// Current limit in Amperes (Lower)
+
 #ifndef MCCONF_L_MAX_ABS_CURRENT
 #define MCCONF_L_MAX_ABS_CURRENT		100.0	// The maximum absolute current above which a fault is generated
 #endif
@@ -353,16 +356,20 @@
 #define MCCONF_FOC_SAMPLE_V0_V7			false	// Run control loop in both v0 and v7 (requires phase shunts)
 #endif
 #ifndef MCCONF_L_IN_CURRENT_MAX
-#define MCCONF_L_IN_CURRENT_MAX			60.0	// Input current limit in Amperes (Upper)
+#define MCCONF_L_IN_CURRENT_MAX			30.0	// Input current limit in Amperes (Upper)
 #endif
 #ifndef MCCONF_L_IN_CURRENT_MIN
-#define MCCONF_L_IN_CURRENT_MIN			-50.0	// Input current limit in Amperes (Lower)
+#define MCCONF_L_IN_CURRENT_MIN			-10.0	// Input current limit in Amperes (Lower)
 #endif
 
 #define APPCONF_APP_TO_USE	        APP_ADC_UART
 
 #define LED_EXT_BATT_LOW			46.0
 #define LED_EXT_BATT_HIGH			52.0
+
+
+
+
 
 // Setting limits
 #define HW_LIM_CURRENT			-100.0, 100.0
