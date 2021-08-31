@@ -266,17 +266,16 @@
 #define NRF5x_SWCLK_PIN			2
 // checked
 
-
 // ICU Peripheral for servo decoding
-#define HW_USE_SERVO_TIM5
-#define HW_ICU_TIMER			TIM5
-#define HW_ICU_TIM_CLK_EN()		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE)
-#define HW_ICU_DEV				ICUD5
-#define HW_ICU_CHANNEL			ICU_CHANNEL_2 // may have to add some extra definitions here, ch4
-#define HW_ICU_GPIO_AF			GPIO_AF_TIM5
+#define HW_USE_SERVO_TIM9
+#define HW_ICU_TIMER			TIM9
+#define HW_ICU_TIM_CLK_EN()		RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM9, ENABLE)
+#define HW_ICU_DEV				ICUD9
+#define HW_ICU_CHANNEL			ICU_CHANNEL_2
+#define HW_ICU_GPIO_AF			GPIO_AF_TIM9
 #define HW_ICU_GPIO				GPIOA
 #define HW_ICU_PIN				3
-// fixme - on PA3, tim5 ch4
+// checked, works
 
 // I2C Peripheral
 #define HW_I2C_DEV				I2CD2
@@ -365,8 +364,8 @@
 
 #define APPCONF_APP_TO_USE	        APP_ADC_UART
 
-#define LED_EXT_BATT_LOW			46.0
-#define LED_EXT_BATT_HIGH			52.0
+// #define LED_EXT_BATT_LOW			46.0
+// #define LED_EXT_BATT_HIGH			52.0
 
 
 
