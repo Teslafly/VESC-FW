@@ -68,6 +68,7 @@ static thread_t *process_tp = 0;
 static thread_t *ping_tp = 0;
 static volatile HW_TYPE ping_hw_last = HW_TYPE_VESC;
 static volatile int ping_hw_last_id = -1;
+static volatile bool init_done = false;
 #endif
 
 // Variables
@@ -151,6 +152,8 @@ void comm_can_init(void) {
 			NORMALPRIO, cancom_status_internal_thread, NULL);
 #endif
 
+	init_done = true;
+
 #endif
 }
 
@@ -191,6 +194,10 @@ void comm_can_transmit_eid_replace(uint32_t id, const uint8_t *data, uint8_t len
 	}
 
 #if CAN_ENABLE
+	if (!init_done) {
+		return;
+	}
+
 #ifdef HW_HAS_DUAL_MOTORS
 	if (app_get_configuration()->can_mode == CAN_MODE_VESC) {
 		if (replace && ((id & 0xFF) == utils_second_motor_id() ||
@@ -233,6 +240,10 @@ void comm_can_transmit_sid(uint32_t id, uint8_t *data, uint8_t len) {
 	}
 
 #if CAN_ENABLE
+	if (!init_done) {
+		return;
+	}
+
 	CANTxFrame txmsg;
 	txmsg.IDE = CAN_IDE_STD;
 	txmsg.SID = id;
@@ -1280,6 +1291,8 @@ static void decode_msg(uint32_t eid, uint8_t *data8, int len, bool is_replaced) 
 	int id2 = id1;
 #endif
 
+	// The packets here are addressed to this VESC or to all VESCs (id=255)
+
 	if (id == 255 || id == id1 || id == id2) {
 		switch (cmd) {
 		case CAN_PACKET_SET_DUTY:
@@ -1612,10 +1625,20 @@ static void decode_msg(uint32_t eid, uint8_t *data8, int len, bool is_replaced) 
 				mc_interface_update_pid_pos_offset(angle_now, store);
 			} break;
 
+			case CAN_PACKET_POLL_ROTOR_POS: {
+				uint8_t buffer[4];
+				int32_t index = 0;
+				buffer_append_int32(buffer, (int32_t)(encoder_read_deg() * 100000.0), &index);
+				comm_can_transmit_eid_replace(app_get_configuration()->controller_id |
+						((uint32_t)CAN_PACKET_POLL_ROTOR_POS << 8), (uint8_t*)buffer, 4, true);
+			} break;
+
 			default:
 				break;
 		}
 	}
+
+	// The packets below are addressed to all devices, mainly containing status information.
 
 	switch (cmd) {
 	case CAN_PACKET_STATUS:

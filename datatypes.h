@@ -510,6 +510,12 @@ typedef enum {
 	THR_EXP_POLY
 } thr_exp_mode;
 
+typedef enum {
+	SAFE_START_DISABLED = 0,
+	SAFE_START_REGULAR,
+	SAFE_START_NO_FAULT
+} SAFE_START_MODE;
+
 // PPM control types
 typedef enum {
 	PPM_CTRL_TYPE_NONE = 0,
@@ -532,7 +538,7 @@ typedef struct {
 	float pulse_end;
 	float pulse_center;
 	bool median_filter;
-	bool safe_start;
+	SAFE_START_MODE safe_start;
 	float throttle_exp;
 	float throttle_exp_brake;
 	thr_exp_mode throttle_exp_mode;
@@ -585,7 +591,7 @@ typedef struct {
 	float voltage2_start;
 	float voltage2_end;
 	bool use_filter;
-	bool safe_start;
+	SAFE_START_MODE safe_start;
 	bool cc_button_inverted;
 	bool rev_button_inverted;
 	bool voltage_inverted;
@@ -714,15 +720,21 @@ typedef struct {
 	uint16_t fault_delay_switch_half;
 	uint16_t fault_delay_switch_full;
 	uint16_t fault_adc_half_erpm;
-	float tiltback_angle;
-	float tiltback_speed;
+	float tiltback_duty_angle;
+	float tiltback_duty_speed;
 	float tiltback_duty;
-	float tiltback_high_voltage;
-	float tiltback_low_voltage;
+	float tiltback_hv_angle;
+	float tiltback_hv_speed;
+	float tiltback_hv;
+	float tiltback_lv_angle;
+	float tiltback_lv_speed;
+	float tiltback_lv;
+	float tiltback_return_speed;
 	float tiltback_constant;
 	uint16_t tiltback_constant_erpm;
 	float tiltback_variable;
 	float tiltback_variable_max;
+	float noseangling_speed;
 	float startup_pitch_tolerance;
 	float startup_roll_tolerance;
 	float startup_speed;
@@ -792,7 +804,8 @@ typedef enum {
 
 typedef enum {
 	AHRS_MODE_MADGWICK = 0,
-	AHRS_MODE_MAHONY
+	AHRS_MODE_MAHONY,
+	AHRS_MODE_MADGWICK_FUSION
 } AHRS_MODE;
 
 typedef struct {
@@ -808,8 +821,6 @@ typedef struct {
 	float rot_yaw;
 	float accel_offsets[3];
 	float gyro_offsets[3];
-	float gyro_offset_comp_fact[3];
-	float gyro_offset_comp_clamp;
 } imu_config;
 
 typedef struct {
@@ -1094,7 +1105,8 @@ typedef enum {
 	CAN_PACKET_BMS_AH_WH_CHG_TOTAL,
 	CAN_PACKET_BMS_AH_WH_DIS_TOTAL,
 	CAN_PACKET_UPDATE_PID_POS_OFFSET,
-	CAN_PACKET_MAKE_ENUM_32_BITS = 0xFFFFFFFF
+	CAN_PACKET_POLL_ROTOR_POS,
+	CAN_PACKET_MAKE_ENUM_32_BITS = 0xFFFFFFFF,
 } CAN_PACKET_ID;
 
 // Logged fault data

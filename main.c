@@ -54,6 +54,7 @@
 #include "shutdown.h"
 #include "mempools.h"
 #include "events.h"
+#include "main.h"
 
 /*
  * HW resources used:
@@ -77,6 +78,7 @@
 // Private variables
 static THD_WORKING_AREA(periodic_thread_wa, 1024);
 static THD_WORKING_AREA(flash_integrity_check_thread_wa, 256);
+static bool m_init_done = false;
 
 static THD_FUNCTION(flash_integrity_check_thread, arg) {
 	(void)arg;
@@ -186,6 +188,10 @@ void assert_failed(uint8_t* file, uint32_t line) {
 	}
 }
 
+bool main_init_done(void) {
+	return m_init_done;
+}
+
 int main(void) {
 	halInit();
 	chSysInit();
@@ -278,10 +284,14 @@ int main(void) {
 	shutdown_init();
 #endif
 
+	imu_reset_orientation();
+
 #ifdef BOOT_OK_GPIO
 	chThdSleepMilliseconds(500);
 	palSetPad(BOOT_OK_GPIO, BOOT_OK_PIN);
 #endif
+
+	m_init_done = true;
 
 	for(;;) {
 		chThdSleepMilliseconds(10);
