@@ -21,11 +21,13 @@
 #define HW_MOXIE_DRIVE_24_H_
 
 #define HW_NAME				"Moxie_24"
+#define HW_MAJOR				24
+#define HW_MINOR				1
 
 // HW properties
 #define HW_HAS_3_SHUNTS
-// #define INVERTED_SHUNT_POLARITY  // not sure
-#define HW_HAS_PHASE_FILTERS
+#define HW_HAS_PHASE_SHUNTS
+// #define HW_HAS_PHASE_FILTERS
 
 #define HW_USE_25MHZ_XTAL  // 25mhz vs usual 8mhz mcu crystal
 
@@ -33,7 +35,6 @@
 // adds specific pins for cruise/brake/reverse instead of repurposing.
 // the interface pins are otherwise unaffected.
 #define ADDITIONAL_CONTROL_PINS 
-// #define INVERTED_BOTTOM_FET_DRIVER
 
 // #define ENABLE_SHUTDOWN_SWITCH           
 
