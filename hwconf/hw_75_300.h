@@ -20,7 +20,9 @@
 #ifndef HW_75_300_H_
 #define HW_75_300_H_
 
-#ifdef HW75_300_REV_2
+#ifdef HW75_300_REV_3
+#define HW_NAME					"75_300_R3"
+#elif defined(HW75_300_REV_2)
 #define HW_NAME					"75_300_R2"
 #else
 #define HW_NAME					"75_300"
@@ -49,7 +51,7 @@
 #define LED_RED_ON()			palSetPad(LED_RED_GPIO, LED_RED_PIN)
 #define LED_RED_OFF()			palClearPad(LED_RED_GPIO, LED_RED_PIN)
 
-#ifdef HW75_300_REV_2
+#if defined(HW75_300_REV_2) || defined(HW75_300_REV_3)
 #define PHASE_FILTER_GPIO		GPIOC
 #define PHASE_FILTER_PIN		9
 #else
@@ -186,7 +188,7 @@
 #define HW_UART_RX_PORT			GPIOB
 #define HW_UART_RX_PIN			11
 
-#ifdef HW75_300_REV_2
+#if defined(HW75_300_REV_2) || defined(HW75_300_REV_3)
 // Permanent UART Peripheral (for NRF51)
 #define HW_UART_P_BAUD			115200
 #define HW_UART_P_DEV			SD4
@@ -195,6 +197,14 @@
 #define HW_UART_P_TX_PIN		10
 #define HW_UART_P_RX_PORT		GPIOC
 #define HW_UART_P_RX_PIN		11
+#endif
+
+#ifdef HW75_300_REV_3
+// NRF SWD
+#define NRF5x_SWDIO_GPIO		GPIOA
+#define NRF5x_SWDIO_PIN			15
+#define NRF5x_SWCLK_GPIO		GPIOB
+#define NRF5x_SWCLK_PIN			3
 #endif
 
 // ICU Peripheral for servo decoding
@@ -270,7 +280,7 @@
 #define MCCONF_DEFAULT_MOTOR_TYPE		MOTOR_TYPE_FOC
 #endif
 #ifndef MCCONF_FOC_F_SW
-#define MCCONF_FOC_F_SW					30000.0
+#define MCCONF_FOC_F_SW					40000.0
 #endif
 #ifndef MCCONF_L_MAX_ABS_CURRENT
 #define MCCONF_L_MAX_ABS_CURRENT		420.0	// The maximum absolute current above which a fault is generated

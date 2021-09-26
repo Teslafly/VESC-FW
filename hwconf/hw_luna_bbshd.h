@@ -26,7 +26,9 @@
 // HW properties
 #define HW_HAS_3_SHUNTS
 #define HW_HAS_PHASE_SHUNTS
+#define HW_HAS_GATE_DRIVER_SUPPLY_MONITOR
 #define HW_USE_BRK
+//#define HW_BBSHD_USE_DAC
 
 // Macros
 #define LED_GREEN_GPIO			GPIOB
@@ -62,12 +64,12 @@
 #define ADC_IND_CURR2			4
 #define ADC_IND_CURR3			5
 #define ADC_IND_VIN_SENS		11
-#define ADC_IND_GATE_DRV		12
+#define ADC_IND_VOUT_GATE_DRV	12
 #define ADC_IND_EXT				10
 #define ADC_IND_EXT2			6
 #define ADC_IND_EXT3			13
-#define ADC_IND_TEMP_MOS		8
-#define ADC_IND_TEMP_MOS_2		15
+#define ADC_IND_TEMP_MOS		15
+#define ADC_IND_TEMP_MOS_2		8
 #define ADC_IND_TEMP_MOS_3		16
 #define ADC_IND_TEMP_MOTOR		9
 #define ADC_IND_VREFINT			16
@@ -82,21 +84,24 @@
 #define VIN_R1					66500.0
 #endif
 #ifndef VIN_R2
-#define VIN_R2					2200.0
+#define VIN_R2					2000.0
 #endif
 #ifndef CURRENT_AMP_GAIN
 #define CURRENT_AMP_GAIN		20.0
 #endif
 #ifndef CURRENT_SHUNT_RES
-#define CURRENT_SHUNT_RES		(0.0005 / 3.0)
+#define CURRENT_SHUNT_RES		(0.0005 / 2.0)
 #endif
 
 // Input voltage
 #define GET_INPUT_VOLTAGE()		((V_REG / 4095.0) * (float)ADC_Value[ADC_IND_VIN_SENS] * ((VIN_R1 + VIN_R2) / VIN_R2))
 
+// 12V supply voltage
+#define GET_GATE_DRIVER_SUPPLY_VOLTAGE()	((float)ADC_VOLTS(ADC_IND_VOUT_GATE_DRV) * 11.0)
+
 // NTC Termistors
-#define NTC_RES(adc_val)		((4095.0 * 10000.0) / adc_val - 10000.0)
-#define NTC_TEMP(adc_ind)		(1.0 / ((logf(NTC_RES(ADC_Value[adc_ind]) / 10000.0) / 3380.0) + (1.0 / 298.15)) - 273.15)
+#define NTC_RES(adc_val)		(10000.0 * adc_val / ( 4095.0 - adc_val))//((4095.0 * 10000.0) / adc_val - 10000.0)
+#define NTC_TEMP(adc_ind)		(1.0 / ((logf(NTC_RES(ADC_Value[adc_ind]) / 10000.0) / 3455.0) + (1.0 / 298.15)) - 273.15)
 
 #define NTC_RES_MOTOR(adc_val)	(10000.0 / ((4095.0 / (float)adc_val) - 1.0)) // Motor temp sensor on low side
 
@@ -124,14 +129,13 @@
 #define HW_ADC_EXT2_PIN			0
 
 // UART Peripheral
-#define HW_UART_DEV				SD3
-#define HW_UART_GPIO_AF			GPIO_AF_USART3
-#define HW_UART_TX_PORT			GPIOC
-#define HW_UART_TX_PIN			10
-#define HW_UART_RX_PORT			GPIOC
-#define HW_UART_RX_PIN			11
+#define HW_UART_DEV				SD1
+#define HW_UART_GPIO_AF			GPIO_AF_USART1
+#define HW_UART_TX_PORT			GPIOB
+#define HW_UART_TX_PIN			6
+#define HW_UART_RX_PORT			GPIOB
+#define HW_UART_RX_PIN			7
 
-#ifdef HW75_300_REV_2
 // Permanent UART Peripheral (for NRF51)
 #define HW_UART_P_BAUD			115200
 #define HW_UART_P_DEV			SD4
@@ -140,7 +144,12 @@
 #define HW_UART_P_TX_PIN		10
 #define HW_UART_P_RX_PORT		GPIOC
 #define HW_UART_P_RX_PIN		11
-#endif
+
+// NRF SWD
+#define NRF5x_SWDIO_GPIO		GPIOA
+#define NRF5x_SWDIO_PIN			13
+#define NRF5x_SWCLK_GPIO		GPIOA
+#define NRF5x_SWCLK_PIN			14
 
 // ICU Peripheral for servo decoding
 #define HW_USE_SERVO_TIM4
@@ -202,11 +211,11 @@
 #define READ_HALL3()			palReadPad(HW_HALL_ENC_GPIO3, HW_HALL_ENC_PIN3)
 
 // Override dead time.
-#define HW_DEAD_TIME_NSEC		660.0
+#define HW_DEAD_TIME_NSEC		460.0
 
 // Default setting overrides
 #ifndef MCCONF_L_MAX_VOLTAGE
-#define MCCONF_L_MAX_VOLTAGE			80.0	// Maximum input voltage
+#define MCCONF_L_MAX_VOLTAGE			85.0	// Maximum input voltage
 #endif
 #ifndef MCCONF_DEFAULT_MOTOR_TYPE
 #define MCCONF_DEFAULT_MOTOR_TYPE		MOTOR_TYPE_FOC
@@ -231,12 +240,17 @@
 #define HW_LIM_CURRENT			-200.0, 200.0
 #define HW_LIM_CURRENT_IN		-200.0, 200.0
 #define HW_LIM_CURRENT_ABS		0.0, 350.0
-#define HW_LIM_VIN				6.0, 80.0
+#define HW_LIM_VIN				6.0, 90.0
 #define HW_LIM_ERPM				-200e3, 200e3
 #define HW_LIM_DUTY_MIN			0.0, 0.1
 #define HW_LIM_DUTY_MAX			0.0, 0.99
 #define HW_LIM_TEMP_FET			-40.0, 110.0
 
+#define HW_GATE_DRIVER_SUPPLY_MIN_VOLTAGE	10.0
+#define HW_GATE_DRIVER_SUPPLY_MAX_VOLTAGE	14.0
+
 // HW-specific functions
+void hw_luna_bbshd_DAC1_setdata(uint16_t data);
+void hw_luna_bbshd_DAC2_setdata(uint16_t data);
 
 #endif /* HW_LUNA_BBSHD_H_ */

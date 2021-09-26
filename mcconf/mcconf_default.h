@@ -113,6 +113,9 @@
 #ifndef MCCONF_L_CURRENT_MIN_SCALE
 #define MCCONF_L_CURRENT_MIN_SCALE		1.0	// Minimum current scale
 #endif
+#ifndef MCCONF_L_DUTY_START
+#define MCCONF_L_DUTY_START				1.0 // Start limiting current at this duty cycle
+#endif
 
 // Speed PID parameters
 #ifndef MCCONF_S_PID_KP
@@ -132,6 +135,9 @@
 #endif
 #ifndef MCCONF_S_PID_ALLOW_BRAKING
 #define MCCONF_S_PID_ALLOW_BRAKING		true	// Allow braking in speed control mode
+#endif
+#ifndef MCCONF_S_PID_RAMP_ERPMS_S
+#define MCCONF_S_PID_RAMP_ERPMS_S		-1.0	// Default Speed Input Ramp
 #endif
 
 // Position PID parameters
@@ -257,11 +263,14 @@
 #ifndef MCCONF_FOC_MOTOR_FLUX_LINKAGE
 #define MCCONF_FOC_MOTOR_FLUX_LINKAGE	0.00245
 #endif
+#ifndef MCCONF_FOC_MOTOR_LD_LQ_DIFF
+#define MCCONF_FOC_MOTOR_LD_LQ_DIFF		0.0
+#endif
 #ifndef MCCONF_FOC_OBSERVER_GAIN
 #define MCCONF_FOC_OBSERVER_GAIN		25e6		// Can be something like 600 / L
 #endif
 #ifndef MCCONF_FOC_OBSERVER_GAIN_SLOW
-#define MCCONF_FOC_OBSERVER_GAIN_SLOW	0.3		// Observer gain scale at minimum duty cycle
+#define MCCONF_FOC_OBSERVER_GAIN_SLOW	0.05	// Observer gain scale at minimum duty cycle
 #endif
 #ifndef MCCONF_FOC_DUTY_DOWNRAMP_KP
 #define MCCONF_FOC_DUTY_DOWNRAMP_KP		10.0	// PI controller for duty control when decreasing the duty
@@ -270,19 +279,28 @@
 #define MCCONF_FOC_DUTY_DOWNRAMP_KI		200.0	// PI controller for duty control when decreasing the duty
 #endif
 #ifndef MCCONF_FOC_OPENLOOP_RPM
-#define MCCONF_FOC_OPENLOOP_RPM			400.0	// Openloop RPM (sensorless low speed or when finding index pulse)
+#define MCCONF_FOC_OPENLOOP_RPM			1500.0	// Openloop RPM (sensorless low speed or when finding index pulse)
+#endif
+#ifndef MCCONF_FOC_OPENLOOP_RPM_LOW
+#define MCCONF_FOC_OPENLOOP_RPM_LOW		0.0		// Fraction of OPENLOOP_RPM at minimum motor current
+#endif
+#ifndef MCCONF_FOC_D_GAIN_SCALE_START
+#define MCCONF_FOC_D_GAIN_SCALE_START	0.9		// Start reducing D axis current controller gain at this modulation
+#endif
+#ifndef MCCONF_FOC_D_GAIN_SCALE_MAX_MOD
+#define MCCONF_FOC_D_GAIN_SCALE_MAX_MOD	0.2		// D axis currnet controller gain at maximum modulation
 #endif
 #ifndef MCCONF_FOC_SL_OPENLOOP_HYST
 #define MCCONF_FOC_SL_OPENLOOP_HYST		0.1		// Time below min RPM to activate openloop (s)
 #endif
 #ifndef MCCONF_FOC_SL_OPENLOOP_TIME
-#define MCCONF_FOC_SL_OPENLOOP_TIME		0.1		// Time to remain in openloop (s)
+#define MCCONF_FOC_SL_OPENLOOP_TIME		0.05	// Time to remain in openloop after ramping (s)
 #endif
-#ifndef MCCONF_FOC_SL_D_CURRENT_DUTY
-#define MCCONF_FOC_SL_D_CURRENT_DUTY	0.0		// Inject d-axis current below this duty cycle in sensorless more
+#ifndef MCCONF_FOC_SL_OPENLOOP_T_LOCK
+#define MCCONF_FOC_SL_OPENLOOP_T_LOCK	0.0		// Time to lock motor in beginning of open loop sequence
 #endif
-#ifndef MCCONF_FOC_SL_D_CURRENT_FACTOR
-#define MCCONF_FOC_SL_D_CURRENT_FACTOR	0.0		// Maximum q-axis current factor
+#ifndef MCCONF_FOC_SL_OPENLOOP_T_RAMP
+#define MCCONF_FOC_SL_OPENLOOP_T_RAMP	0.1		// Time to ramp up motor to openloop speed
 #endif
 #ifndef MCCONF_FOC_HALL_TAB_0
 #define MCCONF_FOC_HALL_TAB_0			255
@@ -307,6 +325,9 @@
 #endif
 #ifndef MCCONF_FOC_HALL_TAB_7
 #define MCCONF_FOC_HALL_TAB_7			255
+#endif
+#ifndef MCCONF_FOC_HALL_INTERP_ERPM
+#define MCCONF_FOC_HALL_INTERP_ERPM		500		// Do not interpolate hall sensors below this ERPM
 #endif
 #ifndef MCCONF_FOC_SL_ERPM
 #define MCCONF_FOC_SL_ERPM				2500.0	// ERPM above which only the observer is used
@@ -435,6 +456,9 @@
 #ifndef MCCONF_M_PTC_MOTOR_COEFF
 #define MCCONF_M_PTC_MOTOR_COEFF		0.61 // %/K coefficient for motor PTC sensor
 #endif
+#ifndef MCCONF_M_HALL_EXTRA_SAMPLES
+#define MCCONF_M_HALL_EXTRA_SAMPLES		1 // Extra samples for filtering when reading hall sensors
+#endif
 
 // Setup Info
 #ifndef MCCONF_SI_MOTOR_POLES
@@ -454,6 +478,23 @@
 #endif
 #ifndef MCCONF_SI_BATTERY_AH
 #define MCCONF_SI_BATTERY_AH			6.0 // Battery amp hours
+#endif
+
+// BMS
+#ifndef MCCONF_BMS_TYPE
+#define MCCONF_BMS_TYPE					BMS_TYPE_VESC
+#endif
+#ifndef MCCONF_BMS_T_LIMIT_START
+#define MCCONF_BMS_T_LIMIT_START		45
+#endif
+#ifndef MCCONF_BMS_T_LIMIT_END
+#define MCCONF_BMS_T_LIMIT_END			65
+#endif
+#ifndef MCCONF_BMS_SOC_LIMIT_START
+#define MCCONF_BMS_SOC_LIMIT_START		0.05
+#endif
+#ifndef MCCONF_BMS_SOC_LIMIT_END
+#define MCCONF_BMS_SOC_LIMIT_END		0
 #endif
 
 #endif /* MCCONF_DEFAULT_H_ */

@@ -1,5 +1,5 @@
 /*
-	Copyright 2017 - 2019 Benjamin Vedder	benjamin@vedder.se
+	Copyright 2017 - 2021 Benjamin Vedder	benjamin@vedder.se
 
 	This file is part of the VESC firmware.
 
@@ -21,8 +21,10 @@
 #define CONF_GENERAL_H_
 
 // Firmware version
-#define FW_VERSION_MAJOR		4
-#define FW_VERSION_MINOR		00
+#define FW_VERSION_MAJOR			5
+#define FW_VERSION_MINOR			02
+// Set to 0 for building a release and iterate during beta test builds
+#define FW_TEST_VERSION_NUMBER		0
 
 #include "datatypes.h"
 
@@ -69,8 +71,11 @@
 
 // Mark3 version of HW60 with power switch and separate NRF UART.
 //#define HW60_IS_MK3
-//#define HW_SOURCE "hw_60.c"
-//#define HW_HEADER "hw_60.h"
+//#define HW60_IS_MK4
+#define HW60_IS_MK5
+
+// #define HW_SOURCE "hw_60.c"
+// #define HW_HEADER "hw_60.h"
 
 //#define HW_SOURCE "hw_r2.c"
 //#define HW_HEADER "hw_r2.h"
@@ -97,7 +102,8 @@
 //#define HW75_300_VEDDER_FIRST_PCB
 
 // Second revision with separate UART for NRF51
-// #define HW75_300_REV_2
+//#define HW75_300_REV_2
+#define HW75_300_REV_3
 
 // #define HW_SOURCE "hw_75_300.c"
 // #define HW_HEADER "hw_75_300.h"
@@ -120,8 +126,11 @@
 //#define HW_SOURCE "hw_binar_v1.c"
 //#define HW_HEADER "hw_binar_v1.h"
 
-//#define HW_SOURCE "hw_hd.c"
-//#define HW_HEADER "hw_hd.h"
+//#define HW_SOURCE "hw_hd60.c"
+//#define HW_HEADER "hw_hd60.h"
+
+//#define HW_SOURCE "hw_hd75.c"
+//#define HW_HEADER "hw_hd75.h"
 
 //#define HW_SOURCE "hw_a200s_v2.c"
 //#define HW_HEADER "hw_a200s_v2.h"
@@ -131,6 +140,36 @@
 
 //#define HW_SOURCE "hw_100_250.c"
 //#define HW_HEADER "hw_100_250.h"
+
+//#define HW_SOURCE "hw_unity.c"
+//#define HW_HEADER "hw_unity.h"
+
+//#define HW_SOURCE "hw_uxv_sr.c"
+//#define HW_HEADER "hw_uxv_sr.h"
+
+//#define HW_DUAL_CONFIG_PARALLEL
+//#define HW_VER_IS_100D_V2
+//#define HW_SOURCE "hw_stormcore_100d.c"
+//#define HW_HEADER "hw_stormcore_100d.h"
+
+//#define HW_VER_IS_60D_PLUS
+//#define HW_SOURCE "hw_stormcore_60d.c"
+//#define HW_HEADER "hw_stormcore_60d.h"
+
+//#define HW_SOURCE "hw_stormcore_100s.c"
+//#define HW_HEADER "hw_stormcore_100s.h"
+
+//#define HW_SOURCE "hw_Cheap_FOCer_2.c"
+//#define HW_HEADER "hw_Cheap_FOCer_2.h"
+
+//#define HW_SOURCE "hw_140_300.c"
+//#define HW_HEADER "hw_140_300.h"
+
+//#define HW_SOURCE "hw_es19.c"
+//#define HW_HEADER "hw_es19.h"
+
+//#define HW_SOURCE "hw_Little_FOCer.c"
+//#define HW_HEADER "hw_Little_FOCer.h"
 #endif
 
 #ifndef HW_SOURCE
@@ -170,7 +209,14 @@
  */
 //#define APP_CUSTOM_TO_USE			"app_custom_template.c"
 //#define APP_CUSTOM_TO_USE			"app_motor_heater.c"
-//#include "app_erockit_conf.h"
+//#include "app_erockit_conf_v2.h"
+//#include "finn/app_finn_az_conf.h"
+//#include "vccu/app_vccu_conf.h"
+
+// CAN-plotter
+//#define APP_CUSTOM_TO_USE			"app_plot_can.c"
+//#define APPCONF_APP_TO_USE			APP_CUSTOM
+//#define APPCONF_CAN_BAUD_RATE		CAN_BAUD_75K
 
 #include "hw.h"
 #include "mcconf_default.h"
@@ -244,6 +290,9 @@
 #ifndef AD2S1205_USE_HW_SPI_PINS
 #define AD2S1205_USE_HW_SPI_PINS	0
 #endif
+#ifndef MT6816_USE_HW_SPI_PINS
+#define MT6816_USE_HW_SPI_PINS		0
+#endif
 
 /*
  * MCU
@@ -284,17 +333,19 @@ bool conf_general_store_eeprom_var_hw(eeprom_var *v, int address);
 bool conf_general_store_eeprom_var_custom(eeprom_var *v, int address);
 void conf_general_read_app_configuration(app_configuration *conf);
 bool conf_general_store_app_configuration(app_configuration *conf);
-void conf_general_read_mc_configuration(mc_configuration *conf);
-bool conf_general_store_mc_configuration(mc_configuration *conf);
+void conf_general_read_mc_configuration(mc_configuration *conf, bool is_motor_2);
+bool conf_general_store_mc_configuration(mc_configuration *conf, bool is_motor_2);
 bool conf_general_detect_motor_param(float current, float min_rpm, float low_duty,
 		float *int_limit, float *bemf_coupling_k, int8_t *hall_table, int *hall_res);
 bool conf_general_measure_flux_linkage(float current, float duty,
 		float min_erpm, float res, float *linkage);
 uint8_t conf_general_calculate_deadtime(float deadtime_ns, float core_clock_freq);
 bool conf_general_measure_flux_linkage_openloop(float current, float duty,
-		float erpm_per_sec, float res, float *linkage);
+		float erpm_per_sec, float res, float ind, float *linkage,
+		float *linkage_undriven, float *undriven_samples);
 int conf_general_autodetect_apply_sensors_foc(float current,
 		bool store_mcconf_on_success, bool send_mcconf_on_success);
+void conf_general_calc_apply_foc_cc_kp_ki_gain(mc_configuration *mcconf, float tc);
 int conf_general_detect_apply_all_foc(float max_power_loss,
 		bool store_mcconf_on_success, bool send_mcconf_on_success);
 int conf_general_detect_apply_all_foc_can(bool detect_can, float max_power_loss,

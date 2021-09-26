@@ -23,6 +23,7 @@
 #include "ch.h"
 #include "hal.h"
 #include "i2c_bb.h"
+#include "spi_bb.h"
 
 void imu_init(imu_config *set);
 i2c_bb_state *imu_get_i2c(void);
@@ -30,8 +31,15 @@ void imu_init_mpu9x50(stm32_gpio_t *sda_gpio, int sda_pin,
 		stm32_gpio_t *scl_gpio, int scl_pin);
 void imu_init_icm20948(stm32_gpio_t *sda_gpio, int sda_pin,
 		stm32_gpio_t *scl_gpio, int scl_pin, int ad0_val);
-void imu_init_bmi160(stm32_gpio_t *sda_gpio, int sda_pin,
+void imu_init_bmi160_i2c(stm32_gpio_t *sda_gpio, int sda_pin,
 		stm32_gpio_t *scl_gpio, int scl_pin);
+void imu_init_lsm6ds3(stm32_gpio_t *sda_gpio, int sda_pin,
+		stm32_gpio_t *scl_gpio, int scl_pin);
+void imu_init_bmi160_spi(
+        stm32_gpio_t *nss_gpio, int nss_pin,
+        stm32_gpio_t *sck_gpio, int sck_pin,
+        stm32_gpio_t *mosi_gpio, int mosi_pin,
+        stm32_gpio_t *miso_gpio, int miso_pin);
 void imu_stop(void);
 bool imu_startup_done(void);
 float imu_get_roll(void);
@@ -43,5 +51,6 @@ void imu_get_gyro(float *gyro);
 void imu_get_mag(float *mag);
 void imu_get_accel_derotated(float *accel);
 void imu_get_quaternions(float *q);
+void imu_get_calibration(float yaw, float * imu_cal);
 
 #endif /* IMU_IMU_H_ */

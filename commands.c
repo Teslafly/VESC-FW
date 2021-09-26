@@ -46,6 +46,8 @@
 #include "bm_if.h"
 #endif
 #include "minilzo.h"
+#include "mempools.h"
+#include "bms.h"
 
 #include <math.h>
 #include <string.h>
@@ -62,14 +64,17 @@ static uint8_t send_buffer_global[PACKET_MAX_PL_LEN];
 static uint8_t blocking_thread_cmd_buffer[PACKET_MAX_PL_LEN];
 static volatile unsigned int blocking_thread_cmd_len = 0;
 static volatile bool is_blocking = false;
+static volatile int blocking_thread_motor = 1;
 static void(* volatile send_func)(unsigned char *data, unsigned int len) = 0;
 static void(* volatile send_func_blocking)(unsigned char *data, unsigned int len) = 0;
 static void(* volatile send_func_nrf)(unsigned char *data, unsigned int len) = 0;
+static void(* volatile send_func_can_fwd)(unsigned char *data, unsigned int len) = 0;
 static void(* volatile appdata_func)(unsigned char *data, unsigned int len) = 0;
 static disp_pos_mode display_position_mode;
 static mutex_t print_mutex;
 static mutex_t send_buffer_mutex;
 static mutex_t terminal_mutex;
+static volatile int fw_version_sent_cnt = 0;
 
 void commands_init(void) {
 	chMtxObjectInit(&print_mutex);
@@ -90,6 +95,21 @@ void commands_init(void) {
 void commands_send_packet(unsigned char *data, unsigned int len) {
 	if (send_func) {
 		send_func(data, len);
+	}
+}
+
+/**
+ * Send a packet using the last can fwd function.
+ *
+ * @param data
+ * The packet data.
+ *
+ * @param len
+ * The data length.
+ */
+void commands_send_packet_can_last(unsigned char *data, unsigned int len) {
+	if (send_func_can_fwd) {
+		send_func_can_fwd(data, len);
 	}
 }
 
@@ -146,10 +166,6 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 
 	COMM_PACKET_ID packet_id;
 
-	// Static to save some stack space
-	static mc_configuration mcconf;
-	static app_configuration appconf;
-
 	packet_id = data[0];
 	data++;
 	len--;
@@ -183,7 +199,20 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 		memcpy(send_buffer + ind, STM32_UUID_8, 12);
 		ind += 12;
 
+		// Add 1 to the UUID for the second motor, so that configuration backup and
+		// restore works.
+		if (mc_interface_get_motor_thread() == 2) {
+			send_buffer[ind - 1]++;
+		}
+
 		send_buffer[ind++] = app_get_configuration()->pairing_done;
+		send_buffer[ind++] = FW_TEST_VERSION_NUMBER;
+
+		send_buffer[ind++] = HW_TYPE_VESC;
+
+		send_buffer[ind++] = 0; // No custom config
+
+		fw_version_sent_cnt++;
 
 		reply_func(send_buffer, ind);
 	} break;
@@ -270,6 +299,7 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 		uint8_t send_buffer[50];
 		send_buffer[ind++] = COMM_WRITE_NEW_APP_DATA;
 		send_buffer[ind++] = flash_res == FLASH_COMPLETE ? 1 : 0;
+		buffer_append_uint32(send_buffer, new_app_offset, &ind);
 		reply_func(send_buffer, ind);
 	} break;
 
@@ -339,7 +369,13 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			buffer_append_float32(send_buffer, mc_interface_get_pid_pos_now(), 1e6, &ind);
 		}
 		if (mask & ((uint32_t)1 << 17)) {
-			send_buffer[ind++] = app_get_configuration()->controller_id;
+			uint8_t current_controller_id = app_get_configuration()->controller_id;
+#ifdef HW_HAS_DUAL_MOTORS
+			if (mc_interface_get_motor_thread() == 2) {
+				current_controller_id = utils_second_motor_id();
+			}
+#endif
+			send_buffer[ind++] = current_controller_id;
 		}
 		if (mask & ((uint32_t)1 << 18)) {
 			buffer_append_float16(send_buffer, NTC_TEMP_MOS1(), 1e1, &ind);
@@ -394,12 +430,10 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 	} break;
 
 	case COMM_SET_DETECT: {
-		mcconf = *mc_interface_get_configuration();
-
 		int32_t ind = 0;
 		display_position_mode = data[ind++];
 
-		if (mcconf.motor_type == MOTOR_TYPE_BLDC) {
+		if (mc_interface_get_configuration()->motor_type == MOTOR_TYPE_BLDC) {
 			if (display_position_mode == DISP_POS_MODE_NONE) {
 				mc_interface_release_motor();
 			} else if (display_position_mode == DISP_POS_MODE_INDUCTANCE) {
@@ -417,23 +451,28 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 #endif
 	} break;
 
-	case COMM_SET_MCCONF:
-		mcconf = *mc_interface_get_configuration();
+	case COMM_SET_MCCONF: {
+		mc_configuration *mcconf = mempools_alloc_mcconf();
+		*mcconf = *mc_interface_get_configuration();
 
-		if (confgenerator_deserialize_mcconf(data, &mcconf)) {
-			utils_truncate_number(&mcconf.l_current_max_scale , 0.0, 1.0);
-			utils_truncate_number(&mcconf.l_current_min_scale , 0.0, 1.0);
+		if (confgenerator_deserialize_mcconf(data, mcconf)) {
+			utils_truncate_number(&mcconf->l_current_max_scale , 0.0, 1.0);
+			utils_truncate_number(&mcconf->l_current_min_scale , 0.0, 1.0);
 
-			mcconf.lo_current_max = mcconf.l_current_max * mcconf.l_current_max_scale;
-			mcconf.lo_current_min = mcconf.l_current_min * mcconf.l_current_min_scale;
-			mcconf.lo_in_current_max = mcconf.l_in_current_max;
-			mcconf.lo_in_current_min = mcconf.l_in_current_min;
-			mcconf.lo_current_motor_max_now = mcconf.lo_current_max;
-			mcconf.lo_current_motor_min_now = mcconf.lo_current_min;
+#ifdef HW_HAS_DUAL_MOTORS
+			mcconf->motor_type = MOTOR_TYPE_FOC;
+#endif
 
-			commands_apply_mcconf_hw_limits(&mcconf);
-			conf_general_store_mc_configuration(&mcconf);
-			mc_interface_set_configuration(&mcconf);
+			mcconf->lo_current_max = mcconf->l_current_max * mcconf->l_current_max_scale;
+			mcconf->lo_current_min = mcconf->l_current_min * mcconf->l_current_min_scale;
+			mcconf->lo_in_current_max = mcconf->l_in_current_max;
+			mcconf->lo_in_current_min = mcconf->l_in_current_min;
+			mcconf->lo_current_motor_max_now = mcconf->lo_current_max;
+			mcconf->lo_current_motor_min_now = mcconf->lo_current_min;
+
+			commands_apply_mcconf_hw_limits(mcconf);
+			conf_general_store_mc_configuration(mcconf, mc_interface_get_motor_thread() == 2);
+			mc_interface_set_configuration(mcconf);
 			chThdSleepMilliseconds(200);
 
 			int32_t ind = 0;
@@ -443,26 +482,39 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 		} else {
 			commands_printf("Warning: Could not set mcconf due to wrong signature");
 		}
-		break;
+
+		mempools_free_mcconf(mcconf);
+	} break;
 
 	case COMM_GET_MCCONF:
-	case COMM_GET_MCCONF_DEFAULT:
+	case COMM_GET_MCCONF_DEFAULT: {
+		mc_configuration *mcconf = mempools_alloc_mcconf();
+
 		if (packet_id == COMM_GET_MCCONF) {
-			mcconf = *mc_interface_get_configuration();
+			*mcconf = *mc_interface_get_configuration();
 		} else {
-			confgenerator_set_defaults_mcconf(&mcconf);
+			confgenerator_set_defaults_mcconf(mcconf);
 		}
 
-		commands_send_mcconf(packet_id, &mcconf);
-		break;
+		commands_send_mcconf(packet_id, mcconf);
+		mempools_free_mcconf(mcconf);
+	} break;
 
-	case COMM_SET_APPCONF:
-		appconf = *app_get_configuration();
+	case COMM_SET_APPCONF: {
+		app_configuration *appconf = mempools_alloc_appconf();
+		*appconf = *app_get_configuration();
 
-		if (confgenerator_deserialize_appconf(data, &appconf)) {
-			conf_general_store_app_configuration(&appconf);
-			app_set_configuration(&appconf);
-			timeout_configure(appconf.timeout_msec, appconf.timeout_brake_current);
+		if (confgenerator_deserialize_appconf(data, appconf)) {
+#ifdef HW_HAS_DUAL_MOTORS
+			// Ignore ID when setting second motor config
+			if (mc_interface_get_motor_thread() == 2) {
+				appconf->controller_id = app_get_configuration()->controller_id;
+			}
+#endif
+
+			conf_general_store_app_configuration(appconf);
+			app_set_configuration(appconf);
+			timeout_configure(appconf->timeout_msec, appconf->timeout_brake_current);
 			chThdSleepMilliseconds(200);
 
 			int32_t ind = 0;
@@ -472,18 +524,30 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 		} else {
 			commands_printf("Warning: Could not set appconf due to wrong signature");
 		}
-		break;
+
+		mempools_free_appconf(appconf);
+	} break;
 
 	case COMM_GET_APPCONF:
-	case COMM_GET_APPCONF_DEFAULT:
+	case COMM_GET_APPCONF_DEFAULT: {
+		app_configuration *appconf = mempools_alloc_appconf();
+
 		if (packet_id == COMM_GET_APPCONF) {
-			appconf = *app_get_configuration();
+			*appconf = *app_get_configuration();
 		} else {
-			confgenerator_set_defaults_appconf(&appconf);
+			confgenerator_set_defaults_appconf(appconf);
 		}
 
-		commands_send_appconf(packet_id, &appconf);
-		break;
+#ifdef HW_HAS_DUAL_MOTORS
+		if (mc_interface_get_motor_thread() == 2) {
+			appconf->controller_id = utils_second_motor_id();
+		}
+#endif
+
+		commands_send_appconf(packet_id, appconf);
+
+		mempools_free_appconf(appconf);
+	} break;
 
 	case COMM_SAMPLE_PRINT: {
 		uint16_t sample_len;
@@ -547,13 +611,27 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 		buffer_append_int32(send_buffer, (int32_t)(app_balance_get_motor_current() * 1000000.0), &ind);
 		buffer_append_int32(send_buffer, (int32_t)(app_balance_get_motor_position() * 1000000.0), &ind);
 		buffer_append_uint16(send_buffer, app_balance_get_state(), &ind);
-		buffer_append_uint16(send_buffer, app_balance_get_switch_value(), &ind);
+		buffer_append_uint16(send_buffer, app_balance_get_switch_state(), &ind);
+		buffer_append_int32(send_buffer, (int32_t)(app_balance_get_adc1() * 1000000.0), &ind);
+		buffer_append_int32(send_buffer, (int32_t)(app_balance_get_adc2() * 1000000.0), &ind);
 		reply_func(send_buffer, ind);
 	} break;
 
-	case COMM_FORWARD_CAN:
+	case COMM_FORWARD_CAN: {
+		send_func_can_fwd = reply_func;
+
+#ifdef HW_HAS_DUAL_MOTORS
+		if (data[0] == utils_second_motor_id()) {
+			mc_interface_select_motor_thread(2);
+			commands_process_packet(data + 1, len - 1, reply_func);
+			mc_interface_select_motor_thread(1);
+		} else {
+			comm_can_send_buffer(data[0], data + 1, len - 1, 0);
+		}
+#else
 		comm_can_send_buffer(data[0], data + 1, len - 1, 0);
-		break;
+#endif
+	} break;
 
 	case COMM_SET_CHUCK_DATA: {
 		chuck_data chuck_d_tmp;
@@ -619,7 +697,7 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 	case COMM_GPD_OUTPUT_SAMPLE: {
 		timeout_reset();
 		int32_t ind = 0;
-		gpdrive_add_buffer_sample(buffer_get_float32_auto(data, &ind));
+		gpdrive_output_sample(buffer_get_float32_auto(data, &ind));
 	} break;
 
 	case COMM_GPD_SET_MODE: {
@@ -720,7 +798,13 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			send_buffer[ind++] = mc_interface_get_fault();
 		}
 		if (mask & ((uint32_t)1 << 17)) {
-			send_buffer[ind++] = app_get_configuration()->controller_id;
+			uint8_t current_controller_id = app_get_configuration()->controller_id;
+#ifdef HW_HAS_DUAL_MOTORS
+			if (mc_interface_get_motor_thread() == 2) {
+				current_controller_id = utils_second_motor_id();
+			}
+#endif
+			send_buffer[ind++] = current_controller_id;
 		}
 		if (mask & ((uint32_t)1 << 18)) {
 			send_buffer[ind++] = val.num_vescs;
@@ -728,14 +812,24 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 		if (mask & ((uint32_t)1 << 19)) {
 			buffer_append_float32(send_buffer, wh_batt_left, 1e3, &ind);
 		}
+		if (mask & ((uint32_t)1 << 20)) {
+			buffer_append_uint32(send_buffer, mc_interface_get_odometer(), &ind);
+		}
 
 		reply_func(send_buffer, ind);
 		chMtxUnlock(&send_buffer_mutex);
+	    } break;
+
+	case COMM_SET_ODOMETER: {
+		int32_t ind = 0;
+		mc_interface_set_odometer(buffer_get_uint32(data, &ind));
+		timeout_reset();
 	} break;
 
 	case COMM_SET_MCCONF_TEMP:
 	case COMM_SET_MCCONF_TEMP_SETUP: {
-		mcconf = *mc_interface_get_configuration();
+		mc_configuration *mcconf = mempools_alloc_mcconf();
+		*mcconf = *mc_interface_get_configuration();
 
 		int32_t ind = 0;
 		bool store = data[ind++];
@@ -754,51 +848,59 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			}
 		}
 
-		mcconf.l_current_min_scale = buffer_get_float32_auto(data, &ind);
-		mcconf.l_current_max_scale = buffer_get_float32_auto(data, &ind);
+		mcconf->l_current_min_scale = buffer_get_float32_auto(data, &ind);
+		mcconf->l_current_max_scale = buffer_get_float32_auto(data, &ind);
 
 		if (packet_id == COMM_SET_MCCONF_TEMP_SETUP) {
-			const float fact = ((mcconf.si_motor_poles / 2.0) * 60.0 *
-					mcconf.si_gear_ratio) / (mcconf.si_wheel_diameter * M_PI);
+			const float fact = ((mcconf->si_motor_poles / 2.0) * 60.0 *
+					mcconf->si_gear_ratio) / (mcconf->si_wheel_diameter * M_PI);
 
-			mcconf.l_min_erpm = buffer_get_float32_auto(data, &ind) * fact;
-			mcconf.l_max_erpm = buffer_get_float32_auto(data, &ind) * fact;
+			mcconf->l_min_erpm = buffer_get_float32_auto(data, &ind) * fact;
+			mcconf->l_max_erpm = buffer_get_float32_auto(data, &ind) * fact;
 
 			// Write computed RPM back and change forwarded packet id to
 			// COMM_SET_MCCONF_TEMP. This way only the master has to be
 			// aware of the setup information.
 			ind -= 8;
-			buffer_append_float32_auto(data, mcconf.l_min_erpm, &ind);
-			buffer_append_float32_auto(data, mcconf.l_max_erpm, &ind);
+			buffer_append_float32_auto(data, mcconf->l_min_erpm, &ind);
+			buffer_append_float32_auto(data, mcconf->l_max_erpm, &ind);
 		} else {
-			mcconf.l_min_erpm = buffer_get_float32_auto(data, &ind);
-			mcconf.l_max_erpm = buffer_get_float32_auto(data, &ind);
+			mcconf->l_min_erpm = buffer_get_float32_auto(data, &ind);
+			mcconf->l_max_erpm = buffer_get_float32_auto(data, &ind);
 		}
 
-		mcconf.l_min_duty = buffer_get_float32_auto(data, &ind);
-		mcconf.l_max_duty = buffer_get_float32_auto(data, &ind);
-		mcconf.l_watt_min = buffer_get_float32_auto(data, &ind) / controller_num;
-		mcconf.l_watt_max = buffer_get_float32_auto(data, &ind) / controller_num;
+		mcconf->l_min_duty = buffer_get_float32_auto(data, &ind);
+		mcconf->l_max_duty = buffer_get_float32_auto(data, &ind);
+		mcconf->l_watt_min = buffer_get_float32_auto(data, &ind) / controller_num;
+		mcconf->l_watt_max = buffer_get_float32_auto(data, &ind) / controller_num;
 
 		// Write divided data back to the buffer, as the other controllers have no way to tell
 		// how many controllers are on the bus and thus need pre-divided data.
 		// We set divide by controllers to false before forwarding.
 		ind -= 8;
-		buffer_append_float32_auto(data, mcconf.l_watt_min, &ind);
-		buffer_append_float32_auto(data, mcconf.l_watt_max, &ind);
+		buffer_append_float32_auto(data, mcconf->l_watt_min, &ind);
+		buffer_append_float32_auto(data, mcconf->l_watt_max, &ind);
 
-		mcconf.lo_current_min = mcconf.l_current_min * mcconf.l_current_min_scale;
-		mcconf.lo_current_max = mcconf.l_current_max * mcconf.l_current_max_scale;
-		mcconf.lo_current_motor_min_now = mcconf.lo_current_min;
-		mcconf.lo_current_motor_max_now = mcconf.lo_current_max;
-
-		commands_apply_mcconf_hw_limits(&mcconf);
-
-		if (store) {
-			conf_general_store_mc_configuration(&mcconf);
+		// Battery limits can be set optionally in a backwards-compatible way.
+		if ((int32_t)len >= (ind + 8)) {
+			mcconf->l_in_current_min = buffer_get_float32_auto(data, &ind);
+			mcconf->l_in_current_max = buffer_get_float32_auto(data, &ind);
 		}
 
-		mc_interface_set_configuration(&mcconf);
+		mcconf->lo_current_min = mcconf->l_current_min * mcconf->l_current_min_scale;
+		mcconf->lo_current_max = mcconf->l_current_max * mcconf->l_current_max_scale;
+		mcconf->lo_current_motor_min_now = mcconf->lo_current_min;
+		mcconf->lo_current_motor_max_now = mcconf->lo_current_max;
+		mcconf->lo_in_current_min = mcconf->l_in_current_min;
+		mcconf->lo_in_current_max = mcconf->l_in_current_max;
+
+		commands_apply_mcconf_hw_limits(mcconf);
+
+		if (store) {
+			conf_general_store_mc_configuration(mcconf, mc_interface_get_motor_thread() == 2);
+		}
+
+		mc_interface_set_configuration(mcconf);
 
 		if (forward_can) {
 			data[-1] = COMM_SET_MCCONF_TEMP;
@@ -821,19 +923,47 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 			send_buffer[ind++] = packet_id;
 			reply_func(send_buffer, ind);
 		}
+
+		mempools_free_mcconf(mcconf);
+	} break;
+
+	case COMM_GET_MCCONF_TEMP: {
+		mc_configuration *mcconf = mempools_alloc_mcconf();
+		*mcconf = *mc_interface_get_configuration();
+		int32_t ind = 0;
+		uint8_t send_buffer[60];
+
+		send_buffer[ind++] = packet_id;
+		buffer_append_float32_auto(send_buffer, mcconf->l_current_min_scale, &ind);
+		buffer_append_float32_auto(send_buffer, mcconf->l_current_max_scale, &ind);
+		buffer_append_float32_auto(send_buffer, mcconf->l_min_erpm, &ind);
+		buffer_append_float32_auto(send_buffer, mcconf->l_max_erpm, &ind);
+		buffer_append_float32_auto(send_buffer, mcconf->l_min_duty, &ind);
+		buffer_append_float32_auto(send_buffer, mcconf->l_max_duty, &ind);
+		buffer_append_float32_auto(send_buffer, mcconf->l_watt_min, &ind);
+		buffer_append_float32_auto(send_buffer, mcconf->l_watt_max, &ind);
+		buffer_append_float32_auto(send_buffer, mcconf->l_in_current_min, &ind);
+		buffer_append_float32_auto(send_buffer, mcconf->l_in_current_max, &ind);
+		// Setup config needed for speed calculation
+		send_buffer[ind++] = (uint8_t)mcconf->si_motor_poles;
+		buffer_append_float32_auto(send_buffer, mcconf->si_gear_ratio, &ind);
+		buffer_append_float32_auto(send_buffer, mcconf->si_wheel_diameter, &ind);
+
+		mempools_free_mcconf(mcconf);
+		reply_func(send_buffer, ind);
 	} break;
 
 	case COMM_EXT_NRF_PRESENT: {
 		if (!conf_general_permanent_nrf_found) {
 			nrf_driver_init_ext_nrf();
 			if (!nrf_driver_is_pairing()) {
-				const app_configuration *appconf_ptr = app_get_configuration();
+				const app_configuration *appconf = app_get_configuration();
 				uint8_t send_buffer[50];
 				send_buffer[0] = COMM_EXT_NRF_ESB_SET_CH_ADDR;
-				send_buffer[1] = appconf_ptr->app_nrf_conf.channel;
-				send_buffer[2] = appconf_ptr->app_nrf_conf.address[0];
-				send_buffer[3] = appconf_ptr->app_nrf_conf.address[1];
-				send_buffer[4] = appconf_ptr->app_nrf_conf.address[2];
+				send_buffer[1] = appconf->app_nrf_conf.channel;
+				send_buffer[2] = appconf->app_nrf_conf.address[0];
+				send_buffer[3] = appconf->app_nrf_conf.address[1];
+				send_buffer[4] = appconf->app_nrf_conf.address[2];
 				commands_send_packet_nrf(send_buffer, 5);
 			}
 		}
@@ -978,6 +1108,77 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 		}
 	} break;
 
+	case COMM_SET_BATTERY_CUT: {
+		int32_t ind = 0;
+		float start = buffer_get_float32(data, 1e3, &ind);
+		float end = buffer_get_float32(data, 1e3, &ind);
+		bool store = data[ind++];
+		bool fwd_can = data[ind++];
+
+		if (fwd_can) {
+			comm_can_conf_battery_cut(255, store, start, end);
+		}
+
+		mc_configuration *mcconf = mempools_alloc_mcconf();
+		*mcconf = *mc_interface_get_configuration();
+
+		if (mcconf->l_battery_cut_start != start || mcconf->l_battery_cut_end != end) {
+			mcconf->l_battery_cut_start = start;
+			mcconf->l_battery_cut_end = end;
+
+			if (store) {
+				conf_general_store_mc_configuration(mcconf,
+						mc_interface_get_motor_thread() == 2);
+			}
+
+			mc_interface_set_configuration(mcconf);
+		}
+
+		mempools_free_mcconf(mcconf);
+
+		// Send ack
+		ind = 0;
+		uint8_t send_buffer[50];
+		send_buffer[ind++] = packet_id;
+		reply_func(send_buffer, ind);
+	} break;
+
+	case COMM_SET_CAN_MODE: {
+		int32_t ind = 0;
+		bool store = data[ind++];
+		bool ack = data[ind++];
+		int mode = data[ind++];
+
+		app_configuration *appconf = mempools_alloc_appconf();
+		*appconf = *app_get_configuration();
+		appconf->can_mode = mode;
+
+		if (store) {
+			conf_general_store_app_configuration(appconf);
+		}
+
+		app_set_configuration(appconf);
+
+		mempools_free_appconf(appconf);
+
+		if (ack) {
+			ind = 0;
+			uint8_t send_buffer[50];
+			send_buffer[ind++] = packet_id;
+			reply_func(send_buffer, ind);
+		}
+	} break;
+
+	case COMM_BMS_GET_VALUES:
+	case COMM_BMS_SET_CHARGE_ALLOWED:
+	case COMM_BMS_SET_BALANCE_OVERRIDE:
+	case COMM_BMS_RESET_COUNTERS:
+	case COMM_BMS_FORCE_BALANCE:
+	case COMM_BMS_ZERO_CURRENT_OFFSET: {
+		bms_process_cmd(data - 1, len + 1, reply_func);
+		break;
+	}
+
 	// Blocking commands. Only one of them runs at any given time, in their
 	// own thread. If other blocking commands come before the previous one has
 	// finished, they are discarded.
@@ -999,10 +1200,12 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 	case COMM_BM_MAP_PINS_DEFAULT:
 	case COMM_BM_MAP_PINS_NRF5X:
 	case COMM_BM_MEM_READ:
+	case COMM_GET_IMU_CALIBRATION:
 		if (!is_blocking) {
 			memcpy(blocking_thread_cmd_buffer, data - 1, len + 1);
-			blocking_thread_cmd_len = len;
+			blocking_thread_cmd_len = len + 1;
 			is_blocking = true;
+			blocking_thread_motor = mc_interface_get_motor_thread();
 			send_func_blocking = reply_func;
 			chEvtSignal(blocking_tp, (eventmask_t)1);
 		}
@@ -1114,9 +1317,13 @@ void commands_send_appconf(COMM_PACKET_ID packet_id, app_configuration *appconf)
 	chMtxUnlock(&send_buffer_mutex);
 }
 
+inline static float hw_lim_upper(float l, float h) {(void)l; return h;}
+
 void commands_apply_mcconf_hw_limits(mc_configuration *mcconf) {
 	utils_truncate_number(&mcconf->l_current_max_scale, 0.0, 1.0);
 	utils_truncate_number(&mcconf->l_current_min_scale, 0.0, 1.0);
+
+	float ctrl_loop_freq = 0.0;
 
 	// This limit should always be active, as starving the threads never
 	// makes sense.
@@ -1124,10 +1331,25 @@ void commands_apply_mcconf_hw_limits(mc_configuration *mcconf) {
     if (mcconf->foc_sample_v0_v7 == true) {
     	//control loop executes twice per pwm cycle when sampling in v0 and v7
 		utils_truncate_number(&mcconf->foc_f_sw, HW_LIM_FOC_CTRL_LOOP_FREQ);
+		ctrl_loop_freq = mcconf->foc_f_sw;
     } else {
+#ifdef HW_HAS_DUAL_MOTORS
+    	utils_truncate_number(&mcconf->foc_f_sw, HW_LIM_FOC_CTRL_LOOP_FREQ);
+    	ctrl_loop_freq = mcconf->foc_f_sw;
+#else
 		utils_truncate_number(&mcconf->foc_f_sw, HW_LIM_FOC_CTRL_LOOP_FREQ * 2.0);
+		ctrl_loop_freq = mcconf->foc_f_sw / 2.0;
+#endif
     }
 #endif
+
+    if (ctrl_loop_freq >= (hw_lim_upper(HW_LIM_FOC_CTRL_LOOP_FREQ) * 0.9)) {
+    	utils_truncate_number_int(&mcconf->m_hall_extra_samples, 0, 2);
+    } else if (ctrl_loop_freq >= (hw_lim_upper(HW_LIM_FOC_CTRL_LOOP_FREQ) * 0.7)) {
+    	utils_truncate_number_int(&mcconf->m_hall_extra_samples, 0, 4);
+    } else {
+    	utils_truncate_number_int(&mcconf->m_hall_extra_samples, 0, 10);
+    }
 
 #ifndef DISABLE_HW_LIMITS
 #ifdef HW_LIM_CURRENT
@@ -1207,6 +1429,52 @@ void commands_send_plot_points(float x, float y) {
 	commands_send_packet(buffer, ind);
 }
 
+int commands_get_fw_version_sent_cnt(void) {
+	return fw_version_sent_cnt;
+}
+
+// TODO: The commands_set_ble_name and commands_set_ble_pin are not
+// tested. Test them, and remove this comment when done!
+
+void commands_set_ble_name(char* name) {
+	int ind = 0;
+	int name_len = strlen(name);
+	if (name_len > 27) {
+		name_len = 27;
+	}
+
+	uint8_t buffer[name_len + 2];
+	buffer[ind++] = COMM_SET_BLE_NAME;
+	memcpy(buffer + ind, name, name_len);
+	ind += name_len;
+	buffer[ind++] = '\0';
+
+#ifdef HW_UART_P_DEV
+	app_uartcomm_send_packet_p(buffer, ind);
+#else
+	app_uartcomm_send_packet(buffer, ind);
+#endif
+}
+
+void commands_set_ble_pin(char* pin) {
+	int ind = 0;
+	int pin_len = strlen(pin);
+	if (pin_len > 27) {
+		pin_len = 27;
+	}
+
+	uint8_t buffer[pin_len + 2];
+	buffer[ind++] = COMM_SET_BLE_NAME;
+	memcpy(buffer + ind, pin, pin_len);
+	ind += pin_len;
+	buffer[ind++] = '\0';
+#ifdef HW_UART_P_DEV
+	app_uartcomm_send_packet_p(buffer, ind);
+#else
+	app_uartcomm_send_packet(buffer, ind);
+#endif
+}
+
 static THD_FUNCTION(blocking_thread, arg) {
 	(void)arg;
 
@@ -1215,17 +1483,21 @@ static THD_FUNCTION(blocking_thread, arg) {
 	blocking_tp = chThdGetSelfX();
 
 	for(;;) {
+		is_blocking = false;
+
 		chEvtWaitAny((eventmask_t) 1);
+
+		mc_interface_select_motor_thread(blocking_thread_motor);
 
 		uint8_t *data = blocking_thread_cmd_buffer;
 		unsigned int len = blocking_thread_cmd_len;
 
 		COMM_PACKET_ID packet_id;
-		static mc_configuration mcconf, mcconf_old;
 		static uint8_t send_buffer[512];
 
 		packet_id = data[0];
 		data++;
+		len--;
 
 		switch (packet_id) {
 		case COMM_DETECT_MOTOR_PARAM: {
@@ -1259,16 +1531,18 @@ static THD_FUNCTION(blocking_thread, arg) {
 		} break;
 
 		case COMM_DETECT_MOTOR_R_L: {
-			mcconf = *mc_interface_get_configuration();
-			mcconf_old = mcconf;
+			mc_configuration *mcconf = mempools_alloc_mcconf();
+			*mcconf = *mc_interface_get_configuration();
+			mc_configuration *mcconf_old = mempools_alloc_mcconf();
+			*mcconf_old = *mcconf;
 
-			mcconf.motor_type = MOTOR_TYPE_FOC;
-			mc_interface_set_configuration(&mcconf);
+			mcconf->motor_type = MOTOR_TYPE_FOC;
+			mc_interface_set_configuration(mcconf);
 
 			float r = 0.0;
 			float l = 0.0;
 			bool res = mcpwm_foc_measure_res_ind(&r, &l);
-			mc_interface_set_configuration(&mcconf_old);
+			mc_interface_set_configuration(mcconf_old);
 
 			if (!res) {
 				r = 0.0;
@@ -1282,6 +1556,9 @@ static THD_FUNCTION(blocking_thread, arg) {
 			if (send_func_blocking) {
 				send_func_blocking(send_buffer, ind);
 			}
+
+			mempools_free_mcconf(mcconf);
+			mempools_free_mcconf(mcconf_old);
 		} break;
 
 		case COMM_DETECT_MOTOR_FLUX_LINKAGE: {
@@ -1308,23 +1585,25 @@ static THD_FUNCTION(blocking_thread, arg) {
 
 		case COMM_DETECT_ENCODER: {
 			if (encoder_is_configured()) {
-				mcconf = *mc_interface_get_configuration();
-				mcconf_old = mcconf;
+				mc_configuration *mcconf = mempools_alloc_mcconf();
+				*mcconf = *mc_interface_get_configuration();
+				mc_configuration *mcconf_old = mempools_alloc_mcconf();
+				*mcconf_old = *mcconf;
 
 				int32_t ind = 0;
 				float current = buffer_get_float32(data, 1e3, &ind);
 
-				mcconf.motor_type = MOTOR_TYPE_FOC;
-				mcconf.foc_f_sw = 10000.0;
-				mcconf.foc_current_kp = 0.01;
-				mcconf.foc_current_ki = 10.0;
-				mc_interface_set_configuration(&mcconf);
+				mcconf->motor_type = MOTOR_TYPE_FOC;
+				mcconf->foc_f_sw = 10000.0;
+				mcconf->foc_current_kp = 0.01;
+				mcconf->foc_current_ki = 10.0;
+				mc_interface_set_configuration(mcconf);
 
 				float offset = 0.0;
 				float ratio = 0.0;
 				bool inverted = false;
 				mcpwm_foc_encoder_detect(current, false, &offset, &ratio, &inverted);
-				mc_interface_set_configuration(&mcconf_old);
+				mc_interface_set_configuration(mcconf_old);
 
 				ind = 0;
 				send_buffer[ind++] = COMM_DETECT_ENCODER;
@@ -1335,6 +1614,9 @@ static THD_FUNCTION(blocking_thread, arg) {
 				if (send_func_blocking) {
 					send_func_blocking(send_buffer, ind);
 				}
+
+				mempools_free_mcconf(mcconf);
+				mempools_free_mcconf(mcconf_old);
 			} else {
 				int32_t ind = 0;
 				send_buffer[ind++] = COMM_DETECT_ENCODER;
@@ -1349,22 +1631,25 @@ static THD_FUNCTION(blocking_thread, arg) {
 		} break;
 
 		case COMM_DETECT_HALL_FOC: {
-			mcconf = *mc_interface_get_configuration();
+			mc_configuration *mcconf = mempools_alloc_mcconf();
+			*mcconf = *mc_interface_get_configuration();
 
-			if (mcconf.m_sensor_port_mode == SENSOR_PORT_MODE_HALL) {
-				mcconf_old = mcconf;
+			if (mcconf->m_sensor_port_mode == SENSOR_PORT_MODE_HALL) {
+				mc_configuration *mcconf_old = mempools_alloc_mcconf();
+				*mcconf_old = *mcconf;
+
 				int32_t ind = 0;
 				float current = buffer_get_float32(data, 1e3, &ind);
 
-				mcconf.motor_type = MOTOR_TYPE_FOC;
-				mcconf.foc_f_sw = 10000.0;
-				mcconf.foc_current_kp = 0.01;
-				mcconf.foc_current_ki = 10.0;
-				mc_interface_set_configuration(&mcconf);
+				mcconf->motor_type = MOTOR_TYPE_FOC;
+				mcconf->foc_f_sw = 10000.0;
+				mcconf->foc_current_kp = 0.01;
+				mcconf->foc_current_ki = 10.0;
+				mc_interface_set_configuration(mcconf);
 
 				uint8_t hall_tab[8];
 				bool res = mcpwm_foc_hall_detect(current, hall_tab);
-				mc_interface_set_configuration(&mcconf_old);
+				mc_interface_set_configuration(mcconf_old);
 
 				ind = 0;
 				send_buffer[ind++] = COMM_DETECT_HALL_FOC;
@@ -1375,6 +1660,8 @@ static THD_FUNCTION(blocking_thread, arg) {
 				if (send_func_blocking) {
 					send_func_blocking(send_buffer, ind);
 				}
+
+				mempools_free_mcconf(mcconf_old);
 			} else {
 				int32_t ind = 0;
 				send_buffer[ind++] = COMM_DETECT_HALL_FOC;
@@ -1385,6 +1672,8 @@ static THD_FUNCTION(blocking_thread, arg) {
 					send_func_blocking(send_buffer, ind);
 				}
 			}
+
+			mempools_free_mcconf(mcconf);
 		} break;
 
 		case COMM_DETECT_MOTOR_FLUX_LINKAGE_OPENLOOP: {
@@ -1393,9 +1682,20 @@ static THD_FUNCTION(blocking_thread, arg) {
 			float erpm_per_sec = buffer_get_float32(data, 1e3, &ind);
 			float duty = buffer_get_float32(data, 1e3, &ind);
 			float resistance = buffer_get_float32(data, 1e6, &ind);
+			float inductance = 0.0;
 
-			float linkage;
-			bool res = conf_general_measure_flux_linkage_openloop(current, duty, erpm_per_sec, resistance, &linkage);
+			if (len >= (uint32_t)ind + 4) {
+				inductance = buffer_get_float32(data, 1e8, &ind);
+			}
+
+			float linkage, linkage_undriven, undriven_samples;
+			bool res = conf_general_measure_flux_linkage_openloop(current, duty,
+					erpm_per_sec, resistance, inductance,
+					&linkage, &linkage_undriven, &undriven_samples);
+
+			if (undriven_samples > 60) {
+				linkage = linkage_undriven;
+			}
 
 			if (!res) {
 				linkage = 0.0;
@@ -1441,7 +1741,8 @@ static THD_FUNCTION(blocking_thread, arg) {
 			send_buffer[ind++] = COMM_PING_CAN;
 
 			for (uint8_t i = 0;i < 255;i++) {
-				if (comm_can_ping(i)) {
+				HW_TYPE hw_type;
+				if (comm_can_ping(i, &hw_type)) {
 					send_buffer[ind++] = i;
 				}
 			}
@@ -1504,6 +1805,7 @@ static THD_FUNCTION(blocking_thread, arg) {
 
 		case COMM_BM_DISCONNECT: {
 			bm_disconnect();
+			bm_leave_nrf_debug_mode();
 
 			int32_t ind = 0;
 			send_buffer[ind++] = packet_id;
@@ -1557,11 +1859,31 @@ static THD_FUNCTION(blocking_thread, arg) {
 			}
 		} break;
 #endif
+		case COMM_GET_IMU_CALIBRATION: {
+			int32_t ind = 0;
+			float yaw = buffer_get_float32(data, 1e3, &ind);
+			float imu_cal[9];
+			imu_get_calibration(yaw, imu_cal);
+
+			ind = 0;
+			send_buffer[ind++] = COMM_GET_IMU_CALIBRATION;
+			buffer_append_float32(send_buffer, imu_cal[0], 1e6, &ind);
+			buffer_append_float32(send_buffer, imu_cal[1], 1e6, &ind);
+			buffer_append_float32(send_buffer, imu_cal[2], 1e6, &ind);
+			buffer_append_float32(send_buffer, imu_cal[3], 1e6, &ind);
+			buffer_append_float32(send_buffer, imu_cal[4], 1e6, &ind);
+			buffer_append_float32(send_buffer, imu_cal[5], 1e6, &ind);
+			buffer_append_float32(send_buffer, imu_cal[6], 1e6, &ind);
+			buffer_append_float32(send_buffer, imu_cal[7], 1e6, &ind);
+			buffer_append_float32(send_buffer, imu_cal[8], 1e6, &ind);
+
+			if (send_func_blocking) {
+				send_func_blocking(send_buffer, ind);
+			}
+		} break;
 
 		default:
 			break;
 		}
-
-		is_blocking = false;
 	}
 }
