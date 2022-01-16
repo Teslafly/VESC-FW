@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -34,12 +34,17 @@
  * @{
  */
 
-#ifndef _HAL_LLD_H_
-#define _HAL_LLD_H_
+#ifndef HAL_LLD_H
+#define HAL_LLD_H
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
 /*===========================================================================*/
+
+/**
+ * @brief   Requires use of SPIv2 driver model.
+ */
+#define HAL_LLD_SELECT_SPI_V2           TRUE
 
 /**
  * @name    Platform identification macros
@@ -130,7 +135,7 @@
 /**
  * @brief   Minimum ADC clock frequency.
  */
-#define STM32_ADCCLK_MIN        6000000
+#define STM32_ADCCLK_MIN        600000
 
 /**
  * @brief   Maximum SDADC clock frequency in fast mode.
@@ -578,7 +583,7 @@
 #if STM32_LSI_ENABLED
 #else /* !STM32_LSI_ENABLED */
 
-#if STM32_RTCSEL == STM32_RTCSEL_LSI
+#if HAL_USE_RTC && (STM32_RTCSEL == STM32_RTCSEL_LSI)
 #error "LSI not enabled, required by STM32_RTCSEL"
 #endif
 
@@ -804,12 +809,12 @@
 #endif
 
 /* ADC maximum frequency check.*/
-#if STM32_ADCCLK > STM32_ADCCLK_MAX
+#if STM32_ADC_USE_ADC1 && (STM32_ADCCLK > STM32_ADCCLK_MAX)
 #error "STM32_ADCCLK exceeding maximum frequency (STM32_ADCCLK_MAX)"
 #endif
 
 /* ADC minimum frequency check.*/
-#if STM32_ADCCLK < STM32_ADCCLK_MIN
+#if STM32_ADC_USE_ADC1 && (STM32_ADCCLK < STM32_ADCCLK_MIN)
 #error "STM32_ADCCLK exceeding minimum frequency (STM32_ADCCLK_MIN)"
 #endif
 
@@ -853,12 +858,17 @@
 #endif
 
 /* SDADC maximum frequency check.*/
-#if STM32_SDADCCLK > STM32_SDADCCLK_FAST_MAX
+#if (STM32_ADC_USE_SDADC1 ||                                                \
+     STM32_ADC_USE_SDADC2 ||                                                \
+     STM32_ADC_USE_SDADC3) &&  (STM32_SDADCCLK > STM32_SDADCCLK_FAST_MAX)
 #error "STM32_SDADCCLK exceeding maximum frequency (STM32_SDADCCLK_FAST_MAX)"
 #endif
 
 /* SDADC minimum frequency check.*/
-#if STM32_SDADCCLK < STM32_SDADCCLK_MIN
+#if (STM32_ADC_USE_SDADC1 ||                                                \
+     STM32_ADC_USE_SDADC2 ||                                                \
+     STM32_ADC_USE_SDADC3) && \
+    (STM32_SDADCCLK < STM32_SDADCCLK_MIN)
 #error "STM32_SDADCCLK exceeding maximum frequency (STM32_SDADCCLK_MIN)"
 #endif
 
@@ -983,10 +993,14 @@
 
 /* Various helpers.*/
 #include "nvic.h"
+#include "cache.h"
+#include "mpu_v7m.h"
 #include "stm32_registry.h"
 #include "stm32_isr.h"
 #include "stm32_dma.h"
+#include "stm32_exti.h"
 #include "stm32_rcc.h"
+#include "stm32_tim.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -997,6 +1011,6 @@ extern "C" {
 }
 #endif
 
-#endif /* _HAL_LLD_H_ */
+#endif /* HAL_LLD_H */
 
 /** @} */

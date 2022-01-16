@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
  * @file    DMAv1/stm32_dma.c
  * @brief   DMA helper driver code.
  *
- * @addtogroup STM32_DMA_V1
+ * @addtogroup STM32_DMA
  * @details DMA sharing helper driver. In the STM32 the DMA streams are a
  *          shared resource, this driver allows to allocate and free DMA
  *          streams at runtime in order to allow all the other device
@@ -42,17 +42,151 @@
 /**
  * @brief   Mask of the DMA1 streams in @p dma_streams_mask.
  */
-#define STM32_DMA1_STREAMS_MASK     0x0000007FU
+#define STM32_DMA1_STREAMS_MASK     ((1U << STM32_DMA1_NUM_CHANNELS) - 1U)
 
 /**
  * @brief   Mask of the DMA2 streams in @p dma_streams_mask.
  */
-#define STM32_DMA2_STREAMS_MASK     0x00000F80U
+#define STM32_DMA2_STREAMS_MASK     (((1U << STM32_DMA2_NUM_CHANNELS) -     \
+                                      1U) << STM32_DMA1_NUM_CHANNELS)
 
-/**
- * @brief   Post-reset value of the stream CCR register.
+#if STM32_DMA_SUPPORTS_CSELR == TRUE
+
+#if defined(DMA1_CSELR)
+#define __DMA1_CSELR                &DMA1_CSELR->CSELR
+#else
+#define __DMA1_CSELR                &DMA1->CSELR
+#endif
+
+#if defined(DMA2_CSELR)
+#define __DMA2_CSELR                &DMA2_CSELR->CSELR
+#else
+#define __DMA2_CSELR                &DMA2->CSELR
+#endif
+
+#define DMA1_CH1_VARIANT            __DMA1_CSELR
+#define DMA1_CH2_VARIANT            __DMA1_CSELR
+#define DMA1_CH3_VARIANT            __DMA1_CSELR
+#define DMA1_CH4_VARIANT            __DMA1_CSELR
+#define DMA1_CH5_VARIANT            __DMA1_CSELR
+#define DMA1_CH6_VARIANT            __DMA1_CSELR
+#define DMA1_CH7_VARIANT            __DMA1_CSELR
+#define DMA1_CH8_VARIANT            __DMA1_CSELR
+#define DMA2_CH1_VARIANT            __DMA2_CSELR
+#define DMA2_CH2_VARIANT            __DMA2_CSELR
+#define DMA2_CH3_VARIANT            __DMA2_CSELR
+#define DMA2_CH4_VARIANT            __DMA2_CSELR
+#define DMA2_CH5_VARIANT            __DMA2_CSELR
+#define DMA2_CH6_VARIANT            __DMA2_CSELR
+#define DMA2_CH7_VARIANT            __DMA2_CSELR
+#define DMA2_CH8_VARIANT            __DMA2_CSELR
+
+#elif STM32_DMA_SUPPORTS_DMAMUX == TRUE
+
+#define DMAMUX1_CHANNEL(id)         (DMAMUX1_BASE + ((id) * 4U))
+
+#define DMA1_CH1_VARIANT            ((DMAMUX_Channel_TypeDef *)DMAMUX1_CHANNEL(0))
+#define DMA1_CH2_VARIANT            ((DMAMUX_Channel_TypeDef *)DMAMUX1_CHANNEL(1))
+#define DMA1_CH3_VARIANT            ((DMAMUX_Channel_TypeDef *)DMAMUX1_CHANNEL(2))
+#define DMA1_CH4_VARIANT            ((DMAMUX_Channel_TypeDef *)DMAMUX1_CHANNEL(3))
+#define DMA1_CH5_VARIANT            ((DMAMUX_Channel_TypeDef *)DMAMUX1_CHANNEL(4))
+#define DMA1_CH6_VARIANT            ((DMAMUX_Channel_TypeDef *)DMAMUX1_CHANNEL(5))
+#define DMA1_CH7_VARIANT            ((DMAMUX_Channel_TypeDef *)DMAMUX1_CHANNEL(6))
+#define DMA1_CH8_VARIANT            ((DMAMUX_Channel_TypeDef *)DMAMUX1_CHANNEL(7))
+#define DMA2_CH1_VARIANT            ((DMAMUX_Channel_TypeDef *)DMAMUX1_CHANNEL(0 + STM32_DMA1_NUM_CHANNELS))
+#define DMA2_CH2_VARIANT            ((DMAMUX_Channel_TypeDef *)DMAMUX1_CHANNEL(1 + STM32_DMA1_NUM_CHANNELS))
+#define DMA2_CH3_VARIANT            ((DMAMUX_Channel_TypeDef *)DMAMUX1_CHANNEL(2 + STM32_DMA1_NUM_CHANNELS))
+#define DMA2_CH4_VARIANT            ((DMAMUX_Channel_TypeDef *)DMAMUX1_CHANNEL(3 + STM32_DMA1_NUM_CHANNELS))
+#define DMA2_CH5_VARIANT            ((DMAMUX_Channel_TypeDef *)DMAMUX1_CHANNEL(4 + STM32_DMA1_NUM_CHANNELS))
+#define DMA2_CH6_VARIANT            ((DMAMUX_Channel_TypeDef *)DMAMUX1_CHANNEL(5 + STM32_DMA1_NUM_CHANNELS))
+#define DMA2_CH7_VARIANT            ((DMAMUX_Channel_TypeDef *)DMAMUX1_CHANNEL(6 + STM32_DMA1_NUM_CHANNELS))
+#define DMA2_CH8_VARIANT            ((DMAMUX_Channel_TypeDef *)DMAMUX1_CHANNEL(7 + STM32_DMA1_NUM_CHANNELS))
+
+#else /* !(STM32_DMA_SUPPORTS_DMAMUX == TRUE) */
+
+#define DMA1_CH1_VARIANT            0
+#define DMA1_CH2_VARIANT            0
+#define DMA1_CH3_VARIANT            0
+#define DMA1_CH4_VARIANT            0
+#define DMA1_CH5_VARIANT            0
+#define DMA1_CH6_VARIANT            0
+#define DMA1_CH7_VARIANT            0
+#define DMA2_CH1_VARIANT            0
+#define DMA2_CH2_VARIANT            0
+#define DMA2_CH3_VARIANT            0
+#define DMA2_CH4_VARIANT            0
+#define DMA2_CH5_VARIANT            0
+#define DMA2_CH6_VARIANT            0
+#define DMA2_CH7_VARIANT            0
+
+#endif /* !(STM32_DMA_SUPPORTS_DMAMUX == TRUE) */
+
+/*
+ * Default ISR collision masks.
  */
-#define STM32_DMA_CCR_RESET_VALUE   0x00000000U
+#if !defined(STM32_DMA1_CH1_CMASK)
+#define STM32_DMA1_CH1_CMASK        (1U << 0U)
+#endif
+
+#if !defined(STM32_DMA1_CH2_CMASK)
+#define STM32_DMA1_CH2_CMASK        (1U << 1U)
+#endif
+
+#if !defined(STM32_DMA1_CH3_CMASK)
+#define STM32_DMA1_CH3_CMASK        (1U << 2U)
+#endif
+
+#if !defined(STM32_DMA1_CH4_CMASK)
+#define STM32_DMA1_CH4_CMASK        (1U << 3U)
+#endif
+
+#if !defined(STM32_DMA1_CH5_CMASK)
+#define STM32_DMA1_CH5_CMASK        (1U << 4U)
+#endif
+
+#if !defined(STM32_DMA1_CH6_CMASK)
+#define STM32_DMA1_CH6_CMASK        (1U << 5U)
+#endif
+
+#if !defined(STM32_DMA1_CH7_CMASK)
+#define STM32_DMA1_CH7_CMASK        (1U << 6U)
+#endif
+
+#if !defined(STM32_DMA1_CH8_CMASK)
+#define STM32_DMA1_CH8_CMASK        (1U << 7U)
+#endif
+
+#if !defined(STM32_DMA2_CH1_CMASK)
+#define STM32_DMA2_CH1_CMASK        (1U << (STM32_DMA1_NUM_CHANNELS + 0U))
+#endif
+
+#if !defined(STM32_DMA2_CH2_CMASK)
+#define STM32_DMA2_CH2_CMASK        (1U << (STM32_DMA1_NUM_CHANNELS + 1U))
+#endif
+
+#if !defined(STM32_DMA2_CH3_CMASK)
+#define STM32_DMA2_CH3_CMASK        (1U << (STM32_DMA1_NUM_CHANNELS + 2U))
+#endif
+
+#if !defined(STM32_DMA2_CH4_CMASK)
+#define STM32_DMA2_CH4_CMASK        (1U << (STM32_DMA1_NUM_CHANNELS + 3U))
+#endif
+
+#if !defined(STM32_DMA2_CH5_CMASK)
+#define STM32_DMA2_CH5_CMASK        (1U << (STM32_DMA1_NUM_CHANNELS + 4U))
+#endif
+
+#if !defined(STM32_DMA2_CH6_CMASK)
+#define STM32_DMA2_CH6_CMASK        (1U << (STM32_DMA1_NUM_CHANNELS + 5U))
+#endif
+
+#if !defined(STM32_DMA2_CH7_CMASK)
+#define STM32_DMA2_CH7_CMASK        (1U << (STM32_DMA1_NUM_CHANNELS + 6U))
+#endif
+
+#if !defined(STM32_DMA2_CH8_CMASK)
+#define STM32_DMA2_CH8_CMASK        (1U << (STM32_DMA1_NUM_CHANNELS + 7U))
+#endif
 
 /*===========================================================================*/
 /* Driver exported variables.                                                */
@@ -65,22 +199,54 @@
  * @note    Don't use this array directly, use the appropriate wrapper macros
  *          instead: @p STM32_DMA1_STREAM1, @p STM32_DMA1_STREAM2 etc.
  */
-const stm32_dma_stream_t __stm32_dma_streams[STM32_DMA_STREAMS] = {
-  {DMA1_Channel1, &DMA1->IFCR, 0,   0, STM32_DMA1_STREAM1_EVENT_NUMBER},
-  {DMA1_Channel2, &DMA1->IFCR, 4,   1, STM32_DMA1_STREAM2_EVENT_NUMBER},
-  {DMA1_Channel3, &DMA1->IFCR, 8,   2, STM32_DMA1_STREAM3_EVENT_NUMBER},
-  {DMA1_Channel4, &DMA1->IFCR, 12,  3, STM32_DMA1_STREAM4_EVENT_NUMBER},
-  {DMA1_Channel5, &DMA1->IFCR, 16,  4, STM32_DMA1_STREAM5_EVENT_NUMBER},
-#if STM32_DMA_STREAMS > 5
-  {DMA1_Channel6, &DMA1->IFCR, 20,  5, STM32_DMA1_STREAM6_EVENT_NUMBER},
-  {DMA1_Channel7, &DMA1->IFCR, 24,  6, STM32_DMA1_STREAM7_EVENT_NUMBER},
+const stm32_dma_stream_t _stm32_dma_streams[STM32_DMA_STREAMS] = {
+#if STM32_DMA1_NUM_CHANNELS > 0
+  {DMA1, DMA1_Channel1, STM32_DMA1_CH1_CMASK, DMA1_CH1_VARIANT,  0, 0, STM32_DMA1_CH1_NUMBER},
 #endif
-#if STM32_DMA_STREAMS > 7
-  {DMA2_Channel1, &DMA2->IFCR, 0,   7, STM32_DMA2_STREAM1_EVENT_NUMBER},
-  {DMA2_Channel2, &DMA2->IFCR, 4,   8, STM32_DMA2_STREAM2_EVENT_NUMBER},
-  {DMA2_Channel3, &DMA2->IFCR, 8,   9, STM32_DMA2_STREAM3_EVENT_NUMBER},
-  {DMA2_Channel4, &DMA2->IFCR, 12, 10, STM32_DMA2_STREAM4_EVENT_NUMBER},
-  {DMA2_Channel5, &DMA2->IFCR, 16, 11, STM32_DMA2_STREAM5_EVENT_NUMBER},
+#if STM32_DMA1_NUM_CHANNELS > 1
+  {DMA1, DMA1_Channel2, STM32_DMA1_CH2_CMASK, DMA1_CH2_VARIANT,  4, 1, STM32_DMA1_CH2_NUMBER},
+#endif
+#if STM32_DMA1_NUM_CHANNELS > 2
+  {DMA1, DMA1_Channel3, STM32_DMA1_CH3_CMASK, DMA1_CH3_VARIANT,  8, 2, STM32_DMA1_CH3_NUMBER},
+#endif
+#if STM32_DMA1_NUM_CHANNELS > 3
+  {DMA1, DMA1_Channel4, STM32_DMA1_CH4_CMASK, DMA1_CH4_VARIANT, 12, 3, STM32_DMA1_CH4_NUMBER},
+#endif
+#if STM32_DMA1_NUM_CHANNELS > 4
+  {DMA1, DMA1_Channel5, STM32_DMA1_CH5_CMASK, DMA1_CH5_VARIANT, 16, 4, STM32_DMA1_CH5_NUMBER},
+#endif
+#if STM32_DMA1_NUM_CHANNELS > 5
+  {DMA1, DMA1_Channel6, STM32_DMA1_CH6_CMASK, DMA1_CH6_VARIANT, 20, 5, STM32_DMA1_CH6_NUMBER},
+#endif
+#if STM32_DMA1_NUM_CHANNELS > 6
+  {DMA1, DMA1_Channel7, STM32_DMA1_CH7_CMASK, DMA1_CH7_VARIANT, 24, 6, STM32_DMA1_CH7_NUMBER},
+#endif
+#if STM32_DMA1_NUM_CHANNELS > 7
+  {DMA1, DMA1_Channel8, STM32_DMA1_CH8_CMASK, DMA1_CH8_VARIANT, 28, 7, STM32_DMA1_CH8_NUMBER},
+#endif
+#if STM32_DMA2_NUM_CHANNELS > 0
+  {DMA2, DMA2_Channel1, STM32_DMA2_CH1_CMASK, DMA2_CH1_VARIANT,  0, 0 + STM32_DMA1_NUM_CHANNELS, STM32_DMA2_CH1_NUMBER},
+#endif
+#if STM32_DMA2_NUM_CHANNELS > 1
+  {DMA2, DMA2_Channel2, STM32_DMA2_CH2_CMASK, DMA2_CH2_VARIANT,  4, 1 + STM32_DMA1_NUM_CHANNELS, STM32_DMA2_CH2_NUMBER},
+#endif
+#if STM32_DMA2_NUM_CHANNELS > 2
+  {DMA2, DMA2_Channel3, STM32_DMA2_CH3_CMASK, DMA2_CH3_VARIANT,  8, 2 + STM32_DMA1_NUM_CHANNELS, STM32_DMA2_CH3_NUMBER},
+#endif
+#if STM32_DMA2_NUM_CHANNELS > 3
+  {DMA2, DMA2_Channel4, STM32_DMA2_CH4_CMASK, DMA2_CH4_VARIANT, 12, 3 + STM32_DMA1_NUM_CHANNELS, STM32_DMA2_CH4_NUMBER},
+#endif
+#if STM32_DMA2_NUM_CHANNELS > 4
+  {DMA2, DMA2_Channel5, STM32_DMA2_CH5_CMASK, DMA2_CH5_VARIANT, 16, 4 + STM32_DMA1_NUM_CHANNELS, STM32_DMA2_CH5_NUMBER},
+#endif
+#if STM32_DMA2_NUM_CHANNELS > 5
+  {DMA2, DMA2_Channel6, STM32_DMA2_CH6_CMASK, DMA2_CH6_VARIANT, 20, 5 + STM32_DMA1_NUM_CHANNELS, STM32_DMA2_CH6_NUMBER},
+#endif
+#if STM32_DMA2_NUM_CHANNELS > 6
+  {DMA2, DMA2_Channel7, STM32_DMA2_CH7_CMASK, DMA2_CH7_VARIANT, 24, 6 + STM32_DMA1_NUM_CHANNELS, STM32_DMA2_CH7_NUMBER},
+#endif
+#if STM32_DMA2_NUM_CHANNELS > 7
+  {DMA2, DMA2_Channel8, STM32_DMA2_CH8_CMASK, DMA2_CH8_VARIANT, 28, 7 + STM32_DMA1_NUM_CHANNELS, STM32_DMA2_CH8_NUMBER},
 #endif
 };
 
@@ -89,22 +255,31 @@ const stm32_dma_stream_t __stm32_dma_streams[STM32_DMA_STREAMS] = {
 /*===========================================================================*/
 
 /**
- * @brief   DMA ISR redirector type.
+ * @brief   Global DMA-related data structures.
  */
-typedef struct {
-  stm32_dmaisr_t        dma_func;       /**< @brief DMA callback function.  */
-  void                  *dma_param;     /**< @brief DMA callback parameter. */
-} dma_isr_redir_t;
-
-/**
- * @brief   Mask of the allocated streams.
- */
-static uint32_t dma_streams_mask;
-
-/**
- * @brief   DMA IRQ redirectors.
- */
-static dma_isr_redir_t dma_isr_redir[STM32_DMA_STREAMS];
+static struct {
+  /**
+   * @brief   Mask of the allocated streams.
+   */
+  uint32_t          allocated_mask;
+  /**
+   * @brief   Mask of the enabled streams ISRs.
+   */
+  uint32_t          isr_mask;
+  /**
+   * @brief   DMA IRQ redirectors.
+   */
+  struct {
+    /**
+     * @brief   DMA callback function.
+     */
+    stm32_dmaisr_t    func;
+    /**
+     * @brief   DMA callback parameter.
+     */
+    void              *param;
+  } streams[STM32_DMA_STREAMS];
+} dma;
 
 /*===========================================================================*/
 /* Driver local functions.                                                   */
@@ -114,241 +289,257 @@ static dma_isr_redir_t dma_isr_redir[STM32_DMA_STREAMS];
 /* Driver interrupt handlers.                                                */
 /*===========================================================================*/
 
-#if defined(STM32_DMA1_STREAM1_EVENT_HANDLER) || defined(__DOXYGEN__)
+#if defined(STM32_DMA1_CH1_HANDLER) || defined(__DOXYGEN__)
 /**
- * @brief   DMA1 stream 1 shared interrupt handler.
+ * @brief   DMA1 stream 1 shared ISR.
  *
  * @isr
  */
-OSAL_IRQ_HANDLER(STM32_DMA1_STREAM1_EVENT_HANDLER) {
-  uint32_t flags;
+OSAL_IRQ_HANDLER(STM32_DMA1_CH1_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  flags = (DMA1->ISR >> 0) & STM32_DMA_ISR_MASK;
-  DMA1->IFCR = flags << 0;
-  if (dma_isr_redir[0].dma_func)
-    dma_isr_redir[0].dma_func(dma_isr_redir[0].dma_param, flags);
+  dmaServeInterrupt(STM32_DMA1_STREAM1);
 
   OSAL_IRQ_EPILOGUE();
 }
 #endif
 
-#if defined(STM32_DMA1_STREAM2_EVENT_HANDLER) || defined(__DOXYGEN__)
+#if defined(STM32_DMA1_CH2_HANDLER) || defined(__DOXYGEN__)
 /**
- * @brief   DMA1 stream 2 shared interrupt handler.
+ * @brief   DMA1 stream 2 shared ISR.
  *
  * @isr
  */
-OSAL_IRQ_HANDLER(STM32_DMA1_STREAM2_EVENT_HANDLER) {
-  uint32_t flags;
+OSAL_IRQ_HANDLER(STM32_DMA1_CH2_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  flags = (DMA1->ISR >> 4) & STM32_DMA_ISR_MASK;
-  DMA1->IFCR = flags << 4;
-  if (dma_isr_redir[1].dma_func)
-    dma_isr_redir[1].dma_func(dma_isr_redir[1].dma_param, flags);
+  dmaServeInterrupt(STM32_DMA1_STREAM2);
 
   OSAL_IRQ_EPILOGUE();
 }
 #endif
 
-#if defined(STM32_DMA1_STREAM3_EVENT_HANDLER) || defined(__DOXYGEN__)
+#if defined(STM32_DMA1_CH3_HANDLER) || defined(__DOXYGEN__)
 /**
- * @brief   DMA1 stream 3 shared interrupt handler.
+ * @brief   DMA1 stream 3 shared ISR.
  *
  * @isr
  */
-OSAL_IRQ_HANDLER(STM32_DMA1_STREAM3_EVENT_HANDLER) {
-  uint32_t flags;
+OSAL_IRQ_HANDLER(STM32_DMA1_CH3_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  flags = (DMA1->ISR >> 8) & STM32_DMA_ISR_MASK;
-  DMA1->IFCR = flags << 8;
-  if (dma_isr_redir[2].dma_func)
-    dma_isr_redir[2].dma_func(dma_isr_redir[2].dma_param, flags);
+  dmaServeInterrupt(STM32_DMA1_STREAM3);
 
   OSAL_IRQ_EPILOGUE();
 }
 #endif
 
-#if defined(STM32_DMA1_STREAM4_EVENT_HANDLER) || defined(__DOXYGEN__)
+#if defined(STM32_DMA1_CH4_HANDLER) || defined(__DOXYGEN__)
 /**
- * @brief   DMA1 stream 4 shared interrupt handler.
+ * @brief   DMA1 stream 4 shared ISR.
  *
  * @isr
  */
-OSAL_IRQ_HANDLER(STM32_DMA1_STREAM4_EVENT_HANDLER) {
-  uint32_t flags;
+OSAL_IRQ_HANDLER(STM32_DMA1_CH4_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  flags = (DMA1->ISR >> 12) & STM32_DMA_ISR_MASK;
-  DMA1->IFCR = flags << 12;
-  if (dma_isr_redir[3].dma_func)
-    dma_isr_redir[3].dma_func(dma_isr_redir[3].dma_param, flags);
+  dmaServeInterrupt(STM32_DMA1_STREAM4);
 
   OSAL_IRQ_EPILOGUE();
 }
 #endif
 
-#if defined(STM32_DMA1_STREAM5_EVENT_HANDLER) || defined(__DOXYGEN__)
+#if defined(STM32_DMA1_CH5_HANDLER) || defined(__DOXYGEN__)
 /**
- * @brief   DMA1 stream 5 shared interrupt handler.
+ * @brief   DMA1 stream 5 shared ISR.
  *
  * @isr
  */
-OSAL_IRQ_HANDLER(STM32_DMA1_STREAM5_EVENT_HANDLER) {
-  uint32_t flags;
+OSAL_IRQ_HANDLER(STM32_DMA1_CH5_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  flags = (DMA1->ISR >> 16) & STM32_DMA_ISR_MASK;
-  DMA1->IFCR = flags << 16;
-  if (dma_isr_redir[4].dma_func)
-    dma_isr_redir[4].dma_func(dma_isr_redir[4].dma_param, flags);
+  dmaServeInterrupt(STM32_DMA1_STREAM5);
 
   OSAL_IRQ_EPILOGUE();
 }
 #endif
 
-#if defined(STM32_DMA1_STREAM6_EVENT_HANDLER) || defined(__DOXYGEN__)
+#if defined(STM32_DMA1_CH6_HANDLER) || defined(__DOXYGEN__)
 /**
- * @brief   DMA1 stream 6 shared interrupt handler.
+ * @brief   DMA1 stream 6 shared ISR.
  *
  * @isr
  */
-OSAL_IRQ_HANDLER(STM32_DMA1_STREAM6_EVENT_HANDLER) {
-  uint32_t flags;
+OSAL_IRQ_HANDLER(STM32_DMA1_CH6_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  flags = (DMA1->ISR >> 20) & STM32_DMA_ISR_MASK;
-  DMA1->IFCR = flags << 20;
-  if (dma_isr_redir[5].dma_func)
-    dma_isr_redir[5].dma_func(dma_isr_redir[5].dma_param, flags);
+  dmaServeInterrupt(STM32_DMA1_STREAM6);
 
   OSAL_IRQ_EPILOGUE();
 }
 #endif
 
-#if defined(STM32_DMA1_STREAM7_EVENT_HANDLER) || defined(__DOXYGEN__)
+#if defined(STM32_DMA1_CH7_HANDLER) || defined(__DOXYGEN__)
 /**
- * @brief   DMA1 stream 7 shared interrupt handler.
+ * @brief   DMA1 stream 7 shared ISR.
  *
  * @isr
  */
-OSAL_IRQ_HANDLER(STM32_DMA1_STREAM7_EVENT_HANDLER) {
-  uint32_t flags;
+OSAL_IRQ_HANDLER(STM32_DMA1_CH7_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  flags = (DMA1->ISR >> 24) & STM32_DMA_ISR_MASK;
-  DMA1->IFCR = flags << 24;
-  if (dma_isr_redir[6].dma_func)
-    dma_isr_redir[6].dma_func(dma_isr_redir[6].dma_param, flags);
+  dmaServeInterrupt(STM32_DMA1_STREAM7);
 
   OSAL_IRQ_EPILOGUE();
 }
 #endif
 
-#if defined(STM32_DMA2_STREAM1_EVENT_HANDLER) || defined(__DOXYGEN__)
+#if defined(STM32_DMA1_CH8_HANDLER) || defined(__DOXYGEN__)
 /**
- * @brief   DMA2 stream 1 shared interrupt handler.
+ * @brief   DMA1 stream 8 shared ISR.
  *
  * @isr
  */
-OSAL_IRQ_HANDLER(STM32_DMA2_STREAM1_EVENT_HANDLER) {
-  uint32_t flags;
+OSAL_IRQ_HANDLER(STM32_DMA1_CH8_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  flags = (DMA2->ISR >> 0) & STM32_DMA_ISR_MASK;
-  DMA2->IFCR = flags << 0;
-  if (dma_isr_redir[7].dma_func)
-    dma_isr_redir[7].dma_func(dma_isr_redir[7].dma_param, flags);
+  dmaServeInterrupt(STM32_DMA1_STREAM8);
 
   OSAL_IRQ_EPILOGUE();
 }
 #endif
 
-#if defined(STM32_DMA2_STREAM2_EVENT_HANDLER) || defined(__DOXYGEN__)
+#if defined(STM32_DMA2_CH1_HANDLER) || defined(__DOXYGEN__)
 /**
- * @brief   DMA2 stream 2 shared interrupt handler.
+ * @brief   DMA2 stream 1 shared ISR.
  *
  * @isr
  */
-OSAL_IRQ_HANDLER(STM32_DMA2_STREAM2_EVENT_HANDLER) {
-  uint32_t flags;
+OSAL_IRQ_HANDLER(STM32_DMA2_CH1_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  flags = (DMA2->ISR >> 4) & STM32_DMA_ISR_MASK;
-  DMA2->IFCR = flags << 4;
-  if (dma_isr_redir[8].dma_func)
-    dma_isr_redir[8].dma_func(dma_isr_redir[8].dma_param, flags);
+  dmaServeInterrupt(STM32_DMA2_STREAM1);
 
   OSAL_IRQ_EPILOGUE();
 }
 #endif
 
-#if defined(STM32_DMA2_STREAM3_EVENT_HANDLER) || defined(__DOXYGEN__)
+#if defined(STM32_DMA2_CH2_HANDLER) || defined(__DOXYGEN__)
 /**
- * @brief   DMA2 stream 3 shared interrupt handler.
+ * @brief   DMA2 stream 2 shared ISR.
  *
  * @isr
  */
-OSAL_IRQ_HANDLER(STM32_DMA2_STREAM3_EVENT_HANDLER) {
-  uint32_t flags;
+OSAL_IRQ_HANDLER(STM32_DMA2_CH2_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  flags = (DMA2->ISR >> 8) & STM32_DMA_ISR_MASK;
-  DMA2->IFCR = flags << 8;
-  if (dma_isr_redir[9].dma_func)
-    dma_isr_redir[9].dma_func(dma_isr_redir[9].dma_param, flags);
+  dmaServeInterrupt(STM32_DMA2_STREAM2);
 
   OSAL_IRQ_EPILOGUE();
 }
 #endif
 
-#if defined(STM32_DMA2_STREAM4_EVENT_HANDLER) || defined(__DOXYGEN__)
+#if defined(STM32_DMA2_CH3_HANDLER) || defined(__DOXYGEN__)
 /**
- * @brief   DMA2 stream 4 shared interrupt handler.
+ * @brief   DMA2 stream 3 shared ISR.
  *
  * @isr
  */
-OSAL_IRQ_HANDLER(STM32_DMA2_STREAM4_EVENT_HANDLER) {
-  uint32_t flags;
+OSAL_IRQ_HANDLER(STM32_DMA2_CH3_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  flags = (DMA2->ISR >> 12) & STM32_DMA_ISR_MASK;
-  DMA2->IFCR = flags << 12;
-  if (dma_isr_redir[10].dma_func)
-    dma_isr_redir[10].dma_func(dma_isr_redir[10].dma_param, flags);
+  dmaServeInterrupt(STM32_DMA2_STREAM3);
 
   OSAL_IRQ_EPILOGUE();
 }
 #endif
 
-#if defined(STM32_DMA2_STREAM5_EVENT_HANDLER) || defined(__DOXYGEN__)
+#if defined(STM32_DMA2_CH4_HANDLER) || defined(__DOXYGEN__)
 /**
- * @brief   DMA2 stream 5 shared interrupt handler.
+ * @brief   DMA2 stream 4 shared ISR.
  *
  * @isr
  */
-OSAL_IRQ_HANDLER(STM32_DMA2_STREAM5_EVENT_HANDLER) {
-  uint32_t flags;
+OSAL_IRQ_HANDLER(STM32_DMA2_CH4_HANDLER) {
 
   OSAL_IRQ_PROLOGUE();
 
-  flags = (DMA2->ISR >> 16) & STM32_DMA_ISR_MASK;
-  DMA2->IFCR = flags << 16;
-  if (dma_isr_redir[11].dma_func)
-    dma_isr_redir[11].dma_func(dma_isr_redir[11].dma_param, flags);
+  dmaServeInterrupt(STM32_DMA2_STREAM4);
+
+  OSAL_IRQ_EPILOGUE();
+}
+#endif
+
+#if defined(STM32_DMA2_CH5_HANDLER) || defined(__DOXYGEN__)
+/**
+ * @brief   DMA2 stream 5 shared ISR.
+ *
+ * @isr
+ */
+OSAL_IRQ_HANDLER(STM32_DMA2_CH5_HANDLER) {
+
+  OSAL_IRQ_PROLOGUE();
+
+  dmaServeInterrupt(STM32_DMA2_STREAM5);
+
+  OSAL_IRQ_EPILOGUE();
+}
+#endif
+
+#if defined(STM32_DMA2_CH6_HANDLER) || defined(__DOXYGEN__)
+/**
+ * @brief   DMA2 stream 6 shared ISR.
+ *
+ * @isr
+ */
+OSAL_IRQ_HANDLER(STM32_DMA2_CH6_HANDLER) {
+
+  OSAL_IRQ_PROLOGUE();
+
+  dmaServeInterrupt(STM32_DMA2_STREAM6);
+
+  OSAL_IRQ_EPILOGUE();
+}
+#endif
+
+#if defined(STM32_DMA2_CH7_HANDLER) || defined(__DOXYGEN__)
+/**
+ * @brief   DMA2 stream 7 shared ISR.
+ *
+ * @isr
+ */
+OSAL_IRQ_HANDLER(STM32_DMA2_CH7_HANDLER) {
+
+  OSAL_IRQ_PROLOGUE();
+
+  dmaServeInterrupt(STM32_DMA2_STREAM7);
+
+  OSAL_IRQ_EPILOGUE();
+}
+#endif
+
+#if defined(STM32_DMA2_CH8_HANDLER) || defined(__DOXYGEN__)
+/**
+ * @brief   DMA2 stream 8 shared ISR.
+ *
+ * @isr
+ */
+OSAL_IRQ_HANDLER(STM32_DMA2_CH8_HANDLER) {
+
+  OSAL_IRQ_PROLOGUE();
+
+  dmaServeInterrupt(STM32_DMA2_STREAM8);
 
   OSAL_IRQ_EPILOGUE();
 }
@@ -366,13 +557,14 @@ OSAL_IRQ_HANDLER(STM32_DMA2_STREAM5_EVENT_HANDLER) {
 void dmaInit(void) {
   int i;
 
-  dma_streams_mask = 0;
+  dma.allocated_mask = 0U;
+  dma.isr_mask       = 0U;
   for (i = 0; i < STM32_DMA_STREAMS; i++) {
-    __stm32_dma_streams[i].channel->CCR = STM32_DMA_CCR_RESET_VALUE;
-    dma_isr_redir[i].dma_func = NULL;
+    _stm32_dma_streams[i].channel->CCR = STM32_DMA_CCR_RESET_VALUE;
+    dma.streams[i].func = NULL;
   }
   DMA1->IFCR = 0xFFFFFFFFU;
-#if STM32_HAS_DMA2
+#if STM32_DMA2_NUM_CHANNELS > 0
   DMA2->IFCR = 0xFFFFFFFFU;
 #endif
 }
@@ -382,58 +574,136 @@ void dmaInit(void) {
  * @details The stream is allocated and, if required, the DMA clock enabled.
  *          The function also enables the IRQ vector associated to the stream
  *          and initializes its priority.
- * @pre     The stream must not be already in use or an error is returned.
- * @post    The stream is allocated and the default ISR handler redirected
- *          to the specified function.
- * @post    The stream ISR vector is enabled and its priority configured.
- * @post    The stream must be freed using @p dmaStreamRelease() before it can
- *          be reused with another peripheral.
- * @post    The stream is in its post-reset state.
- * @note    This function can be invoked in both ISR or thread context.
  *
- * @param[in] dmastp    pointer to a stm32_dma_stream_t structure
- * @param[in] priority  IRQ priority mask for the DMA stream
+ * @param[in] id        numeric identifiers of a specific stream or:
+ *                      - @p STM32_DMA_STREAM_ID_ANY for any stream.
+ *                      - @p STM32_DMA_STREAM_ID_ANY_DMA1 for any stream
+ *                        on DMA1.
+ *                      - @p STM32_DMA_STREAM_ID_ANY_DMA2 for any stream
+ *                        on DMA2.
+ *                      .
+ * @param[in] priority  IRQ priority for the DMA stream
  * @param[in] func      handling function pointer, can be @p NULL
  * @param[in] param     a parameter to be passed to the handling function
- * @return              The operation status.
- * @retval false        no error, stream taken.
- * @retval true         error, stream already taken.
+ * @return              Pointer to the allocated @p stm32_dma_stream_t
+ *                      structure.
+ * @retval NULL         if a/the stream is not available.
  *
- * @special
+ * @iclass
  */
-bool dmaStreamAllocate(const stm32_dma_stream_t *dmastp,
-                       uint32_t priority,
-                       stm32_dmaisr_t func,
-                       void *param) {
+const stm32_dma_stream_t *dmaStreamAllocI(uint32_t id,
+                                          uint32_t priority,
+                                          stm32_dmaisr_t func,
+                                          void *param) {
+  uint32_t i, startid, endid;
 
-  osalDbgCheck(dmastp != NULL);
+  osalDbgCheckClassI();
 
-  /* Checks if the stream is already taken.*/
-  if ((dma_streams_mask & (1 << dmastp->selfindex)) != 0)
-    return true;
+  if (id < STM32_DMA_STREAMS) {
+    startid = id;
+    endid   = id;
+  }
+#if STM32_DMA_SUPPORTS_DMAMUX == TRUE
+  else if (id == STM32_DMA_STREAM_ID_ANY) {
+    startid = 0U;
+    endid   = STM32_DMA_STREAMS - 1U;
+  }
+  else if (id == STM32_DMA_STREAM_ID_ANY_DMA1) {
+    startid = 0U;
+    endid   = STM32_DMA1_NUM_CHANNELS - 1U;
+  }
+#if STM32_DMA2_NUM_CHANNELS > 0
+  else if (id == STM32_DMA_STREAM_ID_ANY_DMA2) {
+    startid = STM32_DMA1_NUM_CHANNELS;
+    endid   = STM32_DMA_STREAMS - 1U;
+  }
+#endif
+#endif
+  else {
+    osalDbgCheck(false);
+    return NULL;
+  }
 
-  /* Marks the stream as allocated.*/
-  dma_isr_redir[dmastp->selfindex].dma_func  = func;
-  dma_isr_redir[dmastp->selfindex].dma_param = param;
-  dma_streams_mask |= (1 << dmastp->selfindex);
+  for (i = startid; i <= endid; i++) {
+    uint32_t mask = (1U << i);
+    if ((dma.allocated_mask & mask) == 0U) {
+      const stm32_dma_stream_t *dmastp = STM32_DMA_STREAM(i);
 
-  /* Enabling DMA clocks required by the current streams set.*/
-  if ((dma_streams_mask & STM32_DMA1_STREAMS_MASK) != 0)
-    rccEnableDMA1(false);
-#if STM32_HAS_DMA2
-  if ((dma_streams_mask & STM32_DMA2_STREAMS_MASK) != 0)
-    rccEnableDMA2(false);
+      /* Installs the DMA handler.*/
+      dma.streams[i].func  = func;
+      dma.streams[i].param = param;
+      dma.allocated_mask  |= mask;
+
+      /* Enabling DMA clocks required by the current streams set.*/
+      if ((STM32_DMA1_STREAMS_MASK & mask) != 0U) {
+        rccEnableDMA1(true);
+      }
+#if STM32_DMA2_NUM_CHANNELS > 0
+      if ((STM32_DMA2_STREAMS_MASK & mask) != 0U) {
+        rccEnableDMA2(true);
+      }
 #endif
 
-  /* Putting the stream in a safe state.*/
-  dmaStreamDisable(dmastp);
-  dmastp->channel->CCR = STM32_DMA_CCR_RESET_VALUE;
+#if (STM32_DMA_SUPPORTS_DMAMUX == TRUE) && defined(rccEnableDMAMUX)
+      /* Enabling DMAMUX if present.*/
+      if (dma.allocated_mask != 0U) {
+        rccEnableDMAMUX(true);
+      }
+#endif
 
-  /* Enables the associated IRQ vector if a callback is defined.*/
-  if (func != NULL)
-    nvicEnableVector(dmastp->vector, priority);
+      /* Enables the associated IRQ vector if not already enabled and if a
+         callback is defined.*/
+      if (func != NULL) {
+        if ((dma.isr_mask & dmastp->cmask) == 0U) {
+          nvicEnableVector(dmastp->vector, priority);
+        }
+        dma.isr_mask |= mask;
+      }
 
-  return false;
+      /* Putting the stream in a known state.*/
+      dmaStreamDisable(dmastp);
+      dmastp->channel->CCR = STM32_DMA_CCR_RESET_VALUE;
+
+      return dmastp;
+    }
+  }
+
+  return NULL;
+}
+
+/**
+ * @brief   Allocates a DMA stream.
+ * @details The stream is allocated and, if required, the DMA clock enabled.
+ *          The function also enables the IRQ vector associated to the stream
+ *          and initializes its priority.
+ *
+ * @param[in] id        numeric identifiers of a specific stream or:
+ *                      - @p STM32_DMA_STREAM_ID_ANY for any stream.
+ *                      - @p STM32_DMA_STREAM_ID_ANY_DMA1 for any stream
+ *                        on DMA1.
+ *                      - @p STM32_DMA_STREAM_ID_ANY_DMA2 for any stream
+ *                        on DMA2.
+ *                      .
+ * @param[in] priority  IRQ priority for the DMA stream
+ * @param[in] func      handling function pointer, can be @p NULL
+ * @param[in] param     a parameter to be passed to the handling function
+ * @return              Pointer to the allocated @p stm32_dma_stream_t
+ *                      structure.
+ * @retval NULL         if a/the stream is not available.
+ *
+ * @api
+ */
+const stm32_dma_stream_t *dmaStreamAlloc(uint32_t id,
+                                         uint32_t priority,
+                                         stm32_dmaisr_t func,
+                                         void *param) {
+  const stm32_dma_stream_t *dmastp;
+
+  osalSysLock();
+  dmastp = dmaStreamAllocI(id, priority, func, param);
+  osalSysUnlock();
+
+  return dmastp;
 }
 
 /**
@@ -441,36 +711,105 @@ bool dmaStreamAllocate(const stm32_dma_stream_t *dmastp,
  * @details The stream is freed and, if required, the DMA clock disabled.
  *          Trying to release a unallocated stream is an illegal operation
  *          and is trapped if assertions are enabled.
- * @pre     The stream must have been allocated using @p dmaStreamAllocate().
- * @post    The stream is again available.
- * @note    This function can be invoked in both ISR or thread context.
+ *
+ * @param[in] dmastp    pointer to a stm32_dma_stream_t structure
+ *
+ * @iclass
+ */
+void dmaStreamFreeI(const stm32_dma_stream_t *dmastp) {
+  uint32_t selfindex = (uint32_t)dmastp->selfindex;
+
+  osalDbgCheck(dmastp != NULL);
+
+  /* Check if the streams is not taken.*/
+  osalDbgAssert((dma.allocated_mask & (1 << selfindex)) != 0U,
+                "not allocated");
+
+  /* Marks the stream as not allocated.*/
+  dma.allocated_mask &= ~(1U << selfindex);
+  dma.isr_mask &= ~(1U << selfindex);
+
+  /* Disables the associated IRQ vector if it is no more in use.*/
+  if ((dma.isr_mask & dmastp->cmask) == 0U) {
+    nvicDisableVector(dmastp->vector);
+  }
+
+  /* Removes the DMA handler.*/
+  dma.streams[selfindex].func  = NULL;
+  dma.streams[selfindex].param = NULL;
+
+  /* Shutting down clocks that are no more required, if any.*/
+  if ((dma.allocated_mask & STM32_DMA1_STREAMS_MASK) == 0U) {
+    rccDisableDMA1();
+  }
+#if STM32_DMA2_NUM_CHANNELS > 0
+  if ((dma.allocated_mask & STM32_DMA2_STREAMS_MASK) == 0U) {
+    rccDisableDMA2();
+  }
+#endif
+
+#if (STM32_DMA_SUPPORTS_DMAMUX == TRUE) && defined(rccDisableDMAMUX)
+  /* Shutting down DMAMUX if present.*/
+  if (dma.allocated_mask == 0U) {
+    rccDisableDMAMUX();
+  }
+#endif
+}
+
+/**
+ * @brief   Releases a DMA stream.
+ * @details The stream is freed and, if required, the DMA clock disabled.
+ *          Trying to release a unallocated stream is an illegal operation
+ *          and is trapped if assertions are enabled.
+ *
+ * @param[in] dmastp    pointer to a stm32_dma_stream_t structure
+ *
+ * @api
+ */
+void dmaStreamFree(const stm32_dma_stream_t *dmastp) {
+
+  osalSysLock();
+  dmaStreamFreeI(dmastp);
+  osalSysUnlock();
+}
+
+/**
+ * @brief   Serves a DMA IRQ.
  *
  * @param[in] dmastp    pointer to a stm32_dma_stream_t structure
  *
  * @special
  */
-void dmaStreamRelease(const stm32_dma_stream_t *dmastp) {
+void dmaServeInterrupt(const stm32_dma_stream_t *dmastp) {
+  uint32_t flags;
+  uint32_t selfindex = (uint32_t)dmastp->selfindex;
 
-  osalDbgCheck(dmastp != NULL);
-
-  /* Check if the streams is not taken.*/
-  osalDbgAssert((dma_streams_mask & (1 << dmastp->selfindex)) != 0,
-                "not allocated");
-
-  /* Disables the associated IRQ vector.*/
-  nvicDisableVector(dmastp->vector);
-
-  /* Marks the stream as not allocated.*/
-  dma_streams_mask &= ~(1 << dmastp->selfindex);
-
-  /* Shutting down clocks that are no more required, if any.*/
-  if ((dma_streams_mask & STM32_DMA1_STREAMS_MASK) == 0)
-    rccDisableDMA1(false);
-#if STM32_HAS_DMA2
-  if ((dma_streams_mask & STM32_DMA2_STREAMS_MASK) == 0)
-    rccDisableDMA2(false);
-#endif
+  flags = (dmastp->dma->ISR >> dmastp->shift) & STM32_DMA_ISR_MASK;
+  if (flags & dmastp->channel->CCR) {
+    dmastp->dma->IFCR = flags << dmastp->shift;
+    if (dma.streams[selfindex].func) {
+      dma.streams[selfindex].func(dma.streams[selfindex].param, flags);
+    }
+  }
 }
+
+#if (STM32_DMA_SUPPORTS_DMAMUX == TRUE) || defined(__DOXYGEN__)
+/**
+ * @brief   Associates a peripheral request to a DMA stream.
+ * @note    This function can be invoked in both ISR or thread context.
+ *
+ * @param[in] dmastp    pointer to a @p stm32_dma_stream_t structure
+ * @param[in] per       peripheral identifier
+ *
+ * @special
+ */
+void dmaSetRequestSource(const stm32_dma_stream_t *dmastp, uint32_t per) {
+
+  osalDbgCheck(per < 256U);
+
+  dmastp->mux->CCR = per;
+}
+#endif
 
 #endif /* STM32_DMA_REQUIRED */
 

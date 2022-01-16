@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@
  * @brief   CMSIS system core clock variable.
  * @note    It is declared in system_stm32f10x.h.
  */
-uint32_t SystemCoreClock = STM32_SYSCLK;
+uint32_t SystemCoreClock = STM32_HCLK;
 
 /*===========================================================================*/
 /* Driver local variables and types.                                         */
@@ -58,7 +58,7 @@ static void hal_lld_backup_domain_init(void) {
 
 #if HAL_USE_RTC
   /* Reset BKP domain if different clock source selected.*/
-  if ((RCC->BDCR & STM32_RTCSEL_MASK) != STM32_RTCSEL){
+  if ((RCC->BDCR & STM32_RTCSEL_MASK) != STM32_RTCSEL) {
     /* Backup domain reset.*/
     RCC->BDCR = RCC_BDCR_BDRST;
     RCC->BDCR = 0;
@@ -66,7 +66,13 @@ static void hal_lld_backup_domain_init(void) {
 
   /* If enabled then the LSE is started.*/
 #if STM32_LSE_ENABLED
+#if defined(STM32_LSE_BYPASS)
+  /* LSE Bypass.*/
+  RCC->BDCR |= RCC_BDCR_LSEON | RCC_BDCR_LSEBYP;
+#else
+  /* No LSE Bypass.*/
   RCC->BDCR |= RCC_BDCR_LSEON;
+#endif
   while ((RCC->BDCR & RCC_BDCR_LSERDY) == 0)
     ;                                     /* Waits until LSE is stable.   */
 #endif /* STM32_LSE_ENABLED */
@@ -92,6 +98,28 @@ static void hal_lld_backup_domain_init(void) {
 /* Driver interrupt handlers.                                                */
 /*===========================================================================*/
 
+#if defined(STM32_DMA_REQUIRED) || defined(__DOXYGEN__)
+#if defined(STM32_DMA2_CH45_HANDLER) || defined(__DOXYGEN__)
+/**
+ * @brief   DMA2 streams 4 and 5 shared ISR.
+ *
+ * @isr
+ */
+OSAL_IRQ_HANDLER(STM32_DMA2_CH45_HANDLER) {
+
+  OSAL_IRQ_PROLOGUE();
+
+  /* Check on channel 4 of DMA2.*/
+  dmaServeInterrupt(STM32_DMA2_STREAM4);
+
+  /* Check on channel 5 of DMA2.*/
+  dmaServeInterrupt(STM32_DMA2_STREAM5);
+
+  OSAL_IRQ_EPILOGUE();
+}
+#endif /* defined(STM32_DMA2_CH45_HANDLER) */
+#endif /* defined(STM32_DMA_REQUIRED) */
+
 /*===========================================================================*/
 /* Driver exported functions.                                                */
 /*===========================================================================*/
@@ -108,15 +136,19 @@ void hal_lld_init(void) {
   rccResetAPB2(0xFFFFFFFF);
 
   /* PWR and BD clocks enabled.*/
-  rccEnablePWRInterface(FALSE);
-  rccEnableBKPInterface(FALSE);
+  rccEnablePWRInterface(true);
+  rccEnableBKPInterface(true);
 
   /* Initializes the backup domain.*/
   hal_lld_backup_domain_init();
 
+  /* DMA subsystems initialization.*/
 #if defined(STM32_DMA_REQUIRED)
   dmaInit();
 #endif
+
+  /* IRQ subsystem initialization.*/
+  irqInit();
 
   /* Programmable voltage detector enable.*/
 #if STM32_PVD_ENABLE
@@ -154,7 +186,7 @@ void stm32_clock_init(void) {
 #if STM32_HSE_ENABLED
 #if defined(STM32_HSE_BYPASS)
   /* HSE Bypass.*/
-  RCC->CR |= RCC_CR_HSEBYP;
+  RCC->CR |= RCC_CR_HSEON | RCC_CR_HSEBYP;
 #endif
   /* HSE activation.*/
   RCC->CR |= RCC_CR_HSEON;
@@ -221,8 +253,7 @@ void stm32_clock_init(void) {
   /* HSI is selected as new source without touching the other fields in
      CFGR. Clearing the register has to be postponed after HSI is the
      new source.*/
-  RCC->CFGR &= ~RCC_CFGR_SW;                /* Reset SW */
-  RCC->CFGR |= RCC_CFGR_SWS_HSI;            /* Select HSI as internal*/
+  RCC->CFGR &= ~RCC_CFGR_SW;                /* Reset SW, selecting HSI.     */
   while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI)
     ;                                       /* Wait until HSI is selected.  */
 
@@ -285,6 +316,9 @@ void stm32_clock_init(void) {
 
   /* Flash setup and final clock selection.   */
   FLASH->ACR = STM32_FLASHBITS; /* Flash wait states depending on clock.    */
+  while ((FLASH->ACR & FLASH_ACR_LATENCY_Msk) !=
+         (STM32_FLASHBITS & FLASH_ACR_LATENCY_Msk)) {
+  }
 
   /* Switching to the configured clock source if it is different from HSI.*/
 #if (STM32_SW != STM32_SW_HSI)

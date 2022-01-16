@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -22,13 +22,12 @@
  * @{
  */
 
-#ifndef _HAL_QUEUES_H_
-#define _HAL_QUEUES_H_
+#ifndef HAL_QUEUES_H
+#define HAL_QUEUES_H
 
-/* The ChibiOS/RT kernel provides the following definitions by itself, this
-   check is performed in order to avoid conflicts. */
-#if !defined(_CHIBIOS_RT_) || (CH_CFG_USE_QUEUES == FALSE) ||               \
-    defined(__DOXYGEN__)
+/*===========================================================================*/
+/* Driver constants.                                                         */
+/*===========================================================================*/
 
 /**
  * @name    Queue functions returned status value
@@ -37,9 +36,21 @@
 #define Q_OK            MSG_OK      /**< @brief Operation successful.       */
 #define Q_TIMEOUT       MSG_TIMEOUT /**< @brief Timeout condition.          */
 #define Q_RESET         MSG_RESET   /**< @brief Queue has been reset.       */
-#define Q_EMPTY         (msg_t)-3   /**< @brief Queue empty.                */
-#define Q_FULL          (msg_t)-4   /**< @brief Queue full,                 */
+#define Q_EMPTY         MSG_TIMEOUT /**< @brief Queue empty.                */
+#define Q_FULL          MSG_TIMEOUT /**< @brief Queue full,                 */
 /** @} */
+
+/*===========================================================================*/
+/* Driver pre-compile time settings.                                         */
+/*===========================================================================*/
+
+/*===========================================================================*/
+/* Derived constants and error checks.                                       */
+/*===========================================================================*/
+
+/*===========================================================================*/
+/* Driver data structures and types.                                         */
+/*===========================================================================*/
 
 /**
  * @brief   Type of a generic I/O queue structure.
@@ -49,7 +60,7 @@ typedef struct io_queue io_queue_t;
 /**
  * @brief   Queue notification callback type.
  *
- * @param[in] qp        the queue pointer.
+ * @param[in] qp        the queue pointer
  */
 typedef void (*qnotify_t)(io_queue_t *qp);
 
@@ -62,7 +73,7 @@ typedef void (*qnotify_t)(io_queue_t *qp);
  *          lock zone and is non-blocking.
  */
 struct io_queue {
-  threads_queue_t       q_waiting;  /**< @brief Waiting thread.             */
+  threads_queue_t       q_waiting;  /**< @brief Queue of waiting threads.   */
   volatile size_t       q_counter;  /**< @brief Resources counter.          */
   uint8_t               *q_buffer;  /**< @brief Pointer to the queue buffer.*/
   uint8_t               *q_top;     /**< @brief Pointer to the first
@@ -72,6 +83,34 @@ struct io_queue {
   qnotify_t             q_notify;   /**< @brief Data notification callback. */
   void                  *q_link;    /**< @brief Application defined field.  */
 };
+
+/**
+ * @extends io_queue_t
+ *
+ * @brief   Type of an input queue structure.
+ * @details This structure represents a generic asymmetrical input queue.
+ *          Writing to the queue is non-blocking and can be performed from
+ *          interrupt handlers or from within a kernel lock zone.
+ *          Reading the queue can be a blocking operation and is supposed to
+ *          be performed by a system thread.
+ */
+typedef io_queue_t input_queue_t;
+
+/**
+ * @extends io_queue_t
+ *
+ * @brief   Type of an output queue structure.
+ * @details This structure represents a generic asymmetrical output queue.
+ *          Reading from the queue is non-blocking and can be performed from
+ *          interrupt handlers or from within a kernel lock zone.
+ *          Writing the queue can be a blocking operation and is supposed to
+ *          be performed by a system thread.
+ */
+typedef io_queue_t output_queue_t;
+
+/*===========================================================================*/
+/* Driver macros.                                                            */
+/*===========================================================================*/
 
 /**
  * @name    Macro Functions
@@ -112,24 +151,18 @@ struct io_queue {
  * @special
  */
 #define qGetLink(qp) ((qp)->q_link)
-/** @} */
 
 /**
- * @extends io_queue_t
+ * @brief   Sets the queue application-defined link.
+ * @note    This function can be called in any context.
  *
- * @brief   Type of an input queue structure.
- * @details This structure represents a generic asymmetrical input queue.
- *          Writing to the queue is non-blocking and can be performed from
- *          interrupt handlers or from within a kernel lock zone.
- *          Reading the queue can be a blocking operation and is supposed to
- *          be performed by a system thread.
+ * @param[in] qp        pointer to a @p io_queue_t structure
+ * @param[in] lk        The application-defined link.
+ *
+ * @special
  */
-typedef io_queue_t input_queue_t;
+#define qSetLink(qp, lk) ((qp)->q_link = lk)
 
-/**
- * @name    Macro Functions
- * @{
- */
 /**
  * @brief   Returns the filled space into an input queue.
  *
@@ -174,8 +207,10 @@ typedef io_queue_t input_queue_t;
  *
  * @iclass
  */
-#define iqIsFullI(iqp) ((bool)(((iqp)->q_wrptr == (iqp)->q_rdptr) &&        \
-                               ((iqp)->q_counter != 0U)))
+#define iqIsFullI(iqp)                                                      \
+  /*lint -save -e9007 [13.5] No side effects, a pointer is passed.*/        \
+  ((bool)(((iqp)->q_wrptr == (iqp)->q_rdptr) && ((iqp)->q_counter != 0U)))  \
+  /*lint -restore*/
 
 /**
  * @brief   Input queue read.
@@ -185,65 +220,12 @@ typedef io_queue_t input_queue_t;
  *
  * @param[in] iqp       pointer to an @p input_queue_t structure
  * @return              A byte value from the queue.
- * @retval Q_RESET      if the queue has been reset.
+ * @retval MSG_RESET    if the queue has been reset.
  *
  * @api
  */
 #define iqGet(iqp) iqGetTimeout(iqp, TIME_INFINITE)
-/** @} */
 
-/**
- * @brief   Data part of a static input queue initializer.
- * @details This macro should be used when statically initializing an
- *          input queue that is part of a bigger structure.
- *
- * @param[in] name      the name of the input queue variable
- * @param[in] buffer    pointer to the queue buffer area
- * @param[in] size      size of the queue buffer area
- * @param[in] inotify   input notification callback pointer
- * @param[in] link      application defined pointer
- */
-#define _INPUTQUEUE_DATA(name, buffer, size, inotify, link) {               \
-  NULL,                                                                     \
-  0U,                                                                       \
-  (uint8_t *)(buffer),                                                      \
-  (uint8_t *)(buffer) + (size),                                             \
-  (uint8_t *)(buffer),                                                      \
-  (uint8_t *)(buffer),                                                      \
-  (inotify),                                                                \
-  (link)                                                                    \
-}
-
-/**
- * @brief   Static input queue initializer.
- * @details Statically initialized input queues require no explicit
- *          initialization using @p iqInit().
- *
- * @param[in] name      the name of the input queue variable
- * @param[in] buffer    pointer to the queue buffer area
- * @param[in] size      size of the queue buffer area
- * @param[in] inotify   input notification callback pointer
- * @param[in] link      application defined pointer
- */
-#define INPUTQUEUE_DECL(name, buffer, size, inotify, link)                  \
-  input_queue_t name = _INPUTQUEUE_DATA(name, buffer, size, inotify, link)
-
-/**
- * @extends io_queue_t
- *
- * @brief   Type of an output queue structure.
- * @details This structure represents a generic asymmetrical output queue.
- *          Reading from the queue is non-blocking and can be performed from
- *          interrupt handlers or from within a kernel lock zone.
- *          Writing the queue can be a blocking operation and is supposed to
- *          be performed by a system thread.
- */
-typedef io_queue_t output_queue_t;
-
-/**
- * @name    Macro Functions
- * @{
- */
 /**
  * @brief   Returns the filled space into an output queue.
  *
@@ -276,8 +258,10 @@ typedef io_queue_t output_queue_t;
  *
  * @iclass
  */
-#define oqIsEmptyI(oqp) ((bool)(((oqp)->q_wrptr == (oqp)->q_rdptr) &&       \
-                                ((oqp)->q_counter != 0U)))
+#define oqIsEmptyI(oqp)                                                     \
+  /*lint -save -e9007 [13.5] No side effects, a pointer is passed.*/        \
+  ((bool)(((oqp)->q_wrptr == (oqp)->q_rdptr) && ((oqp)->q_counter != 0U)))  \
+  /*lint -restore*/
 
 /**
  * @brief   Evaluates to @p true if the specified output queue is full.
@@ -300,49 +284,17 @@ typedef io_queue_t output_queue_t;
  * @param[in] oqp       pointer to an @p output_queue_t structure
  * @param[in] b         the byte value to be written in the queue
  * @return              The operation status.
- * @retval Q_OK         if the operation succeeded.
- * @retval Q_RESET      if the queue has been reset.
+ * @retval MSG_OK       if the operation succeeded.
+ * @retval MSG_RESET    if the queue has been reset.
  *
  * @api
  */
 #define oqPut(oqp, b) oqPutTimeout(oqp, b, TIME_INFINITE)
- /** @} */
+/** @} */
 
-/**
- * @brief   Data part of a static output queue initializer.
- * @details This macro should be used when statically initializing an
- *          output queue that is part of a bigger structure.
- *
- * @param[in] name      the name of the output queue variable
- * @param[in] buffer    pointer to the queue buffer area
- * @param[in] size      size of the queue buffer area
- * @param[in] onotify   output notification callback pointer
- * @param[in] link      application defined pointer
- */
-#define _OUTPUTQUEUE_DATA(name, buffer, size, onotify, link) {              \
-  NULL,                                                                     \
-  (size),                                                                   \
-  (uint8_t *)(buffer),                                                      \
-  (uint8_t *)(buffer) + (size),                                             \
-  (uint8_t *)(buffer),                                                      \
-  (uint8_t *)(buffer),                                                      \
-  (onotify),                                                                \
-  (link)                                                                    \
-}
-
-/**
- * @brief   Static output queue initializer.
- * @details Statically initialized output queues require no explicit
- *          initialization using @p oqInit().
- *
- * @param[in] name      the name of the output queue variable
- * @param[in] buffer    pointer to the queue buffer area
- * @param[in] size      size of the queue buffer area
- * @param[in] onotify   output notification callback pointer
- * @param[in] link      application defined pointer
- */
-#define OUTPUTQUEUE_DECL(name, buffer, size, onotify, link)                 \
-  output_queue_t name = _OUTPUTQUEUE_DATA(name, buffer, size, onotify, link)
+/*===========================================================================*/
+/* External declarations.                                                    */
+/*===========================================================================*/
 
 #ifdef __cplusplus
 extern "C" {
@@ -351,53 +303,25 @@ extern "C" {
                     qnotify_t infy, void *link);
   void iqResetI(input_queue_t *iqp);
   msg_t iqPutI(input_queue_t *iqp, uint8_t b);
-  msg_t iqGetTimeout(input_queue_t *iqp, systime_t timeout);
+  msg_t iqGetI(input_queue_t *iqp);
+  msg_t iqGetTimeout(input_queue_t *iqp, sysinterval_t timeout);
+  size_t iqReadI(input_queue_t *iqp, uint8_t *bp, size_t n);
   size_t iqReadTimeout(input_queue_t *iqp, uint8_t *bp,
-                       size_t n, systime_t timeout);
+                       size_t n, sysinterval_t timeout);
 
   void oqObjectInit(output_queue_t *oqp, uint8_t *bp, size_t size,
                     qnotify_t onfy, void *link);
   void oqResetI(output_queue_t *oqp);
-  msg_t oqPutTimeout(output_queue_t *oqp, uint8_t b, systime_t timeout);
+  msg_t oqPutI(output_queue_t *oqp, uint8_t b);
+  msg_t oqPutTimeout(output_queue_t *oqp, uint8_t b, sysinterval_t timeout);
   msg_t oqGetI(output_queue_t *oqp);
+  size_t oqWriteI(output_queue_t *oqp, const uint8_t *bp, size_t n);
   size_t oqWriteTimeout(output_queue_t *oqp, const uint8_t *bp,
-                        size_t n, systime_t timeout);
+                        size_t n, sysinterval_t timeout);
 #ifdef __cplusplus
 }
 #endif
 
-#else /* defined(_CHIBIOS_RT_) && CH_CFG_USE_QUEUES */
-
-/* If ChibiOS is being used and its own queues subsystem is activated then
-   this module will use the ChibiOS queues code.*/
-#define qSizeX(qp)                          chQSizeX(qp)
-#define qSpaceI(qp)                         chQSpaceI(qp)
-#define qGetLink(qp)                        chQGetLinkX(qp)
-#define iqGetFullI(iqp)                     chIQGetFullI(iqp)
-#define iqGetEmptyI(iqp)                    chIQGetEmptyI(iqp)
-#define iqIsEmptyI(iqp)                     chIQIsEmptyI(iqp)
-#define iqIsFullI(iqp)                      chIQIsFullI(iqp)
-#define iqGet(iqp)                          chIQGet(iqp)
-#define oqGetFullI(oqp)                     chOQGetFullI(oqp)
-#define oqGetEmptyI(oqp)                    chOQGetEmptyI(oqp)
-#define oqIsEmptyI(oqp)                     chOQIsEmptyI(oqp)
-#define oqIsFullI(oqp)                      chOQIsFullI(oqp)
-#define oqPut(oqp, b)                       chOQPut(oqp, b)
-#define iqObjectInit(iqp, bp, size, infy, link)                             \
-  chIQObjectInit(iqp, bp, size, infy, link)
-#define iqResetI(iqp)                       chIQResetI(iqp)
-#define iqPutI(iqp, b)                      chIQPutI(iqp, b)
-#define iqGetTimeout(iqp, time)             chIQGetTimeout(iqp, time)
-#define iqReadTimeout(iqp, bp, n, time)     chIQReadTimeout(iqp, bp, n, time)
-#define oqObjectInit(oqp, bp, size, onfy, link)                             \
-  chOQObjectInit(oqp, bp, size, onfy, link)
-#define oqResetI(oqp)                       chOQResetI(oqp)
-#define oqPutTimeout(oqp, b, time)          chOQPutTimeout(oqp, b, time)
-#define oqGetI(oqp)                         chOQGetI(oqp)
-#define oqWriteTimeout(oqp, bp, n, time)    chOQWriteTimeout(oqp, bp, n, time)
-
-#endif /* defined(_CHIBIOS_RT_) || (CH_CFG_USE_QUEUES == FALSE) */
-
-#endif /* _HAL_QUEUES_H_ */
+#endif /* HAL_QUEUES_H */
 
 /** @} */

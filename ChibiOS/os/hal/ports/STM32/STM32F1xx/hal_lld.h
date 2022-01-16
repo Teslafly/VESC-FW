@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -20,26 +20,28 @@
  * @pre     This module requires the following macros to be defined in the
  *          @p board.h file:
  *          - STM32_LSECLK.
+ *          - STM32_LSE_BYPASS (optionally).
  *          - STM32_HSECLK.
  *          - STM32_HSE_BYPASS (optionally).
  *          .
  *          One of the following macros must also be defined:
- *          - STM32F10X_LD_VL for Value Line Low Density devices.
- *          - STM32F10X_MD_VL for Value Line Medium Density devices.
- *          - STM32F10X_HD_VL for Value Line High Density devices.
- *          - STM32F10X_LD for Performance Low Density devices.
- *          - STM32F10X_MD for Performance Medium Density devices.
- *          - STM32F10X_HD for Performance High Density devices.
- *          - STM32F10X_XL for Performance eXtra Density devices.
- *          - STM32F10X_CL for Connectivity Line devices.
+ *          - STM32F100xB for Value Line Medium Density devices.
+ *          - STM32F100xE for Value Line High Density devices.
+ *          - STM32F101x6, STM32F102x6, STM32F103x6 for Performance
+ *            Low Density devices.
+ *          - STM32F101xB, STM32F102xB, STM32F103xB for Performance
+ *            Medium Density devices.
+ *          - STM32F101xE, STM32F103xE for Performance High Density devices.
+ *          - STM32F101xG, STM32F103xG for Performance eXtra Density devices.
+ *          - STM32F105xC, STM32F107xC for Connectivity Line devices.
  *          .
  *
  * @addtogroup HAL
  * @{
  */
 
-#ifndef _HAL_LLD_H_
-#define _HAL_LLD_H_
+#ifndef HAL_LLD_H
+#define HAL_LLD_H
 
 #include "stm32_registry.h"
 
@@ -48,14 +50,16 @@
 /*===========================================================================*/
 
 /**
+ * @brief   Requires use of SPIv2 driver model.
+ */
+#define HAL_LLD_SELECT_SPI_V2           TRUE
+
+/**
  * @name    Platform identification
  * @{
  */
 #if defined(__DOXYGEN__)
 #define PLATFORM_NAME           "STM32F1xx"
-
-#elif defined(STM32F10X_LD_VL)
-#define PLATFORM_NAME           "STM32F100 Value Line Low Density"
 
 #elif defined(STM32F10X_MD_VL)
 #define PLATFORM_NAME           "STM32F100 Value Line Medium Density"
@@ -179,8 +183,8 @@
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
 
-#if defined(STM32F10X_LD_VL) || defined(STM32F10X_MD_VL) ||                 \
-    defined(STM32F10X_HD_VL) || defined(__DOXYGEN__)
+#if defined(STM32F10X_MD_VL) || defined(STM32F10X_HD_VL) ||                 \
+    defined(__DOXYGEN__)
 #include "hal_lld_f100.h"
 
 #elif defined(STM32F10X_LD) || defined(STM32F10X_MD) ||                     \
@@ -206,9 +210,12 @@
 
 /* Various helpers.*/
 #include "nvic.h"
+#include "cache.h"
+#include "mpu_v7m.h"
 #include "stm32_isr.h"
 #include "stm32_dma.h"
 #include "stm32_rcc.h"
+#include "stm32_tim.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -219,6 +226,6 @@ extern "C" {
 }
 #endif
 
-#endif /* _HAL_LLD_H_ */
+#endif /* HAL_LLD_H */
 
 /** @} */
