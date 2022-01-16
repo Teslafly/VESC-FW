@@ -95,7 +95,7 @@ endif
 PROJECT = BLDC_4_ChibiOS
 
 # Imported source files and paths
-CHIBIOS = ChibiOS_3.0.5
+CHIBIOS = ChibiOS
 # Startup files
 include $(CHIBIOS)/os/common/ports/ARMCMx/compilers/GCC/mk/startup_stm32f4xx.mk
 # HAL-OSAL files
@@ -340,3 +340,12 @@ debug-start:
 
 size: build/$(PROJECT).elf
 	@$(SZ) $<
+
+docker-setup:
+	docker build -t vesc_fw_builder:local -f Dockerfile .
+
+docker-make: docker-setup
+	docker run --rm -v "$(pwd)"/build:/usr/project/build vesc_fw_builder:local make
+
+docker-buildall: docker-setup
+	docker run --rm -v "$(pwd)":/usr/project vesc_fw_builder:local ./build_all/rebuild_all
