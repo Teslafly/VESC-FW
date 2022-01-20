@@ -32,19 +32,13 @@
 #include "env.h"
 #include "lispbm.h"
 
-/*
- * Observed issues:
- * * [Fixed] Dividing an integer by a float causes eval_error
- * * extern keyword should be removed for functions as is makes no difference
- */
-
 #define HEAP_SIZE				1024
-#define LISP_MEM_SIZE			MEMORY_SIZE_4K
-#define LISP_MEM_BITMAP_SIZE	MEMORY_BITMAP_SIZE_4K
+#define LISP_MEM_SIZE			MEMORY_SIZE_8K
+#define LISP_MEM_BITMAP_SIZE	MEMORY_BITMAP_SIZE_8K
 
 __attribute__((section(".ram4"))) static cons_t heap[HEAP_SIZE] __attribute__ ((aligned (8)));
-__attribute__((section(".ram4"))) static uint32_t memory_array[LISP_MEM_SIZE];
-__attribute__((section(".ram4"))) static uint32_t bitmap_array[LISP_MEM_BITMAP_SIZE];
+static uint32_t memory_array[LISP_MEM_SIZE];
+static uint32_t bitmap_array[LISP_MEM_BITMAP_SIZE];
 
 static thread_t *eval_tp = 0;
 static THD_WORKING_AREA(eval_thread_wa, 2048);
@@ -70,7 +64,7 @@ static void terminal_start(int argc, const char **argv) {
 	(void)argc;
 	(void)argv;
 
-	char *code = (char*)(0x08060000);
+	char *code = (char*)(0x080A0000);
 
 	if (!lisp_thd_running) {
 		lispbm_init(heap, HEAP_SIZE, memory_array, LISP_MEM_SIZE, bitmap_array, LISP_MEM_BITMAP_SIZE);
@@ -96,12 +90,20 @@ static void terminal_start(int argc, const char **argv) {
 
 	lispif_load_vesc_extensions();
 
+	commands_printf("Parsing %d characters", strlen(code));
+
 	VALUE t = tokpar_parse(code);
 
-	eval_cps_program(t);
-	eval_cps_continue_eval();
+	if (dec_sym(t) == SYM_STACK_ERROR) {
+		commands_printf("Lisp parser ran out of stack");
+	} else if (dec_sym(t) == SYM_RERROR) {
+		commands_printf("Lisp parser error");
+	} else {
+		eval_cps_program(t);
+		eval_cps_continue_eval();
+		commands_printf("Lisp started");
+	}
 
-	commands_printf("Lisp started");
 }
 
 static void terminal_stop(int argc, const char **argv) {
