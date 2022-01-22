@@ -21,8 +21,8 @@
 #define CONF_GENERAL_H_
 
 // Firmware version
-#define FW_VERSION_MAJOR		3
-#define FW_VERSION_MINOR		62
+#define FW_VERSION_MAJOR		4
+#define FW_VERSION_MINOR		00
 
 #include "datatypes.h"
 
@@ -67,6 +67,8 @@
 // Benjamins first HW60 PCB with PB5 and PB6 swapped
 //#define HW60_VEDDER_FIRST_PCB
 
+// Mark3 version of HW60 with power switch and separate NRF UART.
+//#define HW60_IS_MK3
 //#define HW_SOURCE "hw_60.c"
 //#define HW_HEADER "hw_60.h"
 
@@ -81,6 +83,9 @@
 
 //#define HW_SOURCE "hw_axiom.c"
 //#define HW_HEADER "hw_axiom.h"
+
+//#define HW_SOURCE "hw_luna_bbshd.c"
+//#define HW_HEADER "hw_luna_bbshd.h"
 
 //#define HW_SOURCE "hw_rh.c"
 //#define HW_HEADER "hw_rh.h"
@@ -120,6 +125,12 @@
 
 //#define HW_SOURCE "hw_a200s_v2.c"
 //#define HW_HEADER "hw_a200s_v2.h"
+
+//#define HW_SOURCE "hw_rd2.c"
+//#define HW_HEADER "hw_rd2.h"
+
+//#define HW_SOURCE "hw_100_250.c"
+//#define HW_HEADER "hw_100_250.h"
 #endif
 
 #ifndef HW_SOURCE
@@ -154,14 +165,16 @@
 //#include			"appconf_custom.h"
 //#include			"appconf_ellwee.h"
 
-#include "hw.h"
-#include "mcconf_default.h"
-#include "appconf_default.h"
-
 /*
  * Set APP_CUSTOM_TO_USE to the name of the main C file of the custom application.
  */
 //#define APP_CUSTOM_TO_USE			"app_custom_template.c"
+//#define APP_CUSTOM_TO_USE			"app_motor_heater.c"
+//#include "app_erockit_conf.h"
+
+#include "hw.h"
+#include "mcconf_default.h"
+#include "appconf_default.h"
 
 /*
  * Enable blackmagic probe output on SWD port
@@ -227,6 +240,9 @@
 // Use the pins for the hardware SPI port instead of the hall/encoder pins for the AS5047
 #ifndef AS5047_USE_HW_SPI_PINS
 #define AS5047_USE_HW_SPI_PINS		0
+#endif
+#ifndef AD2S1205_USE_HW_SPI_PINS
+#define AD2S1205_USE_HW_SPI_PINS	0
 #endif
 
 /*
