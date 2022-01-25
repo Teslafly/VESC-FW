@@ -194,6 +194,12 @@
 #define CURR3_DOUBLE_SAMPLE		0
 #endif
 
+// COMM-port ADC GPIOs
+#define HW_ADC_EXT_GPIO			GPIOC
+#define HW_ADC_EXT_PIN			5
+#define HW_ADC_EXT2_GPIO		GPIOB
+#define HW_ADC_EXT2_PIN			0
+
 // UART Peripheral
 #define HW_UART_DEV				SD3
 #define HW_UART_GPIO_AF			GPIO_AF_USART3
@@ -241,8 +247,6 @@
 // Resolver interface pins
 #define AD2S1205_SAMPLE_GPIO	GPIOB
 #define AD2S1205_SAMPLE_PIN		3
-#define AD2S1205_RDVEL_GPIO		GPIOC
-#define AD2S1205_RDVEL_PIN		12
 
 // NRF pins
 #define NRF_PORT_CSN			GPIOB
