@@ -340,3 +340,22 @@ debug-start:
 
 size: build/$(PROJECT).elf
 	@$(SZ) $<
+
+docker-setup:
+	docker build -t vesc_fw_builder:local -f Dockerfile .
+
+docker-make: docker-setup
+	docker run --rm \
+	-v "$(CURDIR)":/usr/ext_project \
+	-v "$(CURDIR)"/build:/usr/project/build \
+	vesc_fw_builder:local make
+
+docker-buildall: docker-setup
+	docker run --rm \
+	-v "$(CURDIR)"/build_all:/usr/project/build_all \
+	vesc_fw_builder:local build_all/rebuild_all
+
+	# docker run --rm -it -v "$(pwd)"/build_all:/usr/project/build_all vesc_fw_builder:local /bin/bash
+
+docker_dev:
+	docker run --rm -it -v "$(CURDIR)":/usr/project vesc_fw_builder:local /bin/bash
