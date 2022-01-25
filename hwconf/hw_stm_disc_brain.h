@@ -28,7 +28,7 @@
 #define HW_HAS_3_SHUNTS
 #define HW_HAS_PHASE_SHUNTS
 //#define HW_HAS_PHASE_FILTERS
-//#define INVERTED_SHUNT_POLARITY
+// #define INVERTED_SHUNT_POLARITY
 
 
 // LD4: green LED is a user LED connected to the I/O PD12 
@@ -48,13 +48,9 @@
 #define LED_RED_OFF()			palClearPad(LED_RED_GPIO, LED_RED_PIN)
 
 #define GATE_ENABLE_GPIO		GPIOB
-#define GATE_ENABLE_PIN			5
+#define GATE_ENABLE_PIN			7
 #define ENABLE_GATE()			palClearPad(GATE_ENABLE_GPIO, GATE_ENABLE_PIN) // hw will explode (shootthrough) if you enable gate before configuring timer 1 pwm pins.
 #define DISABLE_GATE()			palSetPad(GATE_ENABLE_GPIO, GATE_ENABLE_PIN) // need to add hw pullup
-
-// pwm pins define, dont change unless you know what you're doing
-#define PWM_H1_GPIO             GPIOA
-#define PWM_H1_PIN              8
 
 
 
@@ -144,16 +140,14 @@ n* 17 (3):  IN3		SENS3
 #define ADC_IND_VREFINT			12
 
 // ADC macros and settings
-// 9.9v input = 0.63v out. , 15.7 conv factor,
-// ((VIN_R1 + VIN_R2) / VIN_R2)) = 15.7
+// ((VIN_R1 + VIN_R2) / VIN_R2)) = 
 // r2 = 1000, r1=14700
-// 10vin, 0.755 vout, 
-// 20vin , 1.51vdiv = 13.25 (no jumper)
-// 47.3vin, 2.40vout, div=19.7 (72v jumper)
+// 20vin , 0.905vdiv = 22.1
+
 
 // Component parameters (can be overridden)
 #ifndef V_REG
-#define V_REG					3.2
+#define V_REG					3.0
 #endif
 #ifndef VIN_R1
 #define VIN_R1					14700.0
@@ -168,18 +162,21 @@ n* 17 (3):  IN3		SENS3
 // #define CURRENT_SHUNT_RES		(0.0005 / 3.0)
 // #endif
 # define hall_current_gain         0.020 // v/a, acs756
+// # define hall_current_gain         (13.33 / 1000)  // volts/amp, acs758, 150a bidirectional // at 3.3v, this gives ~124A full scale.
+
+
 
 //#undef FAC_CURRENT
 #define FAC_CURRENT					((V_REG / 4095.0) / (hall_current_gain))
 
 // Input voltage
-#define GET_INPUT_VOLTAGE()		((V_REG / 4095.0) * (float)ADC_Value[ADC_IND_VIN_SENS] * 19.7)
-// #define GET_INPUT_VOLTAGE()		((V_REG / 4095.0) * (float)ADC_Value[ADC_IND_VIN_SENS] * ((VIN_R1 + VIN_R2) / VIN_R2))
-//#define GET_INPUT_VOLTAGE()		12
+// #define GET_INPUT_VOLTAGE()		((V_REG / 4095.0) * (float)ADC_Value[ADC_IND_VIN_SENS] * 19.7)
+#define GET_INPUT_VOLTAGE()		((V_REG / 4095.0) * (float)ADC_Value[ADC_IND_VIN_SENS] * ((VIN_R1 + VIN_R2) / VIN_R2))
+// #define GET_INPUT_VOLTAGE()		20
 
 #define NTC_TEMP_MOS_BETA 3380.0   // 
 // NTC Termistors
-#define NTC_RES(adc_val)		((4095.0 * 10000.0) / adc_val - 10000.0)
+#define NTC_RES(adc_val)		(((4095.0 * 10000.0) / (4056 - adc_val)) - 10000.0)
 #define NTC_TEMP(adc_ind)		(1.0 / ((logf(NTC_RES(ADC_Value[adc_ind]) / 10000.0) / NTC_TEMP_MOS_BETA) + (1.0 / 298.15)) - 273.15)
 //#define NTC_TEMP(adc_ind)		35 // testing
 
@@ -250,16 +247,16 @@ n* 17 (3):  IN3		SENS3
 #define HW_I2C_SDA_PIN			7
 
 // Hall/encoder pins  (same on moxie drive)
-#define HW_HALL_ENC_GPIO1		GPIOC
-#define HW_HALL_ENC_PIN1		6
-#define HW_HALL_ENC_GPIO2		GPIOC
-#define HW_HALL_ENC_PIN2		7
-#define HW_HALL_ENC_GPIO3		GPIOC
-#define HW_HALL_ENC_PIN3		8
+#define HW_HALL_ENC_GPIO1		GPIOB
+#define HW_HALL_ENC_PIN1		3
+#define HW_HALL_ENC_GPIO2		GPIOB
+#define HW_HALL_ENC_PIN2		5
+#define HW_HALL_ENC_GPIO3		GPIOB
+#define HW_HALL_ENC_PIN3		4
 #define HW_ENC_TIM				TIM3
 #define HW_ENC_TIM_AF			GPIO_AF_TIM3
 #define HW_ENC_TIM_CLK_EN()		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE)
-#define HW_ENC_EXTI_PORTSRC		EXTI_PortSourceGPIOC
+#define HW_ENC_EXTI_PORTSRC		EXTI_PortSourceGPIOB
 #define HW_ENC_EXTI_PINSRC		EXTI_PinSource8
 #define HW_ENC_EXTI_CH			EXTI9_5_IRQn
 #define HW_ENC_EXTI_LINE		EXTI_Line8
@@ -280,6 +277,7 @@ n* 17 (3):  IN3		SENS3
 #define HW_SPI_PIN_MISO			6
 
 //#define AS5047_USE_HW_SPI_PINS
+//#define AS5047_USE_HW_SPI_PINS_MOSI
 
 // Measurement macros
 #define ADC_V_L1				ADC_Value[ADC_IND_SENS1]
@@ -333,6 +331,8 @@ n* 17 (3):  IN3		SENS3
 //configure inverted phases:
 // TIM_OCNPolarity_High = low  -> leg off, high -> leg on, (default)
 // TIM_OCNPolarity_Low = high -> leg off, low  -> leg on (inverted output)
+
+#define HW_DEAD_TIME_NSEC		1000.0
 
 //#define inverted_top_fet_driver    // uncomment to invert top (vbat) side fet signal
 #define inverted_bottom_fet_driver // uncomment to invert bottom(gnd) side fet signal

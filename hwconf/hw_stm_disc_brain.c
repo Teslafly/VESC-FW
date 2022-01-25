@@ -51,7 +51,7 @@ void hw_init_gpio(void) {
 
 
 	DISABLE_GATE();  // will setting before hand make it init high?
-	palSetPadMode(GPIOB, 5,
+	palSetPadMode(GATE_ENABLE_GPIO, GATE_ENABLE_PIN,
 		PAL_MODE_OUTPUT_PUSHPULL |
 		PAL_STM32_OSPEED_HIGHEST);
 	DISABLE_GATE();  // must remain disabled until tim1 pwm is configured.
