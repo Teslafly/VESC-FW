@@ -20,8 +20,11 @@
 #include "utils.h"
 #include "ch.h"
 #include "hal.h"
+#include "app.h"
+#include "conf_general.h"
 #include <math.h>
 #include <string.h>
+#include <stdlib.h>
 
 // Private variables
 static volatile int sys_lock_cnt = 0;
@@ -319,6 +322,8 @@ float utils_fast_atan2(float y, float x) {
 		float rsq = r * r;
 		angle = ((0.1963 * rsq) - 0.9817) * r + (3.0 * M_PI / 4.0);
 	}
+
+	UTILS_NAN_ZERO(angle);
 
 	if (y < 0) {
 		return(-angle);
@@ -737,6 +742,124 @@ void utils_fft8_bin2(float *real_in, float *real, float *imag) {
 	}
 	*real /= 8.0;
 	*imag /= 8.0;
+}
+
+/**
+ * Get ID of second motor.
+ *
+ * @return
+ * id for second motor. -1 if this hardware only has one motor.
+ */
+uint8_t utils_second_motor_id(void) {
+#ifdef HW_HAS_DUAL_MOTORS
+	uint8_t id_next = app_get_configuration()->controller_id + 1;
+	if (id_next == 255) {
+		id_next = 0;
+	}
+	return id_next;
+#else
+	return 0;
+#endif
+}
+
+/**
+ * Read hall sensors
+ *
+ * @param is_second_motor
+ * Use hall sensor port for second motor on dual motor hardware.
+ *
+ * @param samples
+ * The number of extra samples to read and filter over. If this
+ * is 0, only one sample will be used.
+ *
+ * @return
+ * The state of the three hall sensors.
+ */
+int utils_read_hall(bool is_second_motor, int samples) {
+	samples = 1 + 2 * samples;
+
+	int h1 = 0, h2 = 0, h3 = 0;
+	int tres = samples / 2;
+
+	if (is_second_motor) {
+		while (samples--) {
+			h1 += READ_HALL1_2();
+			h2 += READ_HALL2_2();
+			h3 += READ_HALL3_2();
+		}
+	} else {
+		while (samples--) {
+			h1 += READ_HALL1();
+			h2 += READ_HALL2();
+			h3 += READ_HALL3();
+		}
+	}
+
+	return (h1 > tres) | ((h2 > tres) << 1) | ((h3 > tres) << 2);
+}
+
+// A mapping of a samsung 30q cell for % remaining capacity vs. voltage from
+// 4.2 to 3.2, note that the you lose 15% of the 3Ah rated capacity in this range
+float utils_batt_liion_norm_v_to_capacity(float norm_v) {
+	// constants for polynomial fit of lithium ion battery
+	const float li_p[] = {
+						  -2.979767, 5.487810, -3.501286, 1.675683, 0.317147};
+	utils_truncate_number(&norm_v,0.0,1.0);
+	float v2 = norm_v*norm_v;
+	float v3 = v2*norm_v;
+	float v4 = v3*norm_v;
+	float v5 = v4*norm_v;
+	float capacity = li_p[0] * v5 + li_p[1] * v4 + li_p[2] * v3 +
+			li_p[3] * v2 + li_p[4] * norm_v;
+	return capacity;
+}
+
+static int uint16_cmp_func (const void *a, const void *b) {
+	return (*(uint16_t*)a - *(uint16_t*)b);
+}
+
+uint16_t utils_median_filter_uint16_run(uint16_t *buffer,
+		unsigned int *buffer_index, unsigned int filter_len, uint16_t sample) {
+	buffer[(*buffer_index)++] = sample;
+	*buffer_index %= filter_len;
+	uint16_t buffer_sorted[filter_len]; // Assume we have enough stack space
+	memcpy(buffer_sorted, buffer, sizeof(uint16_t) * filter_len);
+	qsort(buffer_sorted, filter_len, sizeof(uint16_t), uint16_cmp_func);
+	return buffer_sorted[filter_len / 2];
+}
+
+const char* utils_hw_type_to_string(HW_TYPE hw) {
+	switch (hw) {
+	case HW_TYPE_VESC: return "HW_TYPE_VESC"; break;
+	case HW_TYPE_VESC_BMS: return "HW_TYPE_VESC_BMS"; break;
+	case HW_TYPE_CUSTOM_MODULE: return "HW_TYPE_CUSTOM_MODULE"; break;
+	default: return "FAULT_HARDWARE"; break;
+	}
+}
+
+/**
+ * Check the minimum stack tp had left by counting the remaining fill characters.
+ */
+int utils_check_min_stack_left(thread_t *tp) {
+	uint32_t *p = (uint32_t *)tp->p_stklimit;
+
+	int free = 0;
+	while (free < 8192) {
+		if (*p++ != 0x55555555) {
+			break;
+		}
+		free += sizeof(uint32_t);
+	}
+
+	return free;
+}
+
+/*
+ * Check how much stack the current thread has left now.
+ */
+int utils_stack_left_now(void) {
+	struct port_intctx *r13 = (struct port_intctx *)__get_PSP();
+	return ((stkalign_t *)(r13 - 1) - chThdGetSelfX()->p_stklimit) * sizeof(stkalign_t);
 }
 
 const float utils_tab_sin_32_1[] = {

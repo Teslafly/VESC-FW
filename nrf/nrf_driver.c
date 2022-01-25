@@ -39,7 +39,7 @@
 
 // Variables
 static THD_WORKING_AREA(rx_thread_wa, 2048);
-static THD_WORKING_AREA(tx_thread_wa, 512);
+static THD_WORKING_AREA(tx_thread_wa, 256);
 static mote_state mstate;
 static uint8_t rx_buffer[RX_BUFFER_SIZE];
 static int nosend_cnt;
@@ -492,6 +492,8 @@ void nrf_driver_process_packet(unsigned char *buf, unsigned char len) {
 			data[4] = appconf.app_nrf_conf.address[2];
 			commands_send_packet_nrf(data, 5);
 		}
+
+		appconf.app_chuk_conf.ctrl_type = CHUK_CTRL_TYPE_CURRENT;
 
 		from_nrf = true;
 		conf_general_store_app_configuration(&appconf);

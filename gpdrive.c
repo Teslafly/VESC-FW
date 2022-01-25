@@ -81,7 +81,7 @@ static void set_modulation(float mod);
 static void do_dc_cal(void);
 
 // Threads
-static THD_WORKING_AREA(timer_thread_wa, 2048);
+static THD_WORKING_AREA(timer_thread_wa, 512);
 static THD_FUNCTION(timer_thread, arg);
 static volatile bool timer_thd_stop;
 
@@ -269,7 +269,7 @@ void gpdrive_init(volatile mc_configuration *configuration) {
 
 	// Check if the system has resumed from IWDG reset
 	if (timeout_had_IWDG_reset()) {
-		mc_interface_fault_stop(FAULT_CODE_BOOTING_FROM_WATCHDOG_RESET);
+		mc_interface_fault_stop(FAULT_CODE_BOOTING_FROM_WATCHDOG_RESET, false, false);
 	}
 
 	m_init_done = true;
@@ -340,6 +340,7 @@ void gpdrive_output_sample(float sample) {
 
 	case GPD_OUTPUT_MODE_CURRENT:
 		m_current_state.current_set = sample;
+		m_is_running = true;
 		break;
 
 	default:
@@ -564,7 +565,7 @@ static void adc_int_handler(void *p, uint32_t flags) {
 
 		if ((wrong_voltage_iterations >= 8)) {
 			mc_interface_fault_stop(input_voltage < m_conf->l_min_vin ?
-					FAULT_CODE_UNDER_VOLTAGE : FAULT_CODE_OVER_VOLTAGE);
+					FAULT_CODE_UNDER_VOLTAGE : FAULT_CODE_OVER_VOLTAGE, false, true);
 		}
 	} else {
 		wrong_voltage_iterations = 0;
@@ -572,11 +573,11 @@ static void adc_int_handler(void *p, uint32_t flags) {
 
 	if (m_conf->l_slow_abs_current) {
 		if (fabsf(m_current_now) > m_conf->l_abs_current_max) {
-			mc_interface_fault_stop(FAULT_CODE_ABS_OVER_CURRENT);
+			mc_interface_fault_stop(FAULT_CODE_ABS_OVER_CURRENT, false, true);
 		}
 	} else {
 		if (fabsf(m_current_now_filtered) > m_conf->l_abs_current_max) {
-			mc_interface_fault_stop(FAULT_CODE_ABS_OVER_CURRENT);
+			mc_interface_fault_stop(FAULT_CODE_ABS_OVER_CURRENT, false, true);
 		}
 	}
 
