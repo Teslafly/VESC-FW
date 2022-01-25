@@ -57,7 +57,7 @@ void app_adc_configure(adc_config *conf) {
 }
 
 void app_adc_start(bool use_rx_tx) {
-	// use_rx_tx_as_buttons = use_rx_tx;
+	use_rx_tx_as_buttons = use_rx_tx;
 	stop_now = false;
 	chThdCreateStatic(adc_thread_wa, sizeof(adc_thread_wa), NORMALPRIO, adc_thread, NULL);
 }
@@ -92,16 +92,12 @@ static THD_FUNCTION(adc_thread, arg) {
 	chRegSetThreadName("APP_ADC");
 
 	// Set servo pin as an input with pullup
-	// if (use_rx_tx_as_buttons) {
-	// 	palSetPadMode(HW_UART_TX_PORT, HW_UART_TX_PIN, PAL_MODE_INPUT_PULLUP);
-	// 	palSetPadMode(HW_UART_RX_PORT, HW_UART_RX_PIN, PAL_MODE_INPUT_PULLUP);
-	// } else {
-	// 	palSetPadMode(HW_ICU_GPIO, HW_ICU_PIN, PAL_MODE_INPUT_PULLUP);
-	// }
-
-	// set up reverse and brake
-	palSetPadMode(HW_REVERSE_PORT, HW_REVERSE_PIN, PAL_MODE_INPUT_PULLUP);
-	// palSetPadMode(HW_BRAKE_PORT, HW_BRAKE_PIN, PAL_MODE_INPUT_PULLUP);
+	if (use_rx_tx_as_buttons) {
+		palSetPadMode(HW_UART_TX_PORT, HW_UART_TX_PIN, PAL_MODE_INPUT_PULLUP);
+		palSetPadMode(HW_UART_RX_PORT, HW_UART_RX_PIN, PAL_MODE_INPUT_PULLUP);
+	} else {
+		palSetPadMode(HW_ICU_GPIO, HW_ICU_PIN, PAL_MODE_INPUT_PULLUP);
+	}
 
 	is_running = true;
 
@@ -204,45 +200,33 @@ static THD_FUNCTION(adc_thread, arg) {
 		// Read the button pins
 		bool cc_button = false;
 		bool rev_button = false;
-		bool brake_button = false;
-
-		rev_button = !palReadPad(HW_REVERSE_PORT, HW_REVERSE_PIN );
-		if (config.rev_button_inverted) {
-			rev_button = !rev_button;
+		if (use_rx_tx_as_buttons) {
+			cc_button = !palReadPad(HW_UART_TX_PORT, HW_UART_TX_PIN);
+			if (config.cc_button_inverted) {
+				cc_button = !cc_button;
+			}
+			rev_button = !palReadPad(HW_UART_RX_PORT, HW_UART_RX_PIN);
+			if (config.rev_button_inverted) {
+				rev_button = !rev_button;
+			}
+		} else {
+			// When only one button input is available, use it differently depending on the control mode
+			if (config.ctrl_type == ADC_CTRL_TYPE_CURRENT_REV_BUTTON ||
+                    config.ctrl_type == ADC_CTRL_TYPE_CURRENT_REV_BUTTON_BRAKE_CENTER ||
+					config.ctrl_type == ADC_CTRL_TYPE_CURRENT_NOREV_BRAKE_BUTTON ||
+					config.ctrl_type == ADC_CTRL_TYPE_DUTY_REV_BUTTON ||
+					config.ctrl_type == ADC_CTRL_TYPE_PID_REV_BUTTON) {
+				rev_button = !palReadPad(HW_ICU_GPIO, HW_ICU_PIN);
+				if (config.rev_button_inverted) {
+					rev_button = !rev_button;
+				}
+			} else {
+				cc_button = !palReadPad(HW_ICU_GPIO, HW_ICU_PIN);
+				if (config.cc_button_inverted) {
+					cc_button = !cc_button;
+				}
+			}
 		}
-
-		// brake_button = !palReadPad(HW_BRAKE_PORT, HW_BRAKE_PIN );
-		// if (config.brake_button_inverted) {
-		// 	brake_button = !brake_button;
-		// }
-
-		// if (use_rx_tx_as_buttons) {
-		// 	cc_button = !palReadPad(HW_UART_TX_PORT, HW_UART_TX_PIN);
-		// 	if (config.cc_button_inverted) {
-		// 		cc_button = !cc_button;
-		// 	}
-		// 	rev_button = !palReadPad(HW_UART_RX_PORT, HW_UART_RX_PIN);
-		// 	if (config.rev_button_inverted) {
-		// 		rev_button = !rev_button;
-		// 	}
-		// } else {
-		// 	// When only one button input is available, use it differently depending on the control mode
-		// 	if (config.ctrl_type == ADC_CTRL_TYPE_CURRENT_REV_BUTTON ||
-        //             config.ctrl_type == ADC_CTRL_TYPE_CURRENT_REV_BUTTON_BRAKE_CENTER ||
-		// 			config.ctrl_type == ADC_CTRL_TYPE_CURRENT_NOREV_BRAKE_BUTTON ||
-		// 			config.ctrl_type == ADC_CTRL_TYPE_DUTY_REV_BUTTON ||
-		// 			config.ctrl_type == ADC_CTRL_TYPE_PID_REV_BUTTON) {
-		// 		rev_button = !palReadPad(HW_ICU_GPIO, HW_ICU_PIN);
-		// 		if (config.rev_button_inverted) {
-		// 			rev_button = !rev_button;
-		// 		}
-		// 	} else {
-		// 		cc_button = !palReadPad(HW_ICU_GPIO, HW_ICU_PIN);
-		// 		if (config.cc_button_inverted) {
-		// 			cc_button = !cc_button;
-		// 		}
-		// 	}
-		// }
 
 		// All pins and buttons are still decoded for debugging, even
 		// when output is disabled.
