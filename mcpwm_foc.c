@@ -1581,7 +1581,7 @@ void mcpwm_foc_encoder_detect(float current, bool print, float *offset, float *r
 	// Inverted and ratio
 	chThdSleepMilliseconds(1000);
 
-	const int it_rat = 20;
+	const int it_rat = 30;
 	float s_sum = 0.0;
 	float c_sum = 0.0;
 	float first = motor->m_phase_now_encoder;
@@ -1596,6 +1596,7 @@ void mcpwm_foc_encoder_detect(float current, bool print, float *offset, float *r
 		}
 		utils_norm_angle_rad((float*)&motor->m_phase_now_override);
 		chThdSleepMilliseconds(300);
+		timeout_reset();
 		float diff = utils_angle_difference_rad(motor->m_phase_now_encoder, phase_old);
 
 		float s, c;
@@ -1604,7 +1605,7 @@ void mcpwm_foc_encoder_detect(float current, bool print, float *offset, float *r
 		c_sum += c;
 
 		if (print) {
-			commands_printf("%.2f", (double)RAD2DEG_f(diff));
+			commands_printf("Diff: %.2f", (double)RAD2DEG_f(diff));
 		}
 
 		if (i > 3 && fabsf(utils_angle_difference_rad(motor->m_phase_now_encoder, first)) < fabsf(diff / 2.0)) {
@@ -1624,6 +1625,7 @@ void mcpwm_foc_encoder_detect(float current, bool print, float *offset, float *r
 		}
 		utils_norm_angle_rad((float*)&motor->m_phase_now_override);
 		chThdSleepMilliseconds(300);
+		timeout_reset();
 		float diff = utils_angle_difference_rad(phase_old, motor->m_phase_now_encoder);
 
 		float s, c;
@@ -1632,7 +1634,7 @@ void mcpwm_foc_encoder_detect(float current, bool print, float *offset, float *r
 		c_sum += c;
 
 		if (print) {
-			commands_printf("%.2f", (double)RAD2DEG_f(diff));
+			commands_printf("Diff: %.2f", (double)RAD2DEG_f(diff));
 		}
 
 		if (i > 3 && fabsf(utils_angle_difference_rad(motor->m_phase_now_encoder, first)) < fabsf(diff / 2.0)) {
@@ -1649,6 +1651,7 @@ void mcpwm_foc_encoder_detect(float current, bool print, float *offset, float *r
 
 	if (print) {
 		commands_printf("Inversion and ratio detected");
+		commands_printf("Ratio: %.2f", (double)*ratio);
 	}
 
 	// Rotate
@@ -1676,6 +1679,7 @@ void mcpwm_foc_encoder_detect(float current, bool print, float *offset, float *r
 		}
 
 		chThdSleepMilliseconds(100);
+		timeout_reset();
 
 		float angle_diff = utils_angle_difference_rad(motor->m_phase_now_encoder, motor->m_phase_now_override);
 		float s, c;
@@ -1684,7 +1688,7 @@ void mcpwm_foc_encoder_detect(float current, bool print, float *offset, float *r
 		c_sum += c;
 
 		if (print) {
-			commands_printf("%.2f", (double)RAD2DEG_f(angle_diff));
+			commands_printf("Ovr: %.2f/%.2f Diff: %.2f", (double)override, (double)(it_ofs * step), (double)RAD2DEG_f(angle_diff));
 		}
 	}
 
@@ -1698,6 +1702,7 @@ void mcpwm_foc_encoder_detect(float current, bool print, float *offset, float *r
 		}
 
 		chThdSleepMilliseconds(100);
+		timeout_reset();
 
 		float angle_diff = utils_angle_difference_rad(motor->m_phase_now_encoder, motor->m_phase_now_override);
 		float s, c;
@@ -1706,7 +1711,7 @@ void mcpwm_foc_encoder_detect(float current, bool print, float *offset, float *r
 		c_sum += c;
 
 		if (print) {
-			commands_printf("%.2f", (double)RAD2DEG_f(angle_diff));
+			commands_printf("Ovr: %.2f/%.2f Diff: %.2f", (double)override, (double)(it_ofs * step), (double)RAD2DEG_f(angle_diff));
 		}
 	}
 
