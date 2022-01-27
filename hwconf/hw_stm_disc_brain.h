@@ -155,19 +155,16 @@ n* 17 (3):  IN3		SENS3
 #ifndef VIN_R2
 #define VIN_R2					1000.0
 #endif
-// #ifndef CURRENT_AMP_GAIN
-// #define CURRENT_AMP_GAIN		20.0
-// #endif
-// #ifndef CURRENT_SHUNT_RES
-// #define CURRENT_SHUNT_RES		(0.0005 / 3.0)
-// #endif
+
 # define hall_current_gain         0.020 // v/a, acs756
 // # define hall_current_gain         (13.33 / 1000)  // volts/amp, acs758, 150a bidirectional // at 3.3v, this gives ~124A full scale.
 
-
-
-//#undef FAC_CURRENT
-#define FAC_CURRENT					((V_REG / 4095.0) / (hall_current_gain))
+#ifndef CURRENT_AMP_GAIN
+#define CURRENT_AMP_GAIN		1
+#endif
+#ifndef CURRENT_SHUNT_RES
+#define CURRENT_SHUNT_RES		hall_current_gain
+#endif
 
 // Input voltage
 // #define GET_INPUT_VOLTAGE()		((V_REG / 4095.0) * (float)ADC_Value[ADC_IND_VIN_SENS] * 19.7)
@@ -239,6 +236,7 @@ n* 17 (3):  IN3		SENS3
 #define HW_ICU_PIN				6
 
 // I2C Peripheral  (test on moxie drive)
+#define HW_USE_I2CD1
 #define HW_I2C_DEV				I2CD1
 #define HW_I2C_GPIO_AF			GPIO_AF_I2C1
 #define HW_I2C_SCL_PORT			GPIOB

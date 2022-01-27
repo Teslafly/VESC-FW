@@ -74,8 +74,8 @@
 //#define HW60_IS_MK4
 #define HW60_IS_MK5
 
-#define HW_SOURCE "hw_60.c"
-#define HW_HEADER "hw_60.h"
+// #define HW_SOURCE "hw_60.c"
+// #define HW_HEADER "hw_60.h"
 
 //#define HW_SOURCE "hw_r2.c"
 //#define HW_HEADER "hw_r2.h"
@@ -102,11 +102,11 @@
 //#define HW75_300_VEDDER_FIRST_PCB
 
 // Second revision with separate UART for NRF51
-// #define HW75_300_REV_2
+//#define HW75_300_REV_2
 #define HW75_300_REV_3
 
-// #define HW_SOURCE "hw_75_300.c"
-// #define HW_HEADER "hw_75_300.h"
+//#define HW_SOURCE "hw_75_300.c"
+//#define HW_HEADER "hw_75_300.h"
 
 #define HW_SOURCE "hw_stm_disc_brain.c"
 #define HW_HEADER "hw_stm_disc_brain.h"
@@ -292,7 +292,7 @@
 #define VDIV_CORR					((VIN_R2 / (VIN_R2 + VIN_R1)) / (2.2 / (2.2 + 33.0)))
 
 // Current ADC to amperes factor
-//#define FAC_CURRENT					((V_REG / 4095.0) / (CURRENT_SHUNT_RES * CURRENT_AMP_GAIN))
+#define FAC_CURRENT					((V_REG / 4095.0) / (CURRENT_SHUNT_RES * CURRENT_AMP_GAIN))
 
 #define VOLTAGE_TO_ADC_FACTOR	( VIN_R2 / (VIN_R2 + VIN_R1) ) * ( 4096.0 / V_REG )
 
