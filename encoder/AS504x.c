@@ -63,8 +63,54 @@ static uint8_t AS504x_spi_transfer_err_check(uint16_t *in_buf,
 #endif
 static void AS504x_determinate_if_connected(bool was_last_valid);
 
-void AS504x_routine(void) {
+encoder_ret_t AS504x_init(AS504x_config_t *AS504x_config) {
+	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+	AS504x_config_now = *AS504x_config;
+	spi_bb_init(&(AS504x_config_now.sw_spi));
 
+	HW_ENC_TIM_CLK_EN();
+
+	// Time Base configuration
+	TIM_TimeBaseStructure.TIM_Prescaler = 0;
+	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_TimeBaseStructure.TIM_Period = ((168000000 / 2
+			/ AS504x_config->refresh_rate_hz) - 1);
+	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+	TIM_TimeBaseStructure.TIM_RepetitionCounter = 0;
+	TIM_TimeBaseInit(HW_ENC_TIM, &TIM_TimeBaseStructure);
+
+	// Enable overflow interrupt
+	TIM_ITConfig(HW_ENC_TIM, TIM_IT_Update, ENABLE);
+	// Enable timer
+	TIM_Cmd(HW_ENC_TIM, ENABLE);
+
+	AS504x_config->is_init = 1;
+	AS504x_config_now = *AS504x_config;
+
+	nvicEnableVector(HW_ENC_TIM_ISR_CH, 6);
+
+	spi_error_rate = 0.0;
+	return ENCODER_OK;
+}
+
+void AS504x_deinit(void) {
+	nvicDisableVector(HW_ENC_EXTI_CH);
+	nvicDisableVector(HW_ENC_TIM_ISR_CH);
+
+	TIM_DeInit(HW_ENC_TIM);
+
+	spi_bb_deinit(&(AS504x_config_now.sw_spi));
+
+#ifdef HW_SPI_DEV
+	spiStop(&HW_SPI_DEV);
+#endif
+
+	AS504x_config_now.is_init = 0;
+	last_enc_angle = 0.0;
+	spi_error_rate = 0.0;
+}
+
+void AS504x_routine(void) {
 	uint16_t pos;
 // if MOSI is defined, use diagnostics
 #if AS504x_USE_SW_MOSI_PIN || AS5047_USE_HW_SPI_PINS
@@ -129,52 +175,9 @@ void AS504x_routine(void) {
 	}
 }
 
-void AS504x_deinit(void) {
-	nvicDisableVector(HW_ENC_EXTI_CH);
-	nvicDisableVector(HW_ENC_TIM_ISR_CH);
 
-	TIM_DeInit(HW_ENC_TIM);
 
-	spi_bb_deinit(&(AS504x_config_now.sw_spi));
 
-#ifdef HW_SPI_DEV
-	spiStop(&HW_SPI_DEV);
-#endif
-
-	AS504x_config_now.is_init = 0;
-	last_enc_angle = 0.0;
-	spi_error_rate = 0.0;
-}
-
-encoder_ret_t AS504x_init(AS504x_config_t *AS504x_config) {
-	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
-	AS504x_config_now = *AS504x_config;
-	spi_bb_init(&(AS504x_config_now.sw_spi));
-
-	HW_ENC_TIM_CLK_EN();
-
-	// Time Base configuration
-	TIM_TimeBaseStructure.TIM_Prescaler = 0;
-	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
-	TIM_TimeBaseStructure.TIM_Period = ((168000000 / 2
-			/ AS504x_config->refresh_rate_hz) - 1);
-	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
-	TIM_TimeBaseStructure.TIM_RepetitionCounter = 0;
-	TIM_TimeBaseInit(HW_ENC_TIM, &TIM_TimeBaseStructure);
-
-	// Enable overflow interrupt
-	TIM_ITConfig(HW_ENC_TIM, TIM_IT_Update, ENABLE);
-	// Enable timer
-	TIM_Cmd(HW_ENC_TIM, ENABLE);
-
-	AS504x_config->is_init = 1;
-	AS504x_config_now = *AS504x_config;
-
-	nvicEnableVector(HW_ENC_TIM_ISR_CH, 6);
-
-	spi_error_rate = 0.0;
-	return ENCODER_OK;
-}
 
 #if (AS504x_USE_SW_MOSI_PIN || AS5047_USE_HW_SPI_PINS)
 static uint8_t AS504x_verify_serial() {

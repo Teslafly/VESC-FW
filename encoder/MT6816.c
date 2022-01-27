@@ -20,38 +20,6 @@ static float last_enc_angle = 0.0;
 static uint32_t spi_error_cnt = 0;
 static uint32_t spi_val = 0;
 
-void MT6816_deinit(void) {
-
-	nvicDisableVector(HW_ENC_EXTI_CH);
-	nvicDisableVector(HW_ENC_TIM_ISR_CH);
-
-	TIM_DeInit(HW_ENC_TIM);
-
-	palSetPadMode(MT6816_config_now.sw_spi.miso_gpio,
-			MT6816_config_now.sw_spi.miso_pin, PAL_MODE_INPUT_PULLUP);
-	palSetPadMode(MT6816_config_now.sw_spi.sck_gpio,
-			MT6816_config_now.sw_spi.sck_pin, PAL_MODE_INPUT_PULLUP);
-	palSetPadMode(MT6816_config_now.sw_spi.nss_gpio,
-			MT6816_config_now.sw_spi.nss_pin, PAL_MODE_INPUT_PULLUP);
-
-#if (MT6816_USE_HW_SPI_PINS)
-	palSetPadMode(MT6816_config_now.sw_spi.mosi_gpio, MT6816_config_now.sw_spi.mosi_pin, PAL_MODE_INPUT_PULLUP);
-#endif
-
-#ifdef HW_SPI_DEV
-	spiStop(&HW_SPI_DEV);
-#endif
-
-	palSetPadMode(MT6816_config_now.sw_spi.miso_gpio,
-			MT6816_config_now.sw_spi.miso_pin, PAL_MODE_INPUT_PULLUP);
-	palSetPadMode(MT6816_config_now.sw_spi.sck_gpio,
-			MT6816_config_now.sw_spi.sck_pin, PAL_MODE_INPUT_PULLUP);
-
-	MT6816_config_now.is_init = 0;
-	last_enc_angle = 0.0;
-	spi_error_rate = 0.0;
-}
-
 encoder_ret_t MT6816_init(MT6816_config_t *mt6816_config) {
 #ifdef HW_SPI_DEV
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
@@ -103,8 +71,36 @@ encoder_ret_t MT6816_init(MT6816_config_t *mt6816_config) {
 	return ENCODER_OK;
 }
 
-float MT6816_read_deg(void) {
-	return last_enc_angle;
+void MT6816_deinit(void) {
+
+	nvicDisableVector(HW_ENC_EXTI_CH);
+	nvicDisableVector(HW_ENC_TIM_ISR_CH);
+
+	TIM_DeInit(HW_ENC_TIM);
+
+	palSetPadMode(MT6816_config_now.sw_spi.miso_gpio,
+			MT6816_config_now.sw_spi.miso_pin, PAL_MODE_INPUT_PULLUP);
+	palSetPadMode(MT6816_config_now.sw_spi.sck_gpio,
+			MT6816_config_now.sw_spi.sck_pin, PAL_MODE_INPUT_PULLUP);
+	palSetPadMode(MT6816_config_now.sw_spi.nss_gpio,
+			MT6816_config_now.sw_spi.nss_pin, PAL_MODE_INPUT_PULLUP);
+
+#if (MT6816_USE_HW_SPI_PINS)
+	palSetPadMode(MT6816_config_now.sw_spi.mosi_gpio, MT6816_config_now.sw_spi.mosi_pin, PAL_MODE_INPUT_PULLUP);
+#endif
+
+#ifdef HW_SPI_DEV
+	spiStop(&HW_SPI_DEV);
+#endif
+
+	palSetPadMode(MT6816_config_now.sw_spi.miso_gpio,
+			MT6816_config_now.sw_spi.miso_pin, PAL_MODE_INPUT_PULLUP);
+	palSetPadMode(MT6816_config_now.sw_spi.sck_gpio,
+			MT6816_config_now.sw_spi.sck_pin, PAL_MODE_INPUT_PULLUP);
+
+	MT6816_config_now.is_init = 0;
+	last_enc_angle = 0.0;
+	spi_error_rate = 0.0;
 }
 
 void MT6816_routine(void) {
@@ -144,6 +140,10 @@ void MT6816_routine(void) {
 				1. / MT6816_config_now.refresh_rate_hz);
 	}
 
+}
+
+float MT6816_read_deg(void) {
+	return last_enc_angle;
 }
 
 uint32_t MT6816_spi_get_val(void) {

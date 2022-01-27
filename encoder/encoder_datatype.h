@@ -16,6 +16,7 @@ typedef enum {
 	ENCODER_TYPE_NONE = 0,
 	ENCODER_TYPE_AS504x,
 	ENCODER_TYPE_MT6816,
+	ENCODER_TYPE_TLE5012,
 	ENCODER_TYPE_AD2S1205_SPI,
 	ENCODER_TYPE_SINCOS,
 	ENCODER_TYPE_TS5700N8501,
@@ -31,6 +32,7 @@ typedef struct {
 #endif
 } ENCSPI_config_t;
 
+typedef ENCSPI_config_t TLE5012_config_t;
 typedef ENCSPI_config_t MT6816_config_t;
 typedef ENCSPI_config_t AD2S1205_config_t;
 typedef ENCSPI_config_t AS504x_config_t;
