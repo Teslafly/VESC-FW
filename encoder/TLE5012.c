@@ -92,6 +92,32 @@ void TLE5012_routine(void) {
 	uint16_t reg_addr_03 = 0x8300;
 	uint16_t reg_addr_04 = 0x8400;
 
+
+	// steps
+	// write 16bit command ()
+	// delay by Twr (see datasheet)
+	// read 16 bit angle
+	// read 16 bit safety word
+
+	/*
+	command word:
+	bits
+	[15] = rw, 1=read <- first bit transmitted
+	[14..11] = lock, 0000
+	[10] = Update-Register Access, 0: Access to current values, 1: values in buffer
+	[9..4] = address, status=0x00, angle=0x02, speed=0x03
+	[3..0] = 4-bit Number of Data Words (if bits set to 0000B, no safety word is provided)
+	
+	
+	safety word:
+	[15]:Indication of chip reset or watchdog overflow (resets after readout) via SSC
+	[14]: System error
+	[13]: Interface access error
+	[12]: Invalid angle value (produce vesc fault if 1)
+	[11..8]: Sensor number response indicator
+	[7..0]: crc 
+	*/
+
 	spi_bb_begin(&(TLE5012_config_now.sw_spi));
 	reg_data_03 = spiPolledExchange(&HW_SPI_DEV, reg_addr_03);
 	spi_bb_end(&(TLE5012_config_now.sw_spi));
@@ -103,24 +129,24 @@ void TLE5012_routine(void) {
 	pos = (reg_data_03 << 8) | reg_data_04;
 	spi_val = pos;
 
-	if (spi_bb_check_parity(pos)) {
-		if (pos & TLE5012_NO_MAGNET_ERROR_MASK) {
-			++encoder_no_magnet_error_cnt;
-			UTILS_LP_FAST(encoder_no_magnet_error_rate, 1.0,
-					1. / TLE5012_config_now.refresh_rate_hz);
-		} else {
-			pos = pos >> 2;
-			last_enc_angle = ((float) pos * 360.0) / 16384.0;
-			UTILS_LP_FAST(spi_error_rate, 0.0,
-					1. / TLE5012_config_now.refresh_rate_hz);
-			UTILS_LP_FAST(encoder_no_magnet_error_rate, 0.0,
-					1. / TLE5012_config_now.refresh_rate_hz);
-		}
-	} else {
-		++spi_error_cnt;
-		UTILS_LP_FAST(spi_error_rate, 1.0,
-				1. / TLE5012_config_now.refresh_rate_hz);
-	}
+	// if (spi_bb_check_parity(pos)) {
+	// 	if (pos & TLE5012_NO_MAGNET_ERROR_MASK) {
+	// 		++encoder_no_magnet_error_cnt;
+	// 		UTILS_LP_FAST(encoder_no_magnet_error_rate, 1.0,
+	// 				1. / TLE5012_config_now.refresh_rate_hz);
+	// 	} else {
+	// 		pos = pos >> 2;
+	// 		last_enc_angle = ((float) pos * 360.0) / 16384.0;
+	// 		UTILS_LP_FAST(spi_error_rate, 0.0,
+	// 				1. / TLE5012_config_now.refresh_rate_hz);
+	// 		UTILS_LP_FAST(encoder_no_magnet_error_rate, 0.0,
+	// 				1. / TLE5012_config_now.refresh_rate_hz);
+	// 	}
+	// } else {
+	// 	++spi_error_cnt;
+	// 	UTILS_LP_FAST(spi_error_rate, 1.0,
+	// 			1. / TLE5012_config_now.refresh_rate_hz);
+	// }
 
 }
 
