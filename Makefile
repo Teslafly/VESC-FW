@@ -350,11 +350,17 @@ size: build/$(PROJECT).elf
 docker-setup:
 	docker build -t vesc_fw_builder:local -f Dockerfile .
 
-docker-make: docker-setup
+# docker-make: docker-setup
+# 	docker run --rm \
+# 	-v "$(CURDIR)":/usr/ext_project \
+# 	-v "$(CURDIR)"/build:/usr/project/build \
+# 	vesc_fw_builder:local make
+
+docker-make:
 	docker run --rm \
-	-v "$(CURDIR)":/usr/ext_project \
-	-v "$(CURDIR)"/build:/usr/project/build \
+	-v "$(CURDIR)":/usr/project \
 	vesc_fw_builder:local make
+  
 
 docker-buildall: docker-setup
 	docker run --rm \

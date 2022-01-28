@@ -16,6 +16,6 @@ RUN wget https://developer.arm.com/-/media/Files/downloads/gnu-rm/6-2017q2/gcc-a
 ENV PATH $PATH:/home/devtools/gcc-arm-none-eabi-6-2017-q2-update/bin
 
 WORKDIR /usr/project
-COPY . /usr/project
+# COPY . /usr/project
 
-#todo: hot to debug with gcc inside container connected to external openocd adapter. start with vscode
+#todo: hot to debug with gcc inside container connected to external openocd adapter. start with vscodels
