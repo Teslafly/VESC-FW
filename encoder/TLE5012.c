@@ -22,20 +22,7 @@ encoder_ret_t TLE5012_init(TLE5012_config_t *TLE5012_config) {
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
 
 	TLE5012_config_now = *TLE5012_config;
-
-	palSetPadMode(TLE5012_config_now.sw_spi.sck_gpio,
-			TLE5012_config_now.sw_spi.sck_pin,
-			PAL_MODE_ALTERNATE(6) | PAL_STM32_OSPEED_HIGHEST);
-	palSetPadMode(TLE5012_config_now.sw_spi.miso_gpio,
-			TLE5012_config_now.sw_spi.miso_pin,
-			PAL_MODE_ALTERNATE(6) | PAL_STM32_OSPEED_HIGHEST);
-	palSetPadMode(TLE5012_config_now.sw_spi.mosi_gpio, TLE5012_config_now.sw_spi.mosi_pin, PAL_MODE_ALTERNATE(6) | PAL_STM32_OSPEED_HIGHEST);
-
-
-	spi_bb_nss_init(&(TLE5012_config_now.sw_spi));
-
-	//Start driver with TLE5012 SPI settings
-	spiStart(&HW_SPI_DEV, &(TLE5012_config_now.hw_spi_cfg));
+	ssc_bb_init(&(TLE5012_config_now.sw_spi));
 
 	// Enable timer clock
 	HW_ENC_TIM_CLK_EN();
@@ -55,30 +42,31 @@ encoder_ret_t TLE5012_init(TLE5012_config_t *TLE5012_config) {
 	// Enable timer
 	TIM_Cmd(HW_ENC_TIM, ENABLE);
 
-	nvicEnableVector(HW_ENC_TIM_ISR_CH, 6);
 	spi_error_rate = 0.0;
 	encoder_no_magnet_error_rate = 0.0;
 
-	TLE5012_config_now.is_init = 1;
+	nvicEnableVector(HW_ENC_TIM_ISR_CH, 6);
+
 	TLE5012_config->is_init = 1;
+	TLE5012_config_now = *TLE5012_config;
 
 	return ENCODER_OK;
 }
 
 void TLE5012_deinit(void) {
-
 	nvicDisableVector(HW_ENC_EXTI_CH);
 	nvicDisableVector(HW_ENC_TIM_ISR_CH);
 
 	TIM_DeInit(HW_ENC_TIM);
 
-	palSetPadMode(TLE5012_config_now.sw_spi.miso_gpio,
-			TLE5012_config_now.sw_spi.miso_pin, PAL_MODE_INPUT_PULLUP);
-	palSetPadMode(TLE5012_config_now.sw_spi.sck_gpio,
-			TLE5012_config_now.sw_spi.sck_pin, PAL_MODE_INPUT_PULLUP);
-	palSetPadMode(TLE5012_config_now.sw_spi.nss_gpio,
-			TLE5012_config_now.sw_spi.nss_pin, PAL_MODE_INPUT_PULLUP);
+	ssc_bb_deinit(&(TLE5012_config_now.sw_spi));
 
+	// palSetPadMode(TLE5012_config_now.sw_spi.miso_gpio,
+	// 		TLE5012_config_now.sw_spi.miso_pin, PAL_MODE_INPUT_PULLUP);
+	// palSetPadMode(TLE5012_config_now.sw_spi.sck_gpio,
+	// 		TLE5012_config_now.sw_spi.sck_pin, PAL_MODE_INPUT_PULLUP);
+	// palSetPadMode(TLE5012_config_now.sw_spi.nss_gpio,
+	// 		TLE5012_config_now.sw_spi.nss_pin, PAL_MODE_INPUT_PULLUP);
 
 	TLE5012_config_now.is_init = 0;
 	last_enc_angle = 0.0;
@@ -87,16 +75,14 @@ void TLE5012_deinit(void) {
 
 void TLE5012_routine(void) {
 	uint16_t pos;
-	uint16_t reg_data_03;
-	uint16_t reg_data_04;
-	uint16_t reg_addr_03 = 0x8300;
-	uint16_t reg_addr_04 = 0x8400;
+	uint16_t data;
+	uint16_t safety_word;
 
 
 	// steps
 	// write 16bit command ()
 	// delay by Twr (see datasheet)
-	// read 16 bit angle
+	// read 16 bit angle (msb is rd_av, 1 for new angle available.)
 	// read 16 bit safety word
 
 	/*
@@ -118,16 +104,14 @@ void TLE5012_routine(void) {
 	[7..0]: crc 
 	*/
 
-	spi_bb_begin(&(TLE5012_config_now.sw_spi));
-	reg_data_03 = spiPolledExchange(&HW_SPI_DEV, reg_addr_03);
-	spi_bb_end(&(TLE5012_config_now.sw_spi));
-	spi_bb_delay();
-	spi_bb_begin(&(TLE5012_config_now.sw_spi));
-	reg_data_04 = spiPolledExchange(&HW_SPI_DEV, reg_addr_04);
-	spi_bb_end(&(TLE5012_config_now.sw_spi));
+	ssc_bb_begin(&(TLE5012_config_now.sw_spi));
+	ssc_bb_transfer_16(&(TLE5012_config_now.sw_spi), &data, 0, 1, true);
+	ssc_bb_transfer_16(&(TLE5012_config_now.sw_spi), &data, 0, 1, false);
+	ssc_bb_transfer_16(&(TLE5012_config_now.sw_spi), &safety_word, 0, 1, false);  // can this be disabled with command word?
+	ssc_bb_end(&(TLE5012_config_now.sw_spi));
 
-	pos = (reg_data_03 << 8) | reg_data_04;
-	spi_val = pos;
+	// new_data_avail= data & 0x8000 // dont care, get angle anyways?
+	pos = data & 0x7FFF;
 
 	// if (spi_bb_check_parity(pos)) {
 	// 	if (pos & TLE5012_NO_MAGNET_ERROR_MASK) {
