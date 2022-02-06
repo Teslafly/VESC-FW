@@ -1,4 +1,4 @@
-=== FW 5.03 <dev> ===
+=== FW 5.03 ===
 * Fixed inductance measurement bug.
 * Speed tracker windup protection.
 * Phase filter support.
@@ -27,6 +27,25 @@
 * Dynamic QML-script write support.
 * Use fast speed tracker for current controller.
 * Disable motor for 5 seconds after flash operations.
+* Added kill switch support.
+* Added process derivative term to position controller.
+* Added position PID-controller angle offset.
+* Configurable PID controller rate.
+* Added several AUX port modes.
+* Added configurable safe start modes.
+* Added fusion IMU filter.
+* Added constant torque PAS mode.
+* Correct scaling for resistance and inductance.
+* Fixed inductance measurement bug with f_sw > 30k.
+* Corrected inductance measurement algorithm.
+* Fixed max power loss calculation.
+* Better input current estimation.
+* Added raw sampled data mode.
+* Compensate inductance for motor saliency in observer.
+* Added MTPA mode based on measured current.
+* Faster overvoltage protection.
+* Added statistics counters.
+* Added configurable observer offset.
 
 === FW 5.02 ===
 * IMU calibration improvement.

@@ -422,9 +422,10 @@ void terminal_process_string(char *str) {
 
 		float res = 0.0;
 		float ind = 0.0;
-		mcpwm_foc_measure_res_ind(&res, &ind);
+		float ld_lq_diff = 0.0;
+		mcpwm_foc_measure_res_ind(&res, &ind, &ld_lq_diff);
 		commands_printf("Resistance: %.6f ohm", (double)res);
-		commands_printf("Inductance: %.2f microhenry\n", (double)ind);
+		commands_printf("Inductance: %.2f uH (Lq-Ld: %.2f uH)\n", (double)ind, (double)ld_lq_diff);
 
 		mc_interface_set_configuration(mcconf_old);
 
@@ -448,8 +449,9 @@ void terminal_process_string(char *str) {
 				// Disable timeout
 				systime_t tout = timeout_get_timeout_msec();
 				float tout_c = timeout_get_brake_current();
+				KILL_SW_MODE tout_ksw = timeout_get_kill_sw_mode();
 				timeout_reset();
-				timeout_configure(60000, 0.0);
+				timeout_configure(60000, 0.0, KILL_SW_MODE_DISABLED);
 
 				for (int i = 0;i < 100;i++) {
 					mc_interface_set_duty(((float)i / 100.0) * duty);
@@ -476,13 +478,13 @@ void terminal_process_string(char *str) {
 				mempools_free_mcconf(mcconf_old);
 
 				// Enable timeout
-				timeout_configure(tout, tout_c);
+				timeout_configure(tout, tout_c, tout_ksw);
 
 				vq_avg /= samples;
 				rpm_avg /= samples;
 				iq_avg /= samples;
 
-				float linkage = (vq_avg - res * iq_avg) / (rpm_avg * ((2.0 * M_PI) / 60.0));
+				float linkage = (vq_avg - res * iq_avg) / RPM2RADPS_f(rpm_avg);
 
 				commands_printf("Flux linkage: %.7f\n", (double)linkage);
 			} else {
@@ -719,7 +721,7 @@ void terminal_process_string(char *str) {
 #endif
 					commands_printf("Motor Current       : %.1f A", (double)(mcconf->l_current_max));
 					commands_printf("Motor R             : %.2f mOhm", (double)(mcconf->foc_motor_r * 1e3));
-					commands_printf("Motor L             : %.2f microH", (double)(mcconf->foc_motor_l * 1e6));
+					commands_printf("Motor L             : %.2f uH", (double)(mcconf->foc_motor_l * 1e6));
 					commands_printf("Motor Flux Linkage  : %.3f mWb", (double)(mcconf->foc_motor_flux_linkage * 1e3));
 					commands_printf("Temp Comp           : %s", mcconf->foc_temp_comp ? "true" : "false");
 					if (mcconf->foc_temp_comp) {
@@ -741,7 +743,7 @@ void terminal_process_string(char *str) {
 					commands_printf("\nMOTOR 2\n");
 					commands_printf("Motor Current       : %.1f A", (double)(mcconf->l_current_max));
 					commands_printf("Motor R             : %.2f mOhm", (double)(mcconf->foc_motor_r * 1e3));
-					commands_printf("Motor L             : %.2f microH", (double)(mcconf->foc_motor_l * 1e6));
+					commands_printf("Motor L             : %.2f uH", (double)(mcconf->foc_motor_l * 1e6));
 					commands_printf("Motor Flux Linkage  : %.3f mWb", (double)(mcconf->foc_motor_flux_linkage * 1e3));
 					commands_printf("Temp Comp           : %s", mcconf->foc_temp_comp ? "true" : "false");
 					if (mcconf->foc_sensor_mode == FOC_SENSOR_MODE_SENSORLESS) {
@@ -860,15 +862,25 @@ void terminal_process_string(char *str) {
 		}
 	} else if (strcmp(argv[0], "encoder") == 0) {
 		const volatile mc_configuration *mcconf = mc_interface_get_configuration();
+
 		if (mcconf->m_sensor_port_mode == SENSOR_PORT_MODE_AS5047_SPI ||
 				mcconf->m_sensor_port_mode == SENSOR_PORT_MODE_MT6816_SPI ||
 				mcconf->m_sensor_port_mode == SENSOR_PORT_MODE_AD2S1205 ||
 				mcconf->m_sensor_port_mode == SENSOR_PORT_MODE_TS5700N8501 ||
 				mcconf->m_sensor_port_mode == SENSOR_PORT_MODE_TS5700N8501_MULTITURN) {
-			commands_printf("SPI encoder value: %d, errors: %d, error rate: %.3f %%",
-					(unsigned int)encoder_spi_get_val(),
-					encoder_spi_get_error_cnt(),
-					(double)encoder_spi_get_error_rate() * (double)100.0);
+
+			if (mcconf->m_sensor_port_mode != SENSOR_PORT_MODE_AS5047_SPI) {
+				commands_printf("SPI encoder value: %d, errors: %d, error rate: %.3f %%",
+						(unsigned int)encoder_spi_get_val(),
+						encoder_spi_get_error_cnt(),
+						(double)encoder_spi_get_error_rate() * (double)100.0);
+			} else {
+				commands_printf("SPI encoder value: %d, errors: %d, error rate: %.3f %%, Connected: %u",
+						(unsigned int)encoder_spi_get_val(),
+						encoder_spi_get_error_cnt(),
+						(double)encoder_spi_get_error_rate() * (double)100.0,
+						encoder_AS504x_get_diag().is_connected);
+			}
 
 			if (mcconf->m_sensor_port_mode == SENSOR_PORT_MODE_TS5700N8501 ||
 					mcconf->m_sensor_port_mode == SENSOR_PORT_MODE_TS5700N8501_MULTITURN) {
@@ -884,6 +896,22 @@ void terminal_process_string(char *str) {
 						encoder_get_no_magnet_error_cnt(),
 						(double)encoder_get_no_magnet_error_rate() * (double)100.0);
 			}
+
+#if AS504x_USE_SW_MOSI_PIN || AS5047_USE_HW_SPI_PINS
+			if (mcconf->m_sensor_port_mode == SENSOR_PORT_MODE_AS5047_SPI) {
+				commands_printf("\nAS5047 DIAGNOSTICS:\n"
+						"AGC       : %u\n"
+						"Magnitude : %u\n"
+						"COF       : %u\n"
+						"OCF       : %u\n"
+						"COMP_low  : %u\n"
+						"COMP_high : %u\n",
+						encoder_AS504x_get_diag().AGC_value, encoder_AS504x_get_diag().magnitude,
+						encoder_AS504x_get_diag().is_COF, encoder_AS504x_get_diag().is_OCF,
+						encoder_AS504x_get_diag().is_Comp_low,
+						encoder_AS504x_get_diag().is_Comp_high);
+			}
+#endif
 		}
 
 		if (mcconf->m_sensor_port_mode == SENSOR_PORT_MODE_SINCOS) {
@@ -1079,6 +1107,21 @@ void terminal_process_string(char *str) {
 		commands_printf("Discrepancy is expected due to run-time recalculation of config params.\n");
 	} else if (strcmp(argv[0], "drv_reset_faults") == 0) {
 		HW_RESET_DRV_FAULTS();
+	} else if (strcmp(argv[0], "update_pid_pos_offset") == 0) {
+		if (argc == 3) {
+			float angle_now = -500.0;
+			int store = false;
+
+			sscanf(argv[1], "%f", &angle_now);
+			sscanf(argv[2], "%d", &store);
+
+			if (angle_now > -360.0 && angle_now < 360.0) {
+				mc_interface_update_pid_pos_offset(angle_now, store);
+				commands_printf("OK\n");
+			} else {
+				commands_printf("Invalid arguments\n");
+			}
+		}
 	}
 
 	// The help command
@@ -1159,7 +1202,7 @@ void terminal_process_string(char *str) {
 
 		commands_printf("measure_linkage_openloop [current] [duty] [erpm_per_sec] [motor_res] [motor_ind]");
 		commands_printf("  Run the motor in openloop FOC and measure the flux linkage");
-		commands_printf("  example measure_linkage 5 0.5 1000 0.076 0.000015");
+		commands_printf("  example measure_linkage_openloop 5 0.5 1000 0.076 0.000015");
 		commands_printf("  tip: measure the resistance with measure_res first");
 
 		commands_printf("foc_state");
@@ -1223,6 +1266,9 @@ void terminal_process_string(char *str) {
 
 		commands_printf("drv_reset_faults");
 		commands_printf("  Reset gate driver faults (if possible).");
+
+		commands_printf("update_pid_pos_offset [angle_now] [store]");
+		commands_printf("  Update position PID offset.");
 
 		for (int i = 0;i < callback_write;i++) {
 			if (callbacks[i].cbf == 0) {

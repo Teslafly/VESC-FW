@@ -94,6 +94,28 @@
 #define ADC_IND_TEMP_MOTOR		9
 #define ADC_IND_VREFINT			12
 
+// -------- Current sensor test
+#if 1
+
+#undef ADC_IND_CURR1
+#undef ADC_IND_CURR2
+#undef ADC_IND_CURR3
+#undef CURRENT_FILTER_ON
+#undef CURRENT_FILTER_OFF
+
+#define ADC_IND_CURR1			6
+#define ADC_IND_CURR2			7
+#define ADC_IND_CURR3			10
+
+#define CURRENT_SHUNT_RES		1
+#define CURRENT_AMP_GAIN		(2.22e-3 * (4.7 / (4.7 + 2.2)))
+
+#define APPCONF_APP_TO_USE		APP_NONE
+
+#endif
+
+// ----------------------------
+
 // ADC macros and settings
 
 // Component parameters (can be overridden)
@@ -246,8 +268,8 @@
 #ifndef MCCONF_DEFAULT_MOTOR_TYPE
 #define MCCONF_DEFAULT_MOTOR_TYPE		MOTOR_TYPE_FOC
 #endif
-#ifndef MCCONF_FOC_F_SW
-#define MCCONF_FOC_F_SW					30000.0
+#ifndef MCCONF_FOC_F_ZV
+#define MCCONF_FOC_F_ZV					30000.0
 #endif
 #ifndef MCCONF_L_MAX_ABS_CURRENT
 #define MCCONF_L_MAX_ABS_CURRENT		700.0	// The maximum absolute current above which a fault is generated

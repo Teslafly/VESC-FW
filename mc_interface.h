@@ -31,6 +31,7 @@ int mc_interface_get_motor_thread(void);
 const volatile mc_configuration* mc_interface_get_configuration(void);
 void mc_interface_set_configuration(mc_configuration *configuration);
 unsigned mc_interface_calc_crc(mc_configuration* conf, bool is_motor_2);
+bool mc_interface_dccal_done(void);
 void mc_interface_set_pwm_callback(void (*p_func)(void));
 void mc_interface_lock(void);
 void mc_interface_unlock(void);
@@ -51,6 +52,7 @@ void mc_interface_set_handbrake_rel(float val);
 int mc_interface_set_tachometer_value(int steps);
 void mc_interface_brake_now(void);
 void mc_interface_release_motor(void);
+void mc_interface_release_motor_override(void);
 bool mc_interface_wait_for_motor_release(float timeout);
 float mc_interface_get_duty_cycle_set(void);
 float mc_interface_get_duty_cycle_now(void);
@@ -78,8 +80,9 @@ float mc_interface_read_reset_avg_vd(void);
 float mc_interface_read_reset_avg_vq(void);
 float mc_interface_get_pid_pos_set(void);
 float mc_interface_get_pid_pos_now(void);
+void mc_interface_update_pid_pos_offset(float angle_now, bool store);
 float mc_interface_get_last_sample_adc_isr_duration(void);
-void mc_interface_sample_print_data(debug_sampling_mode mode, uint16_t len, uint8_t decimation);
+void mc_interface_sample_print_data(debug_sampling_mode mode, uint16_t len, uint8_t decimation, bool raw);
 float mc_interface_temp_fet_filtered(void);
 float mc_interface_temp_motor_filtered(void);
 float mc_interface_get_battery_level(float *wh_left);
@@ -97,6 +100,20 @@ void mc_interface_ignore_input(int time_ms);
 void mc_interface_ignore_input_both(int time_ms);
 
 void mc_interface_set_current_off_delay(float delay_sec);
+
+// Statistics
+float mc_interface_stat_speed_avg(void);
+float mc_interface_stat_speed_max(void);
+float mc_interface_stat_power_avg(void);
+float mc_interface_stat_power_max(void);
+float mc_interface_stat_current_avg(void);
+float mc_interface_stat_current_max(void);
+float mc_interface_stat_temp_mosfet_avg(void);
+float mc_interface_stat_temp_mosfet_max(void);
+float mc_interface_stat_temp_motor_avg(void);
+float mc_interface_stat_temp_motor_max(void);
+float mc_interface_stat_count_time(void);
+void mc_interface_stat_reset(void);
 
 // MC implementation functions
 void mc_interface_fault_stop(mc_fault_code fault, bool is_second_motor, bool is_isr);

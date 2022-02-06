@@ -53,6 +53,12 @@
 #endif
 #include "shutdown.h"
 #include "mempools.h"
+#include "events.h"
+#include "main.h"
+
+#ifdef USE_LISPBM
+#include "lispif.h"
+#endif
 
 /*
  * HW resources used:
@@ -74,8 +80,10 @@
  */
 
 // Private variables
-static THD_WORKING_AREA(periodic_thread_wa, 1024);
+static THD_WORKING_AREA(periodic_thread_wa, 512);
+static THD_WORKING_AREA(led_thread_wa, 256);
 static THD_WORKING_AREA(flash_integrity_check_thread_wa, 256);
+static bool m_init_done = false;
 
 static THD_FUNCTION(flash_integrity_check_thread, arg) {
 	(void)arg;
@@ -92,10 +100,10 @@ static THD_FUNCTION(flash_integrity_check_thread, arg) {
 	}
 }
 
-static THD_FUNCTION(periodic_thread, arg) {
+static THD_FUNCTION(led_thread, arg) {
 	(void)arg;
 
-	chRegSetThreadName("Main periodic");
+	chRegSetThreadName("Main LED");
 
 	for(;;) {
 		mc_state state1 = mc_interface_get_state();
@@ -134,6 +142,16 @@ static THD_FUNCTION(periodic_thread, arg) {
 			ledpwm_set_intensity(LED_RED, 0.0);
 		}
 
+		chThdSleepMilliseconds(10);
+	}
+}
+
+static THD_FUNCTION(periodic_thread, arg) {
+	(void)arg;
+
+	chRegSetThreadName("Main periodic");
+
+	for(;;) {
 		if (mc_interface_get_state() == MC_STATE_DETECTING) {
 			commands_send_rotor_pos(mcpwm_get_detect_pos());
 		}
@@ -185,6 +203,10 @@ void assert_failed(uint8_t* file, uint32_t line) {
 	}
 }
 
+bool main_init_done(void) {
+	return m_init_done;
+}
+
 int main(void) {
 	halInit();
 	chSysInit();
@@ -205,6 +227,7 @@ int main(void) {
 
 	chThdSleepMilliseconds(100);
 
+	events_init();
 	hw_init_gpio();
 	LED_RED_OFF();
 	LED_GREEN_OFF();
@@ -260,11 +283,12 @@ int main(void) {
 #endif
 
 	// Threads
+	chThdCreateStatic(led_thread_wa, sizeof(led_thread_wa), NORMALPRIO, led_thread, NULL);
 	chThdCreateStatic(periodic_thread_wa, sizeof(periodic_thread_wa), NORMALPRIO, periodic_thread, NULL);
 	chThdCreateStatic(flash_integrity_check_thread_wa, sizeof(flash_integrity_check_thread_wa), LOWPRIO, flash_integrity_check_thread, NULL);
 
 	timeout_init();
-	timeout_configure(appconf->timeout_msec, appconf->timeout_brake_current);
+	timeout_configure(appconf->timeout_msec, appconf->timeout_brake_current, appconf->kill_sw_mode);
 
 	mempools_free_appconf(appconf);
 
@@ -276,10 +300,18 @@ int main(void) {
 	shutdown_init();
 #endif
 
+	imu_reset_orientation();
+
 #ifdef BOOT_OK_GPIO
 	chThdSleepMilliseconds(500);
 	palSetPad(BOOT_OK_GPIO, BOOT_OK_PIN);
 #endif
+
+#ifdef USE_LISPBM
+	lispif_init();
+#endif
+
+	m_init_done = true;
 
 	for(;;) {
 		chThdSleepMilliseconds(10);

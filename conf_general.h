@@ -24,7 +24,7 @@
 #define FW_VERSION_MAJOR			5
 #define FW_VERSION_MINOR			03
 // Set to 0 for building a release and iterate during beta test builds
-#define FW_TEST_VERSION_NUMBER		37
+#define FW_TEST_VERSION_NUMBER		0
 
 #include "datatypes.h"
 
@@ -89,8 +89,8 @@
 //#define HW_SOURCE "hw_axiom.c"
 //#define HW_HEADER "hw_axiom.h"
 
-//#define HW_SOURCE "hw_luna_bbshd.c"
-//#define HW_HEADER "hw_luna_bbshd.h"
+//#define HW_SOURCE "luna/hw_luna_bbshd.c"
+//#define HW_HEADER "luna/hw_luna_bbshd.h"
 
 //#define HW_SOURCE "hw_rh.c"
 //#define HW_HEADER "hw_rh.h"
@@ -120,14 +120,16 @@
 //#define HW_SOURCE "hw_uavc_omega.c"
 //#define HW_HEADER "hw_uavc_omega.h"
 
-//#define HW_SOURCE "hw_binar_v1.c"
-//#define HW_HEADER "hw_binar_v1.h"
-
 //#define HW_SOURCE "hw_hd60.c"
 //#define HW_HEADER "hw_hd60.h"
 
 //#define HW_SOURCE "hw_hd75.c"
 //#define HW_HEADER "hw_hd75.h"
+
+//#define HW_A50S_6S
+//#define HW_A50S_12S
+//#define HW_SOURCE "hw_a50s.c"
+//#define HW_HEADER "hw_a50s.h"
 
 //#define HW_SOURCE "hw_a200s_v2.c"
 //#define HW_HEADER "hw_a200s_v2.h"
@@ -146,10 +148,12 @@
 
 //#define HW_DUAL_CONFIG_PARALLEL
 //#define HW_VER_IS_100D_V2
+//#define HW_VER_IS_100DX
 //#define HW_SOURCE "hw_stormcore_100d.c"
 //#define HW_HEADER "hw_stormcore_100d.h"
 
 //#define HW_VER_IS_60D_PLUS
+//#define HW_VER_IS_60D_XS
 //#define HW_SOURCE "hw_stormcore_60d.c"
 //#define HW_HEADER "hw_stormcore_60d.h"
 
@@ -173,6 +177,18 @@
 
 #define HW_SOURCE "hw_Moxie_drive_24.c"
 #define HW_HEADER "hw_Moxie_drive_24.h"
+
+//#define HW_SOURCE "hw_warrior6.c"
+//#define HW_HEADER "hw_warrior6.h"
+
+//#define HW_SOURCE "hw_raiden7.c"
+//#define HW_HEADER "hw_raiden7.h"
+
+//#define HW_SOURCE "hw_ubox_single.c"
+//#define HW_HEADER "hw_ubox_single.h"
+
+//#define HW_SOURCE "hw_60v2_alva.c"
+//#define HW_HEADER "hw_60v2_alva.h"
 #endif
 
 #ifndef HW_SOURCE
@@ -294,6 +310,9 @@
 #ifndef MT6816_USE_HW_SPI_PINS
 #define MT6816_USE_HW_SPI_PINS		0
 #endif
+#ifndef AS504x_USE_SW_MOSI_PIN
+#define AS504x_USE_SW_MOSI_PIN 		0
+#endif
 
 /*
  * MCU
@@ -353,5 +372,6 @@ int conf_general_detect_apply_all_foc(float max_power_loss,
 		bool store_mcconf_on_success, bool send_mcconf_on_success);
 int conf_general_detect_apply_all_foc_can(bool detect_can, float max_power_loss,
 		float min_current_in, float max_current_in, float openloop_rpm, float sl_erpm);
+
 
 #endif /* CONF_GENERAL_H_ */
