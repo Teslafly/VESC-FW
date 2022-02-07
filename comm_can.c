@@ -38,6 +38,9 @@
 #include "mempools.h"
 #include "shutdown.h"
 #include "bms.h"
+#ifdef USE_LISPBM
+#include "lispif.h"
+#endif
 
 // Settings
 #define RX_FRAMES_SIZE	100
@@ -45,8 +48,8 @@
 
 #if CAN_ENABLE
 // Threads
-static THD_WORKING_AREA(cancom_read_thread_wa, 512);
-static THD_WORKING_AREA(cancom_process_thread_wa, 4096);
+static THD_WORKING_AREA(cancom_read_thread_wa, 256);
+static THD_WORKING_AREA(cancom_process_thread_wa, 2048);
 static THD_WORKING_AREA(cancom_status_thread_wa, 512);
 static THD_FUNCTION(cancom_read_thread, arg);
 static THD_FUNCTION(cancom_status_thread, arg);
@@ -1212,6 +1215,9 @@ static THD_FUNCTION(cancom_process_thread, arg) {
 				if (!eid_cb_used) {
 					if (!bms_process_can_frame(rxmsg.EID, rxmsg.data8, rxmsg.DLC, true)) {
 						decode_msg(rxmsg.EID, rxmsg.data8, rxmsg.DLC, false);
+#ifdef USE_LISPBM
+						lispif_process_can(rxmsg.EID, rxmsg.data8, rxmsg.DLC, true);
+#endif
 					}
 				}
 			} else {
@@ -1221,8 +1227,14 @@ static THD_FUNCTION(cancom_process_thread, arg) {
 				}
 
 				if (!sid_cb_used) {
-					bms_process_can_frame(rxmsg.SID, rxmsg.data8, rxmsg.DLC, false);
+					sid_cb_used = bms_process_can_frame(rxmsg.SID, rxmsg.data8, rxmsg.DLC, false);
 				}
+
+#ifdef USE_LISPBM
+				if (!sid_cb_used) {
+					lispif_process_can(rxmsg.EID, rxmsg.data8, rxmsg.DLC, true);
+				}
+#endif
 			}
 		}
 	}

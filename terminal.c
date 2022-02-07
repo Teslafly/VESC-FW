@@ -1,5 +1,5 @@
 /*
-	Copyright 2016 - 2021 Benjamin Vedder	benjamin@vedder.se
+	Copyright 2016 - 2022 Benjamin Vedder	benjamin@vedder.se
 
 	This file is part of the VESC firmware.
 
@@ -100,14 +100,15 @@ void terminal_process_string(char *str) {
 	} else if (strcmp(argv[0], "threads") == 0) {
 		thread_t *tp;
 		static const char *states[] = {CH_STATE_NAMES};
-		commands_printf("    addr    stack prio refs     state           name motor time    ");
-		commands_printf("-------------------------------------------------------------------");
+		commands_printf("    addr    stack prio refs     state           name motor stackmin  time    ");
+		commands_printf("-----------------------------------------------------------------------------");
 		tp = chRegFirstThread();
 		do {
-			commands_printf("%.8lx %.8lx %4lu %4lu %9s %14s %5lu %lu (%.1f %%)",
+			int stack_left = utils_check_min_stack_left(tp);
+			commands_printf("%.8lx %.8lx %4lu %4lu %9s %14s %5lu %8d  %lu (%.1f %%)",
 					(uint32_t)tp, (uint32_t)tp->p_ctx.r13,
 					(uint32_t)tp->p_prio, (uint32_t)(tp->p_refs - 1),
-					states[tp->p_state], tp->p_name, tp->motor_selected, (uint32_t)tp->p_time,
+					states[tp->p_state], tp->p_name, tp->motor_selected, stack_left, (uint32_t)tp->p_time,
 					(double)(100.0 * (float)tp->p_time / (float)chVTGetSystemTimeX()));
 			tp = chRegNextThread(tp);
 		} while (tp != NULL);
@@ -444,7 +445,6 @@ void terminal_process_string(char *str) {
 
 				mcconf->motor_type = MOTOR_TYPE_FOC;
 				mc_interface_set_configuration(mcconf);
-				const float res = (3.0 / 2.0) * mcconf->foc_motor_r;
 
 				// Disable timeout
 				systime_t tout = timeout_get_timeout_msec();
@@ -484,7 +484,7 @@ void terminal_process_string(char *str) {
 				rpm_avg /= samples;
 				iq_avg /= samples;
 
-				float linkage = (vq_avg - res * iq_avg) / RPM2RADPS_f(rpm_avg);
+				float linkage = (vq_avg - mcconf->foc_motor_r * iq_avg) / RPM2RADPS_f(rpm_avg);
 
 				commands_printf("Flux linkage: %.7f\n", (double)linkage);
 			} else {
@@ -935,6 +935,10 @@ void terminal_process_string(char *str) {
 					encoder_resolver_loss_of_signal_error_cnt(),
 					(double)encoder_resolver_loss_of_signal_error_rate() * (double)100.0);
 		}
+
+		if (mcconf->m_sensor_port_mode == SENSOR_PORT_MODE_ABI) {
+			commands_printf("Index found: %d\n", encoder_index_found());
+		}
 	} else if (strcmp(argv[0], "encoder_clear_errors") == 0) {
 		encoder_ts57n8501_reset_errors();
 		commands_printf("Done!\n");
@@ -1299,6 +1303,14 @@ void terminal_add_fault_data(fault_data *data) {
 	fault_vec[fault_vec_write++] = *data;
 	if (fault_vec_write >= FAULT_VEC_LEN) {
 		fault_vec_write = 0;
+	}
+}
+
+mc_fault_code terminal_get_first_fault(void) {
+	if (fault_vec_write == 0) {
+		return FAULT_CODE_NONE;
+	} else {
+		return fault_vec[0].fault;
 	}
 }
 
