@@ -23,6 +23,12 @@
 #define HW_NAME				"Moxie_24"
 
 // HW properties
+
+// 25 mhz crystal
+#define STM32_HSECLK                        25000000U
+#define STM32_PLLM_VALUE                    25
+
+
 #define HW_HAS_3_SHUNTS
 // #define INVERTED_SHUNT_POLARITY  // not sure
 // #define HW_HAS_PHASE_FILTERS
@@ -171,21 +177,21 @@ non volt/curtrent adc channels
 #define VIN_R2					2200.0
 #endif
 #ifndef CURRENT_AMP_GAIN
-#define CURRENT_AMP_GAIN		0.0 // fix
+#define CURRENT_AMP_GAIN		(13.33 / 1000)  // volts/amp, acs758, 150a bidirectional
 #endif
 #ifndef CURRENT_SHUNT_RES
 #define CURRENT_SHUNT_RES		1 // hall sensor
 #endif
 
 // Input voltage
-// #define GET_INPUT_VOLTAGE()		((V_REG / 4095.0) * (float)ADC_Value[ADC_IND_VIN_SENS] * ((VIN_R1 + VIN_R2) / VIN_R2))
-#define GET_INPUT_VOLTAGE()	 24
+#define GET_INPUT_VOLTAGE()		((V_REG / 4095.0) * (float)ADC_Value[ADC_IND_VIN_SENS] * ((VIN_R1 + VIN_R2) / VIN_R2))
+// #define GET_INPUT_VOLTAGE()	 24
 
 
 // NTC Termistors
 #define NTC_RES(adc_val)		((4095.0 * 10000.0) / adc_val - 10000.0)
-// #define NTC_TEMP(adc_ind)		(1.0 / ((logf(NTC_RES(ADC_Value[adc_ind]) / 10000.0) / 3434.0) + (1.0 / 298.15)) - 273.15)
-#define NTC_TEMP(adc_ind)		35 // testing
+#define NTC_TEMP(adc_ind)		(1.0 / ((logf(NTC_RES(ADC_Value[adc_ind]) / 10000.0) / 3434.0) + (1.0 / 298.15)) - 273.15)
+// #define NTC_TEMP(adc_ind)		35 // testing
 
 #define NTC_RES_MOTOR(adc_val)	(10000.0 / ((4095.0 / (float)adc_val) - 1.0)) // Motor temp sensor on low side
 #define NTC_TEMP_MOTOR(beta)	(1.0 / ((logf(NTC_RES_MOTOR(ADC_Value[ADC_IND_TEMP_MOTOR]) / 10000.0) / beta) + (1.0 / 298.15)) - 273.15)
