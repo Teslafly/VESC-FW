@@ -1,5 +1,6 @@
 /*
 	Copyright 2016 - 2022 Benjamin Vedder	benjamin@vedder.se
+	Copyright 2022 Marcos Chaparro	mchaparro@powerdesigns.ca
 	Copyright 2022 Jakub Tomczak
 
 	This file is part of the VESC firmware.
@@ -18,33 +19,17 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ENCODER_ENCODER_H_
-#define ENCODER_ENCODER_H_
+#ifndef ENC_MT6816_H_
+#define ENC_MT6816_H_
 
-#include "hal.h"
-#include "encoder_datatype.h"
-#include "enc_ts5700n8501.h"
-#include "enc_ad2s1205.h"
-#include "enc_mt6816.h"
-#include "enc_sincos.h"
-#include "enc_as504x.h"
-#include "enc_abi.h"
+#include "datatypes.h"
+#include "encoder/encoder_datatype.h"
 
-// Functions
-encoder_ret_t encoder_init(volatile mc_configuration *conf);
-void encoder_deinit(void);
+encoder_ret_t enc_mt6816_init(MT6816_config_t *mt6816_config);
+void enc_mt6816_deinit(MT6816_config_t *cfg);
+void enc_mt6816_routine(MT6816_config_t *cfg, float rate);
 
-float encoder_read_deg(void);
-float encoder_read_deg_multiturn(void);
-encoder_type_t encoder_is_configured(void);
-bool encoder_index_found(void);
-void encoder_reset_multiturn(void);
-void encoder_reset_errors(void);
+// Macros
+#define MT6816_LAST_ANGLE(cfg)		((cfg)->state.last_enc_angle)
 
-void encoder_check_faults(volatile mc_configuration *m_conf, bool is_second_motor);
-
-// Interrupt handlers
-void encoder_pin_isr(void);
-void encoder_tim_isr(void);
-
-#endif /* ENCODER_ENCODER_H_ */
+#endif /* ENC_MT6816_H_ */

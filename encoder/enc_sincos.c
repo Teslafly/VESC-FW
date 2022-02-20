@@ -1,5 +1,25 @@
+/*
+	Copyright 2016 - 2022 Benjamin Vedder	benjamin@vedder.se
+	Copyright 2022 Marcos Chaparro	mchaparro@powerdesigns.ca
+	Copyright 2022 Jakub Tomczak
 
-#include "encoder/ENC_SINCOS.h"
+	This file is part of the VESC firmware.
+
+	The VESC firmware is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    The VESC firmware is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "enc_sincos.h"
 
 #include "ch.h"
 #include "hal.h"
@@ -9,12 +29,9 @@
 #include <math.h>
 #include "hw.h"
 
-//TODO move defines to encoder_hwconf.h
 #define SINCOS_SAMPLE_RATE_HZ       20000
 #define SINCOS_MIN_AMPLITUDE        1.0         // sqrt(sin^2 + cos^2) has to be larger than this
 #define SINCOS_MAX_AMPLITUDE        1.65        // sqrt(sin^2 + cos^2) has to be smaller than this
-
-#define HW_HAS_SIN_COS_ENCODER //todo delete later
 
 ENCSINCOS_config_t enc_sincos_config_now = { 0 };
 
@@ -25,17 +42,13 @@ static float sincos_signal_above_max_error_rate = 0.0;
 
 static float last_enc_angle = 0.0;
 
-void ENC_SINCOS_deinit(void) {
+void enc_sincos_deinit(void) {
 	last_enc_angle = 0.0;
-
 	sincos_signal_low_error_rate = 0.0;
 	sincos_signal_above_max_error_rate = 0.0;
-	enc_sincos_config_now.is_init = 0;
 }
 
-encoder_ret_t ENC_SINCOS_init(ENCSINCOS_config_t *enc_sincos_config) {
-	//ADC inputs are already initialized in hw_init_gpio()
-
+encoder_ret_t enc_sincos_init(ENCSINCOS_config_t *enc_sincos_config) {
 	enc_sincos_config_now = *enc_sincos_config;
 
 	sincos_signal_below_min_error_cnt = 0;
@@ -43,22 +56,14 @@ encoder_ret_t ENC_SINCOS_init(ENCSINCOS_config_t *enc_sincos_config) {
 	sincos_signal_low_error_rate = 0.0;
 	sincos_signal_above_max_error_rate = 0.0;
 	last_enc_angle = 0.0;
-
-	// ADC measurements needs to be in sync with motor PWM
-#ifdef HW_HAS_SIN_COS_ENCODER
-	enc_sincos_config->is_init = 1;
 	enc_sincos_config_now = *enc_sincos_config;
 	return ENCODER_OK;
-#else
-	enc_sincos_config->is_init = 0;
-	return ENCODER_ERROR;
-#endif
 }
-float ENC_SINCOS_read_deg(void) {
-#ifdef HW_HAS_SIN_COS_ENCODER
+
+float enc_sincos_read_deg(void) {
 	float angle = 0.0;
-	float sin = ENCODER_SIN_VOLTS() * enc_sincos_config_now.s_gain - enc_sincos_config_now.s_offset; // ENCODER_SIN_VOLTS changed to ENCODER_SIN_VOLTS() otherwise the macro cannot be found
-	float cos = ENCODER_COS_VOLTS() * enc_sincos_config_now.c_gain - enc_sincos_config_now.c_offset;// ENCODER_COS_VOLTS changed to ENCODER_COS_VOLTS() otherwise the macro cannot be found
+	float sin = ENCODER_SIN_VOLTS * enc_sincos_config_now.s_gain - enc_sincos_config_now.s_offset;
+	float cos = ENCODER_COS_VOLTS * enc_sincos_config_now.c_gain - enc_sincos_config_now.c_offset;
 
 	float module = SQ(sin) + SQ(cos);
 
@@ -81,22 +86,22 @@ float ENC_SINCOS_read_deg(void) {
 			last_enc_angle = angle;
 		}
 	}
-#endif
+
 	return last_enc_angle;
 }
 
-uint32_t ENC_SINCOS_get_signal_below_min_error_cnt(void) {
+uint32_t enc_sincos_get_signal_below_min_error_cnt(void) {
 	return sincos_signal_below_min_error_cnt;
 }
 
-uint32_t ENC_SINCOS_get_signal_above_max_error_cnt(void) {
+uint32_t enc_sincos_get_signal_above_max_error_cnt(void) {
 	return sincos_signal_above_max_error_cnt;
 }
 
-float ENC_SINCOS_get_signal_below_min_error_rate(void) {
+float enc_sincos_get_signal_below_min_error_rate(void) {
 	return sincos_signal_low_error_rate;
 }
 
-float ENC_SINCOS_get_signal_above_max_error_rate(void) {
+float enc_sincos_get_signal_above_max_error_rate(void) {
 	return sincos_signal_above_max_error_rate;
 }

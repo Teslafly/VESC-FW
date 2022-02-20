@@ -1,5 +1,6 @@
 /*
 	Copyright 2016 - 2022 Benjamin Vedder	benjamin@vedder.se
+	Copyright 2022 Marcos Chaparro	mchaparro@powerdesigns.ca
 	Copyright 2022 Jakub Tomczak
 
 	This file is part of the VESC firmware.
@@ -18,33 +19,23 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ENCODER_ENCODER_H_
-#define ENCODER_ENCODER_H_
+#ifndef ENC_AD2S1205_H_
+#define ENC_AD2S1205_H_
 
-#include "hal.h"
-#include "encoder_datatype.h"
-#include "enc_ts5700n8501.h"
-#include "enc_ad2s1205.h"
-#include "enc_mt6816.h"
-#include "enc_sincos.h"
-#include "enc_as504x.h"
-#include "enc_abi.h"
+#include "datatypes.h"
+#include "encoder/encoder_datatype.h"
 
-// Functions
-encoder_ret_t encoder_init(volatile mc_configuration *conf);
-void encoder_deinit(void);
+void enc_ad2s1205_deinit(void);
+encoder_ret_t enc_ad2s1205_init(AD2S1205_config_t *AD2S1205_config);
 
-float encoder_read_deg(void);
-float encoder_read_deg_multiturn(void);
-encoder_type_t encoder_is_configured(void);
-bool encoder_index_found(void);
-void encoder_reset_multiturn(void);
-void encoder_reset_errors(void);
+float enc_ad2s1205_read_deg(void);
+void enc_ad2s1205_routine(float rate);
 
-void encoder_check_faults(volatile mc_configuration *m_conf, bool is_second_motor);
+float enc_ad2s1205_resolver_loss_of_tracking_error_rate(void);
+float enc_ad2s1205_resolver_degradation_of_signal_error_rate(void);
+float enc_ad2s1205_resolver_loss_of_signal_error_rate(void);
+uint32_t enc_ad2s1205_resolver_loss_of_tracking_error_cnt(void);
+uint32_t enc_ad2s1205_resolver_degradation_of_signal_error_cnt(void);
+uint32_t enc_ad2s1205_resolver_loss_of_signal_error_cnt(void);
 
-// Interrupt handlers
-void encoder_pin_isr(void);
-void encoder_tim_isr(void);
-
-#endif /* ENCODER_ENCODER_H_ */
+#endif /* ENC_AD2S1205_H_ */

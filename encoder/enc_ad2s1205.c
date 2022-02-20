@@ -1,5 +1,25 @@
+/*
+	Copyright 2016 - 2022 Benjamin Vedder	benjamin@vedder.se
+	Copyright 2022 Marcos Chaparro	mchaparro@powerdesigns.ca
+	Copyright 2022 Jakub Tomczak
 
-#include "encoder/AD2S1205.h"
+	This file is part of the VESC firmware.
+
+	The VESC firmware is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    The VESC firmware is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "enc_ad2s1205.h"
 
 #include "ch.h"
 #include "hal.h"
@@ -23,17 +43,8 @@ static uint32_t spi_error_cnt = 0;
 static float spi_error_rate = 0.0;
 static float last_enc_angle = 0.0;
 
-void AD2S1205_deinit(void) {
-	nvicDisableVector(HW_ENC_EXTI_CH);
-	nvicDisableVector(HW_ENC_TIM_ISR_CH);
-
-	TIM_DeInit(HW_ENC_TIM);
-
+void enc_ad2s1205_deinit(void) {
 	spi_bb_deinit(&(AD2S1205_config_now.sw_spi));
-
-#ifdef HW_SPI_DEV
-	spiStop(&HW_SPI_DEV);
-#endif
 
 	// TODO: (TO BE TESTED!!) DEINITIALIZE ALSO SAMPLE AND RDVEL
 #if defined(AD2S1205_SAMPLE_GPIO)
@@ -42,14 +53,9 @@ void AD2S1205_deinit(void) {
 #if defined(AD2S1205_RDVEL_GPIO)
 	palSetPadMode(AD2S1205_RDVEL_GPIO, AD2S1205_RDVEL_PIN, PAL_MODE_INPUT_PULLUP);	// Will always read position
 #endif
-
-	AD2S1205_config_now.is_init = 0;
 }
 
-encoder_ret_t AD2S1205_init(AD2S1205_config_t *AD2S1205_config) {
-
-	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
-
+encoder_ret_t enc_ad2s1205_init(AD2S1205_config_t *AD2S1205_config) {
 	AD2S1205_config_now = *AD2S1205_config;
 
 	spi_bb_init(&(AD2S1205_config_now.sw_spi));
@@ -60,36 +66,17 @@ encoder_ret_t AD2S1205_init(AD2S1205_config_t *AD2S1205_config) {
 	resolver_loss_of_tracking_error_cnt = 0;
 	resolver_loss_of_signal_error_cnt = 0;
 
-
-
 	// TODO: Choose pins on comm port when these are not defined
 #if defined(AD2S1205_SAMPLE_GPIO)
 	palSetPadMode(AD2S1205_SAMPLE_GPIO, AD2S1205_SAMPLE_PIN, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
 	palSetPad(AD2S1205_SAMPLE_GPIO, AD2S1205_SAMPLE_PIN);	// Prepare for a falling edge SAMPLE assertion
 #endif
+
 #if defined(AD2S1205_RDVEL_GPIO)
 	palSetPadMode(AD2S1205_RDVEL_GPIO, AD2S1205_RDVEL_PIN, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
 	palSetPad(AD2S1205_RDVEL_GPIO, AD2S1205_RDVEL_PIN);		// Will always read position
 #endif
 
-	// Enable timer clock
-	HW_ENC_TIM_CLK_EN();
-
-	// Time Base configuration
-	TIM_TimeBaseStructure.TIM_Prescaler = 0;
-	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
-	TIM_TimeBaseStructure.TIM_Period = ((168000000 / 2
-			/ AD2S1205_config->refresh_rate_hz) - 1);
-	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
-	TIM_TimeBaseStructure.TIM_RepetitionCounter = 0;
-	TIM_TimeBaseInit(HW_ENC_TIM, &TIM_TimeBaseStructure);
-
-	// Enable overflow interrupt
-	TIM_ITConfig(HW_ENC_TIM, TIM_IT_Update, ENABLE);
-	// Enable timer
-	TIM_Cmd(HW_ENC_TIM, ENABLE);
-
-	AD2S1205_config->is_init = 1;
 	AD2S1205_config_now = *AD2S1205_config;
 
 	nvicEnableVector(HW_ENC_TIM_ISR_CH, 6);
@@ -97,19 +84,19 @@ encoder_ret_t AD2S1205_init(AD2S1205_config_t *AD2S1205_config) {
 	return ENCODER_OK;
 }
 
-float AD2S1205_read_deg(void) {
+float enc_ad2s1205_read_deg(void) {
 	return last_enc_angle;
 }
 
-void AD2S1205_routine(void) {
+void enc_ad2s1205_routine(float rate) {
 	uint16_t pos;
 	// SAMPLE signal should have been be asserted in sync with ADC sampling
 #ifdef AD2S1205_RDVEL_GPIO
 	palSetPad(AD2S1205_RDVEL_GPIO, AD2S1205_RDVEL_PIN);	// Always read position
 #endif
 
-	palSetPad(AD2S1205_config_now.sw_spi.sck_gpio,
-			AD2S1205_config_now.sw_spi.sck_pin);
+	palSetPad(AD2S1205_config_now.sw_spi.sck_gpio, AD2S1205_config_now.sw_spi.sck_pin);
+
 	spi_bb_delay();
 	spi_bb_begin(&(AD2S1205_config_now.sw_spi)); // CS uses the same mcu pin as AS5047
 	spi_bb_delay();
@@ -134,13 +121,11 @@ void AD2S1205_routine(void) {
 		}
 
 		if (!parity_error) {
-			UTILS_LP_FAST(spi_error_rate, 0.0,
-					1. / AD2S1205_config_now.refresh_rate_hz);
+			UTILS_LP_FAST(spi_error_rate, 0.0, 1.0 / rate);
 		} else {
 			angle_is_correct = false;
 			++spi_error_cnt;
-			UTILS_LP_FAST(spi_error_rate, 1.0,
-					1. / AD2S1205_config_now.refresh_rate_hz);
+			UTILS_LP_FAST(spi_error_rate, 1.0, 1.0 / rate);
 		}
 
 		pos &= 0xFFF0;
@@ -150,61 +135,54 @@ void AD2S1205_routine(void) {
 		if (LOT) {
 			angle_is_correct = false;
 			++resolver_loss_of_tracking_error_cnt;
-			UTILS_LP_FAST(resolver_loss_of_tracking_error_rate, 1.0,
-					1. / AD2S1205_config_now.refresh_rate_hz);
+			UTILS_LP_FAST(resolver_loss_of_tracking_error_rate, 1.0, 1.0 / rate);
 		} else {
-			UTILS_LP_FAST(resolver_loss_of_tracking_error_rate, 0.0,
-					1. / AD2S1205_config_now.refresh_rate_hz);
+			UTILS_LP_FAST(resolver_loss_of_tracking_error_rate, 0.0, 1.0 / rate);
 		}
 
 		if (DOS) {
 			angle_is_correct = false;
 			++resolver_degradation_of_signal_error_cnt;
-			UTILS_LP_FAST(resolver_degradation_of_signal_error_rate, 1.0,
-					1. / AD2S1205_config_now.refresh_rate_hz);
+			UTILS_LP_FAST(resolver_degradation_of_signal_error_rate, 1.0, 1.0 / rate);
 		} else {
-			UTILS_LP_FAST(resolver_degradation_of_signal_error_rate, 0.0,
-					1. / AD2S1205_config_now.refresh_rate_hz);
+			UTILS_LP_FAST(resolver_degradation_of_signal_error_rate, 0.0, 1.0 / rate);
 		}
 
 		if (LOS) {
 			angle_is_correct = false;
 			++resolver_loss_of_signal_error_cnt;
-			UTILS_LP_FAST(resolver_loss_of_signal_error_rate, 1.0,
-					1. / AD2S1205_config_now.refresh_rate_hz);
+			UTILS_LP_FAST(resolver_loss_of_signal_error_rate, 1.0, 1.0 / rate);
 		} else {
-			UTILS_LP_FAST(resolver_loss_of_signal_error_rate, 0.0,
-					1. / AD2S1205_config_now.refresh_rate_hz);
+			UTILS_LP_FAST(resolver_loss_of_signal_error_rate, 0.0, 1.0 / rate);
 		}
 
 		if (angle_is_correct) {
 			last_enc_angle = ((float) pos * 360.0) / 4096.0;
 		}
 	}
-
 }
 
-float AD2S1205_resolver_loss_of_tracking_error_rate(void) {
+float enc_ad2s1205_resolver_loss_of_tracking_error_rate(void) {
 	return resolver_loss_of_tracking_error_rate;
 }
 
-float AD2S1205_resolver_degradation_of_signal_error_rate(void) {
+float enc_ad2s1205_resolver_degradation_of_signal_error_rate(void) {
 	return resolver_degradation_of_signal_error_rate;
 }
 
-float AD2S1205_resolver_loss_of_signal_error_rate(void) {
+float enc_ad2s1205_resolver_loss_of_signal_error_rate(void) {
 	return resolver_loss_of_signal_error_rate;
 }
 
-uint32_t AD2S1205_resolver_loss_of_tracking_error_cnt(void) {
+uint32_t enc_ad2s1205_resolver_loss_of_tracking_error_cnt(void) {
 	return resolver_loss_of_tracking_error_cnt;
 }
 
-uint32_t AD2S1205_resolver_degradation_of_signal_error_cnt(void) {
+uint32_t enc_ad2s1205_resolver_degradation_of_signal_error_cnt(void) {
 	return resolver_degradation_of_signal_error_cnt;
 }
 
-uint32_t AD2S1205_resolver_loss_of_signal_error_cnt(void) {
+uint32_t enc_ad2s1205_resolver_loss_of_signal_error_cnt(void) {
 	return resolver_loss_of_signal_error_cnt;
 }
 
