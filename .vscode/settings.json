@@ -1,0 +1,15 @@
+{
+    "files.associations": {
+        "stdio.h": "c"
+    },
+    "[makefile]": {
+        "editor.insertSpaces": false
+    },
+    //"workbench.colorTheme": "Default Light+",
+
+    // "cortex-debug.JLinkGDBServerPath": "/Applications/SEGGER/JLink_V644a/JLinkGDBServerCLExe",
+    // path where objdump and gdb can be found
+    // "cortex-debug.armToolchainPath": "/home/mscholz/tools/gcc-arm-none-eabi-6-2017-q2-update/bin/arm-none-eabi-gcc",
+    // "cortex-debug.openocdPath": "/Applications/ModusToolbox_2.0/tools/openocd-2.2/bin/openocd",
+    // "cortex-debug.abcd": "hello there"
+}

@@ -58,32 +58,57 @@ uint8_t spi_bb_exchange_8(spi_bb_state *s, uint8_t x) {
 	return rx;
 }
 
-void spi_bb_transfer_8(spi_bb_state *s, uint8_t *in_buf, const uint8_t *out_buf, int length) {
+void spi_bb_transfer_8(spi_bb_state *s, uint8_t *in_buf, const uint8_t *out_buf,
+		int length, bool write) {
+	
+	// write ignored in spi mode. only used in ssc mode.
+	// only software comms supported at moment. hw spi not used.
+
 	for (int i = 0; i < length; i++) {
 		uint8_t send = out_buf ? out_buf[i] : 0xFF;
 		uint8_t receive = 0;
 
+		stm32_gpio_t read_gpio;
+		int read_pin;
+
+		if(s->spi_type == sw_ssc)
+		{
+			read_gpio = s->mosi_gpio; //ssc usses mosi for all comms
+			read_pin = s->mosi_pin; // what if just set the mosi and miso to the same pin in the ssc init?
+		}else{
+			read_gpio = s->miso_gpio;
+			read_pin = s->miso_pin;
+			write = true;
+		}
+
 		for (int bit = 0; bit < 8; bit++) {
-			if(s->mosi_gpio) {
-				palWritePad(s->mosi_gpio, s->mosi_pin, send >> 7);
+			
+			if(write && s->mosi_gpio){
+				palSetPadMode(s->mosi_gpio, s->mosi_pin,
+					PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
+
+				palWritePad(s->mosi_gpio, s->mosi_pin, send >> 15); // should this be 7?
 				send <<= 1;
+			} else {
+				palSetPadMode(read_gpio, read_pin, PAL_MODE_INPUT_PULLUP); // set up in spi init for non ssc?
 			}
+		
 
 			palSetPad(s->sck_gpio, s->sck_pin);
 			spi_bb_delay();
 
 			int samples = 0;
-			samples += palReadPad(s->miso_gpio, s->miso_pin);
+			samples += palReadPad(read_gpio, read_pin);
 			__NOP();
-			samples += palReadPad(s->miso_gpio, s->miso_pin);
+			samples += palReadPad(read_gpio, read_pin);
 			__NOP();
-			samples += palReadPad(s->miso_gpio, s->miso_pin);
+			samples += palReadPad(read_gpio, read_pin);
 			__NOP();
-			samples += palReadPad(s->miso_gpio, s->miso_pin);
+			samples += palReadPad(read_gpio, read_pin);
 			__NOP();
-			samples += palReadPad(s->miso_gpio, s->miso_pin);
+			samples += palReadPad(read_gpio, read_pin);
 
-			palClearPad(s->sck_gpio, s->sck_pin);
+			
 
 			// does 5 samples of each pad read, to minimize noise
 			receive <<= 1;
@@ -91,45 +116,6 @@ void spi_bb_transfer_8(spi_bb_state *s, uint8_t *in_buf, const uint8_t *out_buf,
 				receive |= 1;
 			}
 
-			spi_bb_delay();
-		}
-
-		if (in_buf) {
-			in_buf[i] = receive;
-		}
-	}
-}
-
-void spi_bb_transfer_16(spi_bb_state *s, uint16_t *in_buf, const uint16_t *out_buf, int length) {
-	for (int i = 0; i < length; i++) {
-		uint16_t send = out_buf ? out_buf[i] : 0xFFFF;
-		uint16_t receive = 0;
-
-		for (int bit = 0; bit < 16; bit++) {
-			if(s->mosi_gpio) {
-				palWritePad(s->mosi_gpio, s->mosi_pin, send >> 15);
-				send <<= 1;
-			}
-
-			palSetPad(s->sck_gpio, s->sck_pin);
-			spi_bb_delay();
-
-			int samples = 0;
-			samples += palReadPad(s->miso_gpio, s->miso_pin);
-			__NOP();
-			samples += palReadPad(s->miso_gpio, s->miso_pin);
-			__NOP();
-			samples += palReadPad(s->miso_gpio, s->miso_pin);
-			__NOP();
-			samples += palReadPad(s->miso_gpio, s->miso_pin);
-			__NOP();
-			samples += palReadPad(s->miso_gpio, s->miso_pin);
-
-			receive <<= 1;
-			if (samples > 2) {
-				receive |= 1;
-			}
-
 			palClearPad(s->sck_gpio, s->sck_pin);
 			spi_bb_delay();
 		}
@@ -139,6 +125,46 @@ void spi_bb_transfer_16(spi_bb_state *s, uint16_t *in_buf, const uint16_t *out_b
 		}
 	}
 }
+
+// void spi_bb_transfer_16(spi_bb_state *s, uint16_t *in_buf, const uint16_t *out_buf, int length) {
+// 	for (int i = 0; i < length; i++) {
+// 		uint16_t send = out_buf ? out_buf[i] : 0xFFFF;
+// 		uint16_t receive = 0;
+
+// 		for (int bit = 0; bit < 16; bit++) {
+// 			if(s->mosi_gpio) {
+// 				palWritePad(s->mosi_gpio, s->mosi_pin, send >> 15);
+// 				send <<= 1;
+// 			}
+
+// 			palSetPad(s->sck_gpio, s->sck_pin);
+// 			spi_bb_delay();
+
+// 			int samples = 0;
+// 			samples += palReadPad(s->miso_gpio, s->miso_pin);
+// 			__NOP();
+// 			samples += palReadPad(s->miso_gpio, s->miso_pin);
+// 			__NOP();
+// 			samples += palReadPad(s->miso_gpio, s->miso_pin);
+// 			__NOP();
+// 			samples += palReadPad(s->miso_gpio, s->miso_pin);
+// 			__NOP();
+// 			samples += palReadPad(s->miso_gpio, s->miso_pin);
+
+// 			receive <<= 1;
+// 			if (samples > 2) {
+// 				receive |= 1;
+// 			}
+
+// 			palClearPad(s->sck_gpio, s->sck_pin);
+// 			spi_bb_delay();
+// 		}
+
+// 		if (in_buf) {
+// 			in_buf[i] = receive;
+// 		}
+// 	}
+// }
 
 void ssc_bb_init(spi_bb_state *s) {
 	chMtxObjectInit(&s->mutex);
@@ -169,75 +195,75 @@ void ssc_bb_deinit(spi_bb_state *s) {
 	s->has_error = false;
 }
 
-void ssc_bb_begin(spi_bb_state *s) {
-	spi_bb_delay();
-	palClearPad(s->nss_gpio, s->nss_pin);
-	spi_bb_delay();
-}
+// void ssc_bb_begin(spi_bb_state *s) {
+// 	spi_bb_delay();
+// 	palClearPad(s->nss_gpio, s->nss_pin);
+// 	spi_bb_delay();
+// }
 
-void ssc_bb_end(spi_bb_state *s) {
-	spi_bb_delay();
-	palSetPad(s->nss_gpio, s->nss_pin);
-	spi_bb_delay();
-}
+// void ssc_bb_end(spi_bb_state *s) {
+// 	spi_bb_delay();
+// 	palSetPad(s->nss_gpio, s->nss_pin);
+// 	spi_bb_delay();
+// }
 
-/**
- * @brief transfers 16 bits using the spi like 1 data wire ssc protocol
- * 		  operates at x mhz by default.
- * 		  only uses mosi pin
- * 
- * @param s state of software spi. contains spi/ssc pins
- * @param in_buf data to send
- * @param out_buf int/array for recieved data.
- * @param length number of 16 bit chunks.
- * @param write true = write, false = read
- */
-void ssc_bb_transfer_16(spi_bb_state *s, uint16_t *in_buf,
-		const uint16_t *out_buf, int length, bool write) {
-	for (int i = 0; i < length; i++) {
+// /**
+//  * @brief transfers 16 bits using the spi like 1 data wire ssc protocol
+//  * 		  operates at x mhz by default.
+//  * 		  only uses mosi pin
+//  * 
+//  * @param s state of software spi. contains spi/ssc pins
+//  * @param in_buf data to send
+//  * @param out_buf int/array for recieved data.
+//  * @param length number of 16 bit chunks.
+//  * @param write true = write, false = read
+//  */
+// void ssc_bb_transfer_16(spi_bb_state *s, uint16_t *in_buf,
+// 		const uint16_t *out_buf, int length, bool write) {
+// 	for (int i = 0; i < length; i++) {
 
-		uint16_t send = out_buf ? out_buf[i] : 0xFFFF;
-		uint16_t receive = 0;
+// 		uint16_t send = out_buf ? out_buf[i] : 0xFFFF;
+// 		uint16_t receive = 0;
 
-		for (int bit = 0; bit < 16; bit++) {
-			if(write && s->mosi_gpio){
-				palSetPadMode(s->mosi_gpio, s->mosi_pin,
-					PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
+// 		for (int bit = 0; bit < 16; bit++) {
+// 			if(write && s->mosi_gpio){
+// 				palSetPadMode(s->mosi_gpio, s->mosi_pin,
+// 					PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
 
-				palWritePad(s->mosi_gpio, s->mosi_pin, send >> 15);
-				send <<= 1;
-			} else {
-				palSetPadMode(s->mosi_gpio, s->mosi_pin, PAL_MODE_INPUT_PULLUP);
-			}
+// 				palWritePad(s->mosi_gpio, s->mosi_pin, send >> 15);
+// 				send <<= 1;
+// 			} else {
+// 				palSetPadMode(s->mosi_gpio, s->mosi_pin, PAL_MODE_INPUT_PULLUP);
+// 			}
 
-			palSetPad(s->sck_gpio, s->sck_pin);
-			spi_bb_delay();
+// 			palSetPad(s->sck_gpio, s->sck_pin);
+// 			spi_bb_delay();
 
-			int samples = 0;
-			samples += palReadPad(s->mosi_gpio, s->mosi_pin);
-			__NOP();
-			samples += palReadPad(s->mosi_gpio, s->mosi_pin);
-			__NOP();
-			samples += palReadPad(s->mosi_gpio, s->mosi_pin);
-			__NOP();
-			samples += palReadPad(s->mosi_gpio, s->mosi_pin);
-			__NOP();
-			samples += palReadPad(s->mosi_gpio, s->mosi_pin);
+// 			int samples = 0;
+// 			samples += palReadPad(s->mosi_gpio, s->mosi_pin);
+// 			__NOP();
+// 			samples += palReadPad(s->mosi_gpio, s->mosi_pin);
+// 			__NOP();
+// 			samples += palReadPad(s->mosi_gpio, s->mosi_pin);
+// 			__NOP();
+// 			samples += palReadPad(s->mosi_gpio, s->mosi_pin);
+// 			__NOP();
+// 			samples += palReadPad(s->mosi_gpio, s->mosi_pin);
 
-			receive <<= 1;
-			if (samples > 2) {
-				receive |= 1;
-			}
+// 			receive <<= 1;
+// 			if (samples > 2) {
+// 				receive |= 1;
+// 			}
 
-			palClearPad(s->sck_gpio, s->sck_pin);
-			spi_bb_delay();
-		}
+// 			palClearPad(s->sck_gpio, s->sck_pin);
+// 			spi_bb_delay();
+// 		}
 
-		if (in_buf) {
-			in_buf[i] = receive;
-		}
-	}
-}
+// 		if (in_buf) {
+// 			in_buf[i] = receive;
+// 		}
+// 	}
+// }
 
 
 void spi_bb_begin(spi_bb_state *s) {
