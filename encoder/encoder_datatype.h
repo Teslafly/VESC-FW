@@ -18,18 +18,14 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ENCODER_ENCODER_DATATYPE_H_
-#define ENCODER_ENCODER_DATATYPE_H_
+#ifndef ENCODER_DATATYPE_H_
+#define ENCODER_DATATYPE_H_
 
 #include <stdint.h>
 #include <stdbool.h>
 #include "ch.h"
 #include "hal.h"
 #include "spi_bb.h"
-
-typedef enum {
-	ENCODER_OK = 0, ENCODER_NONE, ENCODER_ERROR
-} encoder_ret_t;
 
 typedef enum {
 	ENCODER_TYPE_NONE = 0,
@@ -43,7 +39,22 @@ typedef enum {
 } encoder_type_t;
 
 typedef struct {
+	uint16_t spi_val;
+	float resolver_loss_of_tracking_error_rate;
+	float resolver_degradation_of_signal_error_rate;
+	float resolver_loss_of_signal_error_rate;
+	uint32_t resolver_loss_of_tracking_error_cnt;
+	uint32_t resolver_degradation_of_signal_error_cnt;
+	uint32_t resolver_loss_of_signal_error_cnt;
+	uint32_t spi_error_cnt;
+	float spi_error_rate;
+	float last_enc_angle;
+	uint32_t last_update_time;
+} AD2S1205_state;
+
+typedef struct {
 	spi_bb_state sw_spi;
+	AD2S1205_state state;
 } AD2S1205_config_t;
 
 typedef struct {
@@ -53,6 +64,7 @@ typedef struct {
 	float last_enc_angle;
 	uint32_t spi_error_cnt;
 	uint32_t spi_val;
+	uint32_t last_update_time;
 } MT6816_state;
 
 typedef struct {
@@ -71,14 +83,37 @@ typedef struct {
 } MT6816_config_t;
 
 typedef struct {
+	volatile bool index_found;
+	volatile float last_enc_angle;
+	volatile int bad_pulses;
+} ABI_state;
+
+typedef struct {
 	uint32_t counts;
-	stm32_gpio_t *A_gpio;
-	uint8_t A_pin;
-	stm32_gpio_t *B_gpio;
-	uint8_t B_pin;
-	stm32_gpio_t *I_gpio;
-	uint8_t I_pin;
+
+	stm32_gpio_t *A_gpio; uint8_t A_pin;
+	stm32_gpio_t *B_gpio; uint8_t B_pin;
+	stm32_gpio_t *I_gpio; uint8_t I_pin;
+
+	TIM_TypeDef *timer;
+	uint8_t tim_af;
+
+	uint8_t exti_portsrc;
+	uint8_t exti_pinsrc;
+	uint32_t exti_line;
+	uint32_t exti_ch;
+
+	ABI_state state;
 } ABI_config_t;
+
+typedef struct {
+	uint32_t signal_below_min_error_cnt;
+	uint32_t signal_above_max_error_cnt;
+	float signal_low_error_rate;
+	float signal_above_max_error_rate;
+	float last_enc_angle;
+	uint32_t last_update_time;
+} ENCSINCOS_state;
 
 typedef struct {
 	uint32_t refresh_rate_hz;
@@ -87,17 +122,33 @@ typedef struct {
 	float c_gain;
 	float c_offset;
 	float filter_constant;
+
+	ENCSINCOS_state state;
 } ENCSINCOS_config_t;
 
 typedef struct {
+	volatile bool stop_now;
+	volatile bool is_running;
+	volatile uint8_t raw_status[8];
+	volatile bool reset_errors;
+	volatile bool reset_multiturn;
+	float spi_error_rate;
+	uint32_t spi_error_cnt;
+	uint32_t spi_val;
+	float last_enc_angle;
+} TS5700N8501_state;
+
+typedef struct {
 	SerialDriver *sd;
-	stm32_gpio_t *TX_gpio;
-	uint8_t TX_pin;
-	stm32_gpio_t *RX_gpio;
-	uint8_t RX_pin;
-	stm32_gpio_t *EXT_gpio;
-	uint8_t EXT_pin;
+	uint8_t sd_af;
+	stm32_gpio_t *TX_gpio; uint8_t TX_pin;
+	stm32_gpio_t *RX_gpio; uint8_t RX_pin;
+	stm32_gpio_t *EXT_gpio; uint8_t EXT_pin;
 	SerialConfig uart_param;
+	stkalign_t *thread_wa;
+	uint32_t thread_wa_size;
+
+	TS5700N8501_state state;
 } TS5700N8501_config_t;
 
 typedef struct {
@@ -123,6 +174,7 @@ typedef struct {
 	float last_enc_angle;
 	uint32_t spi_error_cnt;
 	float spi_error_rate;
+	uint32_t last_update_time;
 } AS504x_state;
 
 typedef struct {
@@ -130,4 +182,4 @@ typedef struct {
 	AS504x_state state;
 } AS504x_config_t;
 
-#endif /* ENCODER_ENCODER_DATATYPE_H_ */
+#endif /* ENCODER_DATATYPE_H_ */

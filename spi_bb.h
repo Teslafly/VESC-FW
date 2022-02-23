@@ -26,14 +26,10 @@
 #include "stdbool.h"
 
 typedef struct {
-	stm32_gpio_t *nss_gpio;
-	int nss_pin;
-	stm32_gpio_t *sck_gpio;
-	int sck_pin;
-    stm32_gpio_t *mosi_gpio;
-	int mosi_pin;
-    stm32_gpio_t *miso_gpio;
-	int miso_pin;
+	stm32_gpio_t *nss_gpio; int nss_pin;
+	stm32_gpio_t *sck_gpio; int sck_pin;
+    stm32_gpio_t *mosi_gpio; int mosi_pin;
+    stm32_gpio_t *miso_gpio; int miso_pin;
 	bool has_started;
 	bool has_error;
 	mutex_t mutex;
@@ -45,5 +41,6 @@ void spi_bb_transfer_8(spi_bb_state *s, uint8_t *in_buf, const uint8_t *out_buf,
 void spi_bb_begin(spi_bb_state *s);
 void spi_bb_end(spi_bb_state *s);
 void spi_bb_delay(void);
+void spi_bb_delay_short(void);
 
 #endif /* SPI_BB_H_ */

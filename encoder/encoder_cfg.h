@@ -1,6 +1,5 @@
 /*
-	Copyright 2016 - 2022 Benjamin Vedder	benjamin@vedder.se
-	Copyright 2022 Jakub Tomczak
+	Copyright 2022 Benjamin Vedder	benjamin@vedder.se
 
 	This file is part of the VESC firmware.
 
@@ -18,18 +17,17 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ENC_ABI_H_
-#define ENC_ABI_H_
+#ifndef ENCODER_CFG_H_
+#define ENCODER_CFG_H_
 
-#include "datatypes.h"
-#include "encoder/encoder_datatype.h"
+#include "encoder_datatype.h"
 
-// Functions
-bool enc_abi_init(ABI_config_t *cfg);
-void enc_abi_deinit(ABI_config_t *cfg);
-float enc_abi_read_deg(ABI_config_t *cfg);
+// Global encoder configurations
+extern AS504x_config_t encoder_cfg_as504x;
+extern AD2S1205_config_t encoder_cfg_ad2s1205;
+extern MT6816_config_t encoder_cfg_mt6816;
+extern ABI_config_t encoder_cfg_ABI;
+extern ENCSINCOS_config_t encoder_cfg_sincos;
+extern TS5700N8501_config_t encoder_cfg_TS5700N8501;
 
-// Call this functions on index pin change interrupts
-void enc_abi_pin_isr(ABI_config_t *cfg);
-
-#endif /* ENC_ABI_H_ */
+#endif /* ENCODER_CFG_H_ */

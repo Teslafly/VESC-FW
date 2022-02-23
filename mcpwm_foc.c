@@ -1895,7 +1895,7 @@ float mcpwm_foc_measure_inductance(float duty, int samples, float *curr, float *
 	motor->m_conf->foc_sensor_mode = FOC_SENSOR_MODE_HFI;
 	motor->m_conf->foc_hfi_voltage_start = duty * mc_interface_get_input_voltage_filtered() * (2.0 / 3.0) * SQRT3_BY_2;
 	motor->m_conf->foc_hfi_voltage_run = duty * mc_interface_get_input_voltage_filtered() * (2.0 / 3.0) * SQRT3_BY_2;
-	motor->m_conf->foc_hfi_voltage_max = duty * mc_interface_get_input_voltage_filtered() * (2.0 / 3.0) *SQRT3_BY_2;
+	motor->m_conf->foc_hfi_voltage_max = duty * mc_interface_get_input_voltage_filtered() * (2.0 / 3.0) * SQRT3_BY_2;
 	motor->m_conf->foc_sl_erpm_hfi = 20000.0;
 	motor->m_conf->foc_sample_v0_v7 = false;
 	motor->m_conf->foc_hfi_samples = HFI_SAMPLES_32;
@@ -2272,7 +2272,7 @@ int mcpwm_foc_dc_cal(bool cal_undriven) {
 	TIM_GenerateEvent(TIM8, TIM_EventSource_COM);
 #endif
 
-	chThdSleepMilliseconds(10);
+	chThdSleep(1);
 
 	for (float i = 0;i < samples;i++) {
 		current_sum[0] += m_motor_1.m_currents_adc[0];
@@ -4066,8 +4066,8 @@ static void control_current(volatile motor_all_state_t *motor, float dt) {
 	// Set output (HW Dependent)
 	uint32_t duty1, duty2, duty3, top;
 	top = TIM1->ARR;
-    
-    // Calculate the duty cycles for all the phases. This also injects a zero modulation signal to
+	
+	// Calculate the duty cycles for all the phases. This also injects a zero modulation signal to
 	// be able to fully utilize the bus voltage. See https://microchipdeveloper.com/mct5001:start
 	svm(state_m->mod_alpha_raw, state_m->mod_beta_raw, top, &duty1, &duty2, &duty3, (uint32_t*)&state_m->svm_sector);
 

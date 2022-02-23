@@ -77,7 +77,47 @@ void spi_bb_transfer_8(spi_bb_state *s, uint8_t *in_buf, const uint8_t *out_buf,
 			spi_bb_delay();
 		}
 
-		if (in_buf)	{
+		if (in_buf) {
+			in_buf[i] = receive;
+		}
+	}
+}
+
+void spi_bb_transfer_16(spi_bb_state *s, uint16_t *in_buf, const uint16_t *out_buf, int length) {
+	for (int i = 0; i < length; i++) {
+		uint16_t send = out_buf ? out_buf[i] : 0xFFFF;
+		uint16_t receive = 0;
+
+		for (int bit = 0; bit < 16; bit++) {
+			if(s->mosi_gpio) {
+				palWritePad(s->mosi_gpio, s->mosi_pin, send >> 15);
+				send <<= 1;
+			}
+
+			palSetPad(s->sck_gpio, s->sck_pin);
+			spi_bb_delay_short();
+
+			int samples = 0;
+			samples += palReadPad(s->miso_gpio, s->miso_pin);
+			__NOP();
+			samples += palReadPad(s->miso_gpio, s->miso_pin);
+			__NOP();
+			samples += palReadPad(s->miso_gpio, s->miso_pin);
+			__NOP();
+			samples += palReadPad(s->miso_gpio, s->miso_pin);
+			__NOP();
+			samples += palReadPad(s->miso_gpio, s->miso_pin);
+
+			receive <<= 1;
+			if (samples > 2) {
+				receive |= 1;
+			}
+
+			palClearPad(s->sck_gpio, s->sck_pin);
+			spi_bb_delay_short();
+		}
+
+		if (in_buf) {
 			in_buf[i] = receive;
 		}
 	}
@@ -99,4 +139,17 @@ void spi_bb_delay(void) {
 	for (volatile int i = 0; i < 6; i++) {
 		__NOP();
 	}
+}
+
+void spi_bb_delay_short(void) {
+	__NOP(); __NOP();
+	__NOP(); __NOP();
+}
+
+bool spi_bb_check_parity(uint16_t x) {
+	x ^= x >> 8;
+	x ^= x >> 4;
+	x ^= x >> 2;
+	x ^= x >> 1;
+	return (~x) & 1;
 }
