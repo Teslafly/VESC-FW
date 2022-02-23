@@ -30,8 +30,15 @@
 
 #define EVAL_WA_SIZE THD_WORKING_AREA_SIZE(1024)
 #define EVAL_CPS_STACK_SIZE 256
+#define GC_STACK_SIZE 256
+#define PRINT_STACK_SIZE 256
+#define EXTENSION_STORAGE_SIZE 256
 
 #define HEAP_SIZE 8192
+
+uint32_t gc_stack_storage[GC_STACK_SIZE];
+uint32_t print_stack_storage[PRINT_STACK_SIZE];
+extension_fptr extension_storage[EXTENSION_STORAGE_SIZE];
 
 lbm_cons_t heap[HEAP_SIZE] __attribute__ ((aligned (8)));
 
@@ -316,8 +323,11 @@ int main(void) {
 
 
   if (!lbm_init(heap, HEAP_SIZE,
-                   memory_array, LBM_MEMORY_SIZE_8K,
-                   bitmap_array, LBM_MEMORY_BITMAP_SIZE_8K)) {
+                gc_stack_storage, GC_STACK_SIZE,
+                memory_array, LBM_MEMORY_SIZE_8K,
+                bitmap_array, LBM_MEMORY_BITMAP_SIZE_8K,
+                print_stack_storage, PRINT_STACK_SIZE,
+                extension_storage, EXTENSION_STORAGE_SIZE)) {
     chprintf(chp,"Initializing LispBM failed\r\n");
     return 0;
   }
@@ -406,7 +416,7 @@ int main(void) {
       chprintf(chp, "received %d bytes\r\n", strlen(file_buffer));
 
       if (done) {
-        lbm_value t;
+        //lbm_value t;
 
         lbm_create_char_stream_from_string(&string_tok_state,
                                               &string_tok,

@@ -32,8 +32,10 @@
 #include "lbm_memory.h"
 #include "lbm_types.h"
 #include "lbm_c_interop.h"
+#include "lbm_variables.h"
 
 /** Initialize lispBM. This function initials all subsystems by calling:
+ *  - \ref lbm_print_init
  *  - \ref lbm_memory_init
  *  - \ref lbm_symrepr_init
  *  - \ref lbm_heap_init
@@ -47,10 +49,17 @@
  * \param memory_size  Size of the memory array.
  * \param memory_bitmap Pointer to uint32_t array to use for the memory subsystem meta-data.
  * \param bitmap_size Size of the memory meta-data array.
+ * \param print_stack_storage Pointer to uint32_t array to use as print_value stack.
+ * \param print_stack_size Size in number of uint32_t values of the print stack.
+ * \param extension_storage Pointer to array of extension_fptr.
+ * \param extension_storage_size Size of extension array.
  * \return 1 on success and 0 on failure.
  */
 extern int lbm_init(lbm_cons_t *heap_storage, uint32_t heap_size,
+                    uint32_t *gc_stack_storage, uint32_t gc_stack_size,
                     uint32_t *memory, uint32_t memory_size,
-                    uint32_t *memory_bitmap, uint32_t bitmap_size);
+                    uint32_t *memory_bitmap, uint32_t bitmap_size,
+                    uint32_t *print_stack_storage, uint32_t print_stack_size,
+                    extension_fptr *extension_storage, int extension_storage_size );
 
 #endif

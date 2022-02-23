@@ -24,7 +24,7 @@
 #define FW_VERSION_MAJOR			6
 #define FW_VERSION_MINOR			00
 // Set to 0 for building a release and iterate during beta test builds
-#define FW_TEST_VERSION_NUMBER		7
+#define FW_TEST_VERSION_NUMBER		9
 
 #include "datatypes.h"
 
@@ -305,15 +305,6 @@
 //#define V_REG						3.3
 
 // Use the pins for the hardware SPI port instead of the hall/encoder pins for the AS5047
-#ifndef AS5047_USE_HW_SPI_PINS
-#define AS5047_USE_HW_SPI_PINS		0
-#endif
-#ifndef AD2S1205_USE_HW_SPI_PINS
-#define AD2S1205_USE_HW_SPI_PINS	0
-#endif
-#ifndef MT6816_USE_HW_SPI_PINS
-#define MT6816_USE_HW_SPI_PINS		0
-#endif
 #ifndef AS504x_USE_SW_MOSI_PIN
 #define AS504x_USE_SW_MOSI_PIN 		0
 #endif

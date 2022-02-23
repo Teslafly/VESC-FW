@@ -18,7 +18,6 @@
 #include "lbm_c_interop.h"
 
 
-
 /****************************************************/
 /* Interface for loading and running programs and   */
 /* expressions                                      */
@@ -172,7 +171,70 @@ int lbm_define(char *symbol, lbm_value value) {
         return 0;
       }
     }
-    lbm_env_set(lbm_get_env(), lbm_enc_sym(sym_id), value);
+    *lbm_get_env_ptr() = lbm_env_set(lbm_get_env(), lbm_enc_sym(sym_id), value);
   }
   return res;
+}
+
+int lbm_undefine(char *symbol) {
+  lbm_uint sym_id;
+  if (!lbm_get_symbol_by_name(symbol, &sym_id))
+    return 0;
+
+  lbm_value *env = lbm_get_env_ptr();
+
+  lbm_value curr;
+  lbm_value prev = *env;
+  int res  = 0;
+
+  while (lbm_dec_sym(lbm_car(lbm_car(prev))) == sym_id ) {
+    *env =lbm_cdr(prev);
+    prev = lbm_cdr(prev);
+    res = 1;
+  }
+
+  curr = lbm_cdr(prev);
+
+  while (lbm_type_of(curr) == LBM_PTR_TYPE_CONS) {
+    if (lbm_dec_sym(lbm_car(lbm_car(curr))) == sym_id) {
+
+      /* drop the curr mapping from the env */
+      lbm_set_cdr(prev, lbm_cdr(curr));
+      res = 1;
+    }
+    prev = curr;
+    curr = lbm_cdr(curr);
+  }
+  return res;
+
+}
+
+int lbm_share_array(lbm_value *value, char *data, lbm_type type, uint32_t num_elt) {
+
+  lbm_array_header_t *array = NULL;
+  lbm_value cell  = lbm_heap_allocate_cell(LBM_PTR_TYPE_CONS);
+
+  if (lbm_type_of(cell) == LBM_VAL_TYPE_SYMBOL) { // Out of heap memory
+    *value = cell;
+    return 0;
+  }
+
+  array = (lbm_array_header_t*)lbm_memory_allocate(sizeof(lbm_array_header_t) / 4);
+
+  if (array == NULL) return 0;
+
+  array->data = (uint32_t*)data;
+  array->elt_type = type;
+  array->size = num_elt;
+
+  lbm_set_car(cell, (lbm_uint)array);
+  lbm_set_cdr(cell, lbm_enc_sym(SYM_ARRAY_TYPE));
+
+  cell = cell | LBM_PTR_TYPE_ARRAY;
+  *value = cell;
+  return 1;
+}
+
+int lbm_create_array(lbm_value *value, lbm_type type, uint32_t num_elt) {
+  return lbm_heap_allocate_array(value, num_elt, type);
 }

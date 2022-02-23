@@ -144,7 +144,7 @@ uint32_t tok_match_fixed_size_tokens(lbm_tokenizer_char_stream_t *str) {
 }
 
 bool symchar0(char c) {
-  const char *allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+-*/=<>";
+  const char *allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+-*/=<>#";
 
   int i = 0;
   while (allowed[i] != 0) {
@@ -440,7 +440,7 @@ int tok_F(lbm_tokenizer_char_stream_t *str, lbm_float *res) {
     for (i = 0; i < m; i ++) {
       fbuf[i] = get(str);
     }
-    
+
     fbuf[i] = 0;
     *res = (float)strtod(fbuf, NULL);
     return (int)n;
@@ -498,7 +498,7 @@ lbm_value lbm_get_next_token(lbm_tokenizer_char_stream_t *str) {
       res = lbm_enc_sym(SYM_DONTCARE);
       break;
     case TOKQUOTE:
-      res = lbm_enc_sym(SYM_QUOTE);
+      res = lbm_enc_sym(SYM_QUOTE_IT);
       break;
     case TOKBACKQUOTE:
       res = lbm_enc_sym(SYM_BACKQUOTE);
@@ -539,6 +539,7 @@ lbm_value lbm_get_next_token(lbm_tokenizer_char_stream_t *str) {
   n = tok_string(str);
   if (n >= 2) {
     // TODO: Proper error checking here!
+    // TODO: Check if anything has to be allocated for the empty string
     lbm_heap_allocate_array(&res, (unsigned int)(n-2)+1, LBM_VAL_TYPE_CHAR);
     lbm_array_header_t *arr = (lbm_array_header_t*)lbm_car(res);
     char *data = (char *)arr->data;
@@ -581,10 +582,18 @@ lbm_value lbm_get_next_token(lbm_tokenizer_char_stream_t *str) {
     if (lbm_get_symbol_by_name(sym_str, &symbol_id)) {
       res = lbm_enc_sym(symbol_id);
     }
-    else if (lbm_add_symbol(sym_str, &symbol_id)) {
-      res = lbm_enc_sym(symbol_id);
-    } else {
-      res = lbm_enc_sym(SYM_RERROR);
+    else {
+      int r = 0;
+      if (sym_str[0] == '#') {
+        r = lbm_add_variable_symbol(sym_str, &symbol_id);
+      } else {
+        r = lbm_add_symbol(sym_str, &symbol_id);
+      }
+      if (r) {
+        res = lbm_enc_sym(symbol_id);
+      } else {
+        res = lbm_enc_sym(SYM_RERROR);
+      }
     }
     return res;
   } else if (n < 0) {

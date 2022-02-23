@@ -56,6 +56,10 @@
 #define SYM_MATCH         0x13
 #define SYM_SEND          0x14
 #define SYM_RECEIVE       0x15
+#define SYM_MACRO         0x16
+#define SYM_MACRO_EXPAND  0x17
+#define SYM_CALLCC        0x18
+#define SYM_CONT          0x19
 
 #define SYM_ARRAY_TYPE     0x20
 #define SYM_BOXED_I_TYPE   0x21
@@ -85,8 +89,9 @@
 #define SYM_TYPE_ARRAY     0x56
 #define SYM_TYPE_SYMBOL    0x57
 #define SYM_TYPE_CHAR      0x58
-#define SYM_TYPE_REF       0x59
-#define SYM_TYPE_STREAM    0x5A
+#define SYM_TYPE_BYTE      0x59
+#define SYM_TYPE_REF       0x5A
+#define SYM_TYPE_STREAM    0x5B
 
 //Relevant for the tokenizer
 #define SYM_OPENPAR        0x70
@@ -96,6 +101,7 @@
 #define SYM_COMMAAT        0x74
 #define SYM_TOKENIZER_DONE 0x75
 #define SYM_DOT            0x76
+#define SYM_QUOTE_IT       0x77
 
 // Fundamental Operations
 #define FUNDAMENTALS_START      0x100
@@ -108,8 +114,10 @@
 #define SYM_NUMEQ               0x106
 #define SYM_LT                  0x107
 #define SYM_GT                  0x108
-#define SYM_EVAL                0x109
-#define SYM_EVAL_PROGRAM        0x10A
+#define SYM_LEQ                 0x109
+#define SYM_GEQ                 0x10A
+#define SYM_EVAL                0x10B
+#define SYM_EVAL_PROGRAM        0x10C
 
 #define SYM_AND                 0x110
 #define SYM_OR                  0x111
@@ -127,7 +135,7 @@
 
 #define SYM_ARRAY_READ          0x130
 #define SYM_ARRAY_WRITE         0x131
-//#define SYM_ARRAY_CREATE        0x132
+#define SYM_ARRAY_CREATE        0x132
 
 #define SYM_SYMBOL_TO_STRING    0x140
 #define SYM_STRING_TO_SYMBOL    0x141
@@ -150,10 +158,26 @@
 //#define SYM_STREAM_DROP         0x163
 //#define SYM_STREAM_PUT          0x164
 
+#define SYM_SHL                 0x170
+#define SYM_SHR                 0x171
+#define SYM_BITWISE_AND         0x172
+#define SYM_BITWISE_OR          0x173
+#define SYM_BITWISE_XOR         0x174
+#define SYM_BITWISE_NOT         0x175
+
+#define SYM_SETVAR              0x180
+
 #define SYM_TYPE_OF             0x200
 #define FUNDAMENTALS_END        0x200
 
-#define MAX_SPECIAL_SYMBOLS 4096 // 12bits (highest id allowed is 0xFFFF)
+#define SPECIAL_SYMBOLS_START    0
+#define SPECIAL_SYMBOLS_END      0xFFFF
+#define EXTENSION_SYMBOLS_START  0x10000
+#define EXTENSION_SYMBOLS_END    0x1FFFF
+#define VARIABLE_SYMBOLS_START   0x20000
+#define VARIABLE_SYMBOLS_END     0x2FFFF
+#define RUNTIME_SYMBOLS_START    0x30000
+#define MAX_SYMBOL_VALUE 0x0FFFFFFF
 
 /** Initialize the symbol table.
  *
@@ -167,6 +191,13 @@ extern int lbm_symrepr_init(void);
  * \return 1 for success and 0 for failure.
  */
 extern int lbm_add_symbol(char *name, lbm_uint *id);
+/** Add a variable-symbol to the symbol table. The symbol name string is copied to arrays and symbols memory.
+ *
+ * \param name String representation of the symbol.
+ * \param id Resulting id is returned through this argument.
+ * \return 1 for success and 0 for failure.
+ */
+extern int lbm_add_variable_symbol(char *name, lbm_uint* id);
 /** Add a symbol to the symbol table. The name is assumed to be a statically allocated string.
  *
  * \param name Statically allocated name string.
@@ -174,6 +205,14 @@ extern int lbm_add_symbol(char *name, lbm_uint *id);
  * \return 1 for success and 0 for failure.
  */
 extern int lbm_add_symbol_const(char *name, lbm_uint *id);
+/** Add an extension symbol to the symbol table.
+ *  The name is assumed to be statically allocated.
+ *
+ * \param name Statically allocated name string.
+ * \param id Resulting id is returned through this argument.
+ * \return 1 for success and 0 for failure.
+ */
+extern int lbm_add_extension_symbol_const(char *name, lbm_uint* id);
 /** Look up an id from the symbol table given a name.
  *
  * \param name Name string to look up.
@@ -187,6 +226,8 @@ extern int lbm_get_symbol_by_name(char *name, lbm_uint *id);
  * \return pointer to the name string if success otherwise NULL.
  */
 extern const char* lbm_get_name_by_symbol(lbm_uint id);
+
+extern int lbm_get_num_variables(void);
 
 /**
  *
@@ -202,6 +243,8 @@ static inline bool lbm_is_error(lbm_uint symrep){
           symrep == SYM_EERROR ||
           symrep == SYM_FATAL_ERROR);
 }
+
+
 
 
 #endif

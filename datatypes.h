@@ -838,19 +838,6 @@ typedef struct {
 	float gyro_offsets[3];
 } imu_config;
 
-typedef struct {
-	uint8_t is_connected;
-	uint8_t AGC_value;
-	uint16_t magnitude;
-	uint8_t is_OCF;
-	uint8_t is_COF;
-	uint8_t is_Comp_low;
-	uint8_t is_Comp_high;
-	uint16_t serial_diag_flgs;
-	uint16_t serial_magnitude;
-	uint16_t serial_error_flags;
-}AS504x_diag;
-
 typedef enum {
 	CAN_MODE_VESC = 0,
 	CAN_MODE_UAVCAN,
@@ -1075,7 +1062,10 @@ typedef enum {
 	COMM_LISP_ERASE_CODE,
 	COMM_LISP_SET_RUNNING,
 	COMM_LISP_GET_STATS,
-	COMM_LISP_PRINT
+	COMM_LISP_PRINT,
+
+	COMM_BMS_SET_BATT_TYPE,
+	COMM_BMS_GET_BATT_TYPE,
 } COMM_PACKET_ID;
 
 // CAN commands
@@ -1137,7 +1127,7 @@ typedef enum {
 	CAN_PACKET_BMS_AH_WH_DIS_TOTAL,
 	CAN_PACKET_UPDATE_PID_POS_OFFSET,
 	CAN_PACKET_POLL_ROTOR_POS,
-	CAN_PACKET_BMS_BOOT,
+	CAN_PACKET_NOTIFY_BOOT,
 	CAN_PACKET_MAKE_ENUM_32_BITS = 0xFFFFFFFF,
 } CAN_PACKET_ID;
 

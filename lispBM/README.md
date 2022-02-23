@@ -356,6 +356,8 @@ Get fault code.
 
 ### CAN-Commands
 
+Notice that all canget-commands rely on the status messages being active on the VESCs on the CAN-bus. That can be done from App Settings->General->Can status message mode.
+
 #### canset-current
 ```clj
 (canset-current id current)
@@ -423,6 +425,69 @@ Get current over CAN-bus on VESC with id.
 
 Get directional current over CAN-bus on VESC with id. See (get-current-dir) for what directional means.
 
+#### canget-current-in
+```clj
+(canget-current-in id)
+```
+
+Get input current over CAN-bus on VESC with id.
+
+#### canget-duty
+```clj
+(canget-duty id)
+```
+
+Get duty cycle over CAN-bus on VESC with id.
+
+#### canget-rpm
+```clj
+(canget-rpm id)
+```
+
+Get RPM over CAN-bus on VESC with id.
+
+#### canget-temp-fet
+```clj
+(canget-temp-fet id)
+```
+
+Get MOSFET temperature over CAN-bus on VESC with id.
+
+#### canget-temp-motor
+```clj
+(canget-temp-motor id)
+```
+
+Get motor temperature over CAN-bus on VESC with id.
+
+#### canget-speed
+```clj
+(canget-speed id)
+```
+
+Get speed in meters per second over CAN-bus on VESC with id. The gearing, wheel diameter and number of motor poles from the local configuration will be used for converting the RPM to meters per second.
+
+#### canget-dist
+```clj
+(canget-dist id)
+```
+
+Get distance traveled in meters over CAN-bus on VESC with id. As with (canget-speed id), the local configuration will be used to convert the tachometer value to meters.
+
+#### can-list-devs
+```clj
+(can-list-devs)
+```
+
+List CAN-devices that have been heard on the CAN-bus since boot. This function is fast as it does not actively scan the CAN-bus, but it relies on the devices sending status message 1.
+
+#### can-scan
+```clj
+(can-scan)
+```
+
+Actively scan the CAN-bus and return a list with devices that responded. This function takes several seconds to run, but also finds devices that do not actively send messages and only respond to a ping message.
+
 #### can-send-sid
 ```clj
 (can-send-sid id data)
@@ -457,19 +522,40 @@ Get the sine of angle. Unit: Radians.
 
 Get the cosine of angle. Unit: Radians.
 
+#### tan
+```clj
+(tan angle)
+```
+
+Get the tangent of angle. Unit: Radians.
+
+#### asin
+```clj
+(asin x)
+```
+
+Get the arc sine of x. Unit: Radians.
+
+#### acos
+```clj
+(acos x)
+```
+
+Get the arc cosine of x. Unit: Radians.
+
 #### atan
 ```clj
 (atan x)
 ```
 
-Get the arctangent of x. Unit: Radians.
+Get the arc tangent of x. Unit: Radians.
 
 #### atan2
 ```clj
 (atan2 y x)
 ```
 
-Get the arctangent of y / x. Unit: Radians. This is the version that uses two arguments.
+Get the arc tangent of y / x. Unit: Radians. This version uses the signs of y and x to determine the quadrant.
 
 #### pow
 ```clj
@@ -484,6 +570,20 @@ Get base raised to power.
 ```
 
 Get the square root of x.
+
+#### log
+```clj
+(log x)
+```
+
+Get the base-e logarithm of x.
+
+#### log10
+```clj
+(log10 x)
+```
+
+Get the base-10 logarithm of x.
 
 ### Bit Operations
 
@@ -598,7 +698,7 @@ The following example shows how to spawn a thread that handles SID (standard-id)
 )))
 
 ; Spawn the event handler thread and pass the ID it returns to C
-(event-register-handler (spawn '(event-handler)))
+(event-register-handler (spawn event-handler))
 
 ; Enable the CAN event for standard ID (SID) frames
 (event-enable "event-can-sid")
