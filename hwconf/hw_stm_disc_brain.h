@@ -202,8 +202,6 @@ n* 17 (3):  IN3		SENS3
 #define HW_BRAKE_PORT           GPIOB
 #define HW_BRAKE_PIN            5
 
-
-
 // UART Peripheral (good for moxie drive)
 #define HW_UART_DEV				SD3
 #define HW_UART_GPIO_AF			GPIO_AF_USART3
@@ -261,6 +259,18 @@ n* 17 (3):  IN3		SENS3
 #define HW_ENC_EXTI_ISR_VEC		EXTI9_5_IRQHandler
 #define HW_ENC_TIM_ISR_CH		TIM3_IRQn
 #define HW_ENC_TIM_ISR_VEC		TIM3_IRQHandler
+
+#define HW_SPI_ENCODER
+#define HW_SPI_ENC_DEV				SPID3
+#define HW_SPI_ENC_GPIO_AF			GPIO_AF_SPI3
+#define HW_SPI_ENC_PORT_CS			GPIOB
+#define HW_SPI_ENC_PIN_CS			4
+#define HW_SPI_ENC_PORT_SCK			GPIOB
+#define HW_SPI_ENC_PIN_SCK			3
+#define HW_SPI_ENC_PORT_MOSI		GPIOB
+#define HW_SPI_ENC_PIN_MOSI			5
+#define HW_SPI_ENC_PORT_MISO		0 // not available in ssc mode
+#define HW_SPI_ENC_PIN_MISO			0
 
 // SPI pins  (check/change on moxie drive)
 #define HW_SPI_DEV				SPID1
