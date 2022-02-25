@@ -368,6 +368,7 @@ static void terminal_cmd_powerstage_selftest_w_motor(int argc, const char** argv
 
 // from hw_gesc.c
 // double puulse test for hardware verification
+// #ifndef enable_doublepulse_test
 static void terminal_cmd_doublepulse(int argc, const char** argv)
 {
 	(void)argc;
