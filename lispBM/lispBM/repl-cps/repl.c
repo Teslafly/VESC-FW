@@ -168,6 +168,31 @@ void sleep_callback(uint32_t us) {
 }
 
 
+bool dyn_load(const char *str, const char **code) {
+
+  printf("dyn_load: %s\n", str);
+
+  bool res = false;
+  if (strncmp(str, "defun", 5) == 0) {
+    *code = "(define defun (macro (name args body) `(define ,name (lambda ,args ,body))))";
+    res = true;
+  } else if (strncmp(str, "f", 1) == 0) {
+    *code = "(defun f (x) (+ x 1))";
+    res = true;
+  } else if (strncmp(str, "g", 1) == 0) {
+    *code = "(defun g (x) (+ 100 (f x)))";
+    res = true;
+  } else if (strncmp(str, "h", 1) == 0) {
+    *code = "(defun h (x) (cons (g x) nil))";
+    res = true;
+  } else if (strncmp(str, "i", 1) == 0) {
+    *code = "(defun i (x) (if (= x 0) 0 (+ (i (- x 1)) x)))";
+    res = true;
+  }
+  return res;
+}
+
+
 lbm_value ext_print(lbm_value *args, lbm_uint argn) {
   if (argn < 1) return lbm_enc_sym(SYM_NIL);
 
@@ -310,6 +335,11 @@ void ctx_exists(eval_context_t *ctx, void *arg1, void *arg2) {
   }
 }
 
+
+void sym_it(const char *str) {
+  printf("%s\n", str);
+}
+
 static uint32_t memory[LBM_MEMORY_SIZE_8K];
 static uint32_t bitmap[LBM_MEMORY_BITMAP_SIZE_8K];
 
@@ -350,6 +380,7 @@ int main(int argc, char **argv) {
   lbm_set_ctx_done_callback(done_callback);
   lbm_set_timestamp_us_callback(timestamp_callback);
   lbm_set_usleep_callback(sleep_callback);
+  lbm_set_dynamic_load_callback(dyn_load);
 
   lbm_variables_init(variable_storage, VARIABLE_STORAGE_SIZE);
 
@@ -471,6 +502,8 @@ int main(int argc, char **argv) {
       }
     } else if (n >= 5 && strncmp(str, ":quit", 5) == 0) {
       break;
+    } else if (strncmp(str, ":symbols", 8) == 0) {
+      lbm_symrepr_name_iterator(sym_it);
     } else if (strncmp(str, ":reset", 6) == 0) {
       lbm_pause_eval();
       while(lbm_get_eval_state() != EVAL_CPS_STATE_PAUSED) {
