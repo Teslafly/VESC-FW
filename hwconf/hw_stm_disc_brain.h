@@ -298,8 +298,6 @@ n* 17 (3):  IN3		SENS3
 #define READ_HALL2()			palReadPad(HW_HALL_ENC_GPIO2, HW_HALL_ENC_PIN2)
 #define READ_HALL3()			palReadPad(HW_HALL_ENC_GPIO3, HW_HALL_ENC_PIN3)
 
-// Override dead time. See the stm32f4 reference manual for calculating this value.
-#define HW_DEAD_TIME_NSEC		1400.0
 
 // Default setting overrides
 #ifndef MCCONF_L_MAX_VOLTAGE
@@ -325,11 +323,11 @@ n* 17 (3):  IN3		SENS3
 #endif
 
 // Setting limits
-#define HW_LIM_CURRENT			-250.0, 250.0
-#define HW_LIM_CURRENT_IN		-100.0, 100.0
-#define HW_LIM_CURRENT_ABS		0.0, 1000.0
-#define HW_LIM_VIN				11.0, 72.0
-#define HW_LIM_ERPM				-100e3, 100e3
+#define HW_LIM_CURRENT			-200.0, 200.0
+#define HW_LIM_CURRENT_IN		-75.0, 75.0
+#define HW_LIM_CURRENT_ABS		0.0, 500.0
+#define HW_LIM_VIN				15.0, 72.0
+#define HW_LIM_ERPM				-80e3, 80e3
 #define HW_LIM_DUTY_MIN			0.0, 0.1
 #define HW_LIM_DUTY_MAX			0.0, 0.99
 #define HW_LIM_TEMP_FET			-40.0, 90.0
@@ -340,6 +338,8 @@ n* 17 (3):  IN3		SENS3
 // TIM_OCNPolarity_High = low  -> leg off, high -> leg on, (default)
 // TIM_OCNPolarity_Low = high -> leg off, low  -> leg on (inverted output)
 
+
+// Override dead time. See the stm32f4 reference manual for calculating this value.
 #define HW_DEAD_TIME_NSEC		1000.0
 
 //#define inverted_top_fet_driver    // uncomment to invert top (vbat) side fet signal
