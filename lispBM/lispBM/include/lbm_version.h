@@ -25,9 +25,15 @@
 /** LBM minor version */
 #define LBM_MINOR_VERSION 4
 /** LBM patch revision */
-#define LBM_PATCH_VERSION 1
+#define LBM_PATCH_VERSION 2
 
 /* Change log */
+
+/* Feb 28 2022: Version (0.4.2)
+   - First go at human-readable error messages.
+   - Finished contexts are immediately and completely removed.
+   - Context ids are now set to the index into the lbm_memory
+     where the context structure is stored.
 
 /* Feb 21 2022: Version (0.4.1)
    - Bug fixes in gc related to arrays
