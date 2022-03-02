@@ -303,34 +303,74 @@ n* 17 (3):  IN3		SENS3
 #ifndef MCCONF_L_MAX_VOLTAGE
 #define MCCONF_L_MAX_VOLTAGE			72.0	// Maximum input voltage
 #endif
+#ifndef MCCONF_L_MIN_VOLTAGE	
+#define MCCONF_L_MIN_VOLTAGE			20		// Minimum input voltage
+#endif
+#ifndef MCCONF_L_BATTERY_CUT_START
+#define MCCONF_L_BATTERY_CUT_START		35.0	// Start limiting the positive current at this voltage
+#endif
+#ifndef MCCONF_L_BATTERY_CUT_END
+#define MCCONF_L_BATTERY_CUT_END	    30.0	// Limit the positive current completely at this voltage
+#endif
 #ifndef MCCONF_DEFAULT_MOTOR_TYPE
 #define MCCONF_DEFAULT_MOTOR_TYPE		MOTOR_TYPE_FOC
 #endif
+// #ifndef MCCONF_FOC_SAMPLE_V0_V7
+// #define MCCONF_FOC_SAMPLE_V0_V7			true	// Run control loop in both v0 and v7 (requires phase shunts)
+// #endif
 #ifndef MCCONF_FOC_F_ZV
 #define MCCONF_FOC_F_ZV					20000.0
+#endif
+#ifndef MCCONF_L_RPM_MAX
+#define MCCONF_L_RPM_MAX				70000.0	// The motor speed limit (Upper)
+#endif
+#ifndef MCCONF_L_RPM_MIN
+#define MCCONF_L_RPM_MIN				-70000.0	// The motor speed limit (Lower)
 #endif
 #ifndef MCCONF_L_MAX_ABS_CURRENT
 #define MCCONF_L_MAX_ABS_CURRENT		200	// The maximum absolute current above which a fault is generated
 #endif
-#ifndef MCCONF_FOC_SAMPLE_V0_V7
-#define MCCONF_FOC_SAMPLE_V0_V7			true	// Run control loop in both v0 and v7 (requires phase shunts)
-#endif
 #ifndef MCCONF_L_IN_CURRENT_MAX
-#define MCCONF_L_IN_CURRENT_MAX			100	// Input current limit in Amperes (Upper)
+#define MCCONF_L_IN_CURRENT_MAX			20	// Input current limit in Amperes (Upper)
 #endif
 #ifndef MCCONF_L_IN_CURRENT_MIN
-#define MCCONF_L_IN_CURRENT_MIN			-10.0	// Input current limit in Amperes (Lower)
+#define MCCONF_L_IN_CURRENT_MIN			-20.0	// Input current limit in Amperes (Lower)
+#endif
+#ifndef MCCONF_L_CURRENT_MAX
+#define MCCONF_L_CURRENT_MAX			30.0	// Current limit in Amperes (Upper)
+#endif
+#ifndef MCCONF_L_CURRENT_MIN
+#define MCCONF_L_CURRENT_MIN			-30.0	// Current limit in Amperes (Lower)
+#endif
+#ifndef MCCONF_L_LIM_TEMP_FET_START
+#define MCCONF_L_LIM_TEMP_FET_START		80.0	// MOSFET temperature where current limiting should begin
+#endif
+#ifndef MCCONF_L_LIM_TEMP_FET_END
+#define MCCONF_L_LIM_TEMP_FET_END		85.0	// MOSFET temperature where everything should be shut off
 #endif
 
 // Setting limits
 #define HW_LIM_CURRENT			-200.0, 200.0
-#define HW_LIM_CURRENT_IN		-75.0, 75.0
-#define HW_LIM_CURRENT_ABS		0.0, 500.0
+#define HW_LIM_CURRENT_IN		-70.0, 70.0
+#define HW_LIM_CURRENT_ABS		0.0, 400.0
 #define HW_LIM_VIN				15.0, 72.0
 #define HW_LIM_ERPM				-80e3, 80e3
 #define HW_LIM_DUTY_MIN			0.0, 0.1
 #define HW_LIM_DUTY_MAX			0.0, 0.99
 #define HW_LIM_TEMP_FET			-40.0, 90.0
+
+
+// #define MCCONF_L_CURRENT_MAX			30.0	// Current limit in Amperes (Upper)
+// #define MCCONF_L_CURRENT_MIN			-20.0	// Current limit in Amperes (Lower)
+// #define MCCONF_L_IN_CURRENT_MAX			30.0	// Input current limit in Amperes (Upper)
+// #define MCCONF_L_IN_CURRENT_MIN			-20.0	// Input current limit in Amperes (Lower)
+// #define MCCONF_L_MAX_ABS_CURRENT		130.0	// The maximum absolute current above which a fault is generated
+
+// #define MCCONF_L_BATTERY_CUT_START		25.0	// Start limiting the positive current at this voltage
+// #define MCCONF_L_BATTERY_CUT_END	    22.0	// Limit the positive current completely at this voltage
+
+#define MCCONF_FOC_PHASE_FILTER_ENABLE	false // Use phase voltage filters when available
+
 
 // HW-specific functions
 
