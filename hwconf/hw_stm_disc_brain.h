@@ -374,15 +374,10 @@ n* 17 (3):  IN3		SENS3
 
 // HW-specific functions
 
-//configure inverted phases:
-// TIM_OCNPolarity_High = low  -> leg off, high -> leg on, (default)
-// TIM_OCNPolarity_Low = high -> leg off, low  -> leg on (inverted output)
-
-
 // Override dead time. See the stm32f4 reference manual for calculating this value.
 #define HW_DEAD_TIME_NSEC		1000.0
 
-//#define inverted_top_fet_driver    // uncomment to invert top (vbat) side fet signal
-#define inverted_bottom_fet_driver // uncomment to invert bottom(gnd) side fet signal
+//#define INVERTED_TOP_DRIVER_INPUT    // uncomment to invert top (vbat) side fet signal
+#define INVERTED_BOTTOM_DRIVER_INPUT // uncomment to invert bottom(gnd) side fet signal
 
 #endif /* HW_stmdiscovery_frankentroller */
