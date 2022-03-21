@@ -17,20 +17,14 @@ expected_fails=("test_lisp_code_cps -h 512 test_qq_4.lisp"
                 "test_lisp_code_cps -c -h 512 test_sumtree_0.lisp"
                 "test_lisp_code_cps -c -h 512 test_sumtree_1.lisp"
                 "test_lisp_code_cps -c -h 512 test_sumtree_2.lisp"
-                "test_lisp_code_cps_nc -h 512 test_qq_4.lisp"
-                "test_lisp_code_cps_nc -h 512 test_qq_5.lisp"
-                "test_lisp_code_cps_nc -h 512 test_sumtree_0.lisp"
-                "test_lisp_code_cps_nc -h 512 test_sumtree_1.lisp"
-                "test_lisp_code_cps_nc -h 512 test_sumtree_2.lisp"
-                "test_lisp_code_cps_nc -c -h 512 test_qq_4.lisp"
-                "test_lisp_code_cps_nc -c -h 512 test_qq_5.lisp"
-                "test_lisp_code_cps_nc -c -h 512 test_sumtree_0.lisp"
-                "test_lisp_code_cps_nc -c -h 512 test_sumtree_1.lisp"
-                "test_lisp_code_cps_nc -c -h 512 test_sumtree_2.lisp"
                 "test_lisp_code_cps -h 1024 test_take_iota_0.lisp"
                 "test_lisp_code_cps -c -h 1024 test_take_iota_0.lisp"
                 "test_lisp_code_cps -h 512 test_take_iota_0.lisp"
                 "test_lisp_code_cps -c -h 512 test_take_iota_0.lisp"
+                "test_lisp_code_cps -h 512 test_array_extensions_0.lisp"
+                "test_lisp_code_cps -c -h 512 test_array_extensions_0.lisp"
+                "test_lisp_code_cps -h 512 test_array_extensions_1.lisp"
+                "test_lisp_code_cps -c -h 512 test_array_extensions_1.lisp"
                )
 
 
@@ -128,7 +122,7 @@ echo Tests failed: $fail_count
 echo Expected fails: $expected_count
 echo Actual fails: $((fail_count - expected_count))
 
-if [ $fail_count -gt 0 ]
+if [ $((fail_count - expected_count)) -gt 0 ]
 then
     exit 1
 fi

@@ -5,8 +5,13 @@
 #include "heap.h"
 #include "symrepr.h"
 
+#define GC_STACK_SIZE 256
+
+uint32_t gc_stack_storage[GC_STACK_SIZE];
 
 int main(int argc, char **argv) {
+  (void)argc;
+  (void)argv;
 
   int res = 1;
 
@@ -27,7 +32,7 @@ int main(int argc, char **argv) {
     return 0;
   }
   
-  res = lbm_heap_init(heap_storage,heap_size);
+  res = lbm_heap_init(heap_storage,heap_size, gc_stack_storage, GC_STACK_SIZE);
   if (!res) {
     printf("Error initializing heap\n"); 
     return 0;
@@ -35,7 +40,7 @@ int main(int argc, char **argv) {
 
   printf("Initialized heap: OK\n"); 
   
-  for (int i = 0; i < heap_size; i ++) {
+  for (unsigned int i = 0; i < heap_size; i ++) {
     cell = lbm_heap_allocate_cell(LBM_PTR_TYPE_CONS);
     if (!lbm_is_ptr(cell)) {
       printf("Error allocating cell %d\n", i); 

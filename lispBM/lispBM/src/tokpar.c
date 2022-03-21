@@ -144,7 +144,7 @@ uint32_t tok_match_fixed_size_tokens(lbm_tokenizer_char_stream_t *str) {
 }
 
 bool symchar0(char c) {
-  const char *allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+-*/=<>";
+  const char *allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+-*/=<>#";
 
   int i = 0;
   while (allowed[i] != 0) {
@@ -154,7 +154,7 @@ bool symchar0(char c) {
 }
 
 bool symchar(char c) {
-  const char *allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+-*/=<>";
+  const char *allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+-*/=<>!";
 
   int i = 0;
   while (allowed[i] != 0) {
@@ -194,6 +194,16 @@ int tok_symbol(lbm_tokenizer_char_stream_t *str) {
   return (int)n;
 }
 
+static char translate_escape_char(char c) {
+  switch(c) {
+  case '\\': return '\\';
+  case 'n': return '\n';
+  case 't': return '\t';
+  case '\"': return '\"';
+  default: return '\\';
+  }
+}
+
 int tok_string(lbm_tokenizer_char_stream_t *str) {
 
   unsigned int i = 0;
@@ -205,10 +215,18 @@ int tok_string(lbm_tokenizer_char_stream_t *str) {
   n++;
 
   // compute length of string
-  while (peek(str,len) != 0 &&
-         peek(str,len) != '\"') {
-    len++;
-  }
+
+  char c;
+  do {
+    c = peek(str,len);
+    if (c == '\\') {
+      len +=2;
+    } else {
+      len ++;
+    }
+  } while (c != 0 &&
+           c != '\"');
+  len = len -1;
 
   if (len > TOKENIZER_MAX_SYMBOL_AND_STRING_LENGTH)
     return -1; /* TODO: specific error code that can be presented to user */
@@ -221,7 +239,15 @@ int tok_string(lbm_tokenizer_char_stream_t *str) {
   clear_sym_str();
 
   for (i = 0; i < len; i ++) {
-    sym_str[i] = get(str);
+    c = get(str);
+    if (c == '\\') {
+      if (i + 1 < len) {
+        char escaped = get(str);
+        c = translate_escape_char(escaped);
+        len-=1;
+      }
+    }
+    sym_str[i] = c;
     n++;
   }
 
@@ -440,7 +466,7 @@ int tok_F(lbm_tokenizer_char_stream_t *str, lbm_float *res) {
     for (i = 0; i < m; i ++) {
       fbuf[i] = get(str);
     }
-    
+
     fbuf[i] = 0;
     *res = (float)strtod(fbuf, NULL);
     return (int)n;
@@ -498,7 +524,7 @@ lbm_value lbm_get_next_token(lbm_tokenizer_char_stream_t *str) {
       res = lbm_enc_sym(SYM_DONTCARE);
       break;
     case TOKQUOTE:
-      res = lbm_enc_sym(SYM_QUOTE);
+      res = lbm_enc_sym(SYM_QUOTE_IT);
       break;
     case TOKBACKQUOTE:
       res = lbm_enc_sym(SYM_BACKQUOTE);
@@ -539,6 +565,7 @@ lbm_value lbm_get_next_token(lbm_tokenizer_char_stream_t *str) {
   n = tok_string(str);
   if (n >= 2) {
     // TODO: Proper error checking here!
+    // TODO: Check if anything has to be allocated for the empty string
     lbm_heap_allocate_array(&res, (unsigned int)(n-2)+1, LBM_VAL_TYPE_CHAR);
     lbm_array_header_t *arr = (lbm_array_header_t*)lbm_car(res);
     char *data = (char *)arr->data;
@@ -581,10 +608,18 @@ lbm_value lbm_get_next_token(lbm_tokenizer_char_stream_t *str) {
     if (lbm_get_symbol_by_name(sym_str, &symbol_id)) {
       res = lbm_enc_sym(symbol_id);
     }
-    else if (lbm_add_symbol(sym_str, &symbol_id)) {
-      res = lbm_enc_sym(symbol_id);
-    } else {
-      res = lbm_enc_sym(SYM_RERROR);
+    else {
+      int r = 0;
+      if (sym_str[0] == '#') {
+        r = lbm_add_variable_symbol(sym_str, &symbol_id);
+      } else {
+        r = lbm_add_symbol(sym_str, &symbol_id);
+      }
+      if (r) {
+        res = lbm_enc_sym(symbol_id);
+      } else {
+        res = lbm_enc_sym(SYM_RERROR);
+      }
     }
     return res;
   } else if (n < 0) {
@@ -628,8 +663,8 @@ void drop_string(lbm_tokenizer_char_stream_t *str, unsigned int n) {
 }
 
 void lbm_create_char_stream_from_string(lbm_tokenizer_string_state_t *state,
-                                           lbm_tokenizer_char_stream_t *char_stream,
-                                           char *string){
+                                        lbm_tokenizer_char_stream_t *char_stream,
+                                        const char *string){
   state->str = string;
   state->pos = 0;
 

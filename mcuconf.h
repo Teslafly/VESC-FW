@@ -65,8 +65,8 @@
 #define STM32_I2SSRC                        STM32_I2SSRC_CKIN
 #define STM32_PLLI2SN_VALUE                 192
 #define STM32_PLLI2SR_VALUE                 5
-#define STM32_PVD_ENABLE                    FALSE
-#define STM32_PLS                           STM32_PLS_LEV0
+#define STM32_PVD_ENABLE                    TRUE
+#define STM32_PLS                           STM32_PLS_LEV6
 #define STM32_BKPRAM_ENABLE                 FALSE
 // #elif defined (HW_USE_25MHZ_XTAL)
 // // 25M XTAL
@@ -132,7 +132,7 @@
 #define STM32_PLLI2SN_VALUE                 192
 #define STM32_PLLI2SR_VALUE                 5
 #define STM32_PVD_ENABLE                    TRUE
-#define STM32_PLS                           STM32_PLS_LEV7
+#define STM32_PLS                           STM32_PLS_LEV6
 #define STM32_BKPRAM_ENABLE                 FALSE
 #endif
 

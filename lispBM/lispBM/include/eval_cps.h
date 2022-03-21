@@ -36,6 +36,7 @@ typedef struct eval_context_s{
   lbm_value curr_env;
   lbm_value mailbox;  /*massage passing mailbox */
   lbm_value r;
+  char *error_reason;
   bool  done;
   bool  app_cont;
   lbm_stack_t K;
@@ -77,14 +78,16 @@ extern int lbm_eval_init(void);
  * \return 1 if a context was successfully removed otherwise 0.
  */
 extern int lbm_remove_done_ctx(lbm_cid cid, lbm_value *v);
-/** Wait for a context to appear in the done queue. This function is
- * dangerous if called with a context id of a process that will never finish.
- * In such a situation this function will not return.
+/** Wait until a given cid is not present in any of the queues. 
+ *  If you have spawned this cid, you can conclude that it has 
+ *  run to completion or failure. 
  *
  * \param cid Context id to wait for.
+ * \param timeout_ms timeout in ms or 0 for no timeout.
  * \return Result computed by the program running in the context.
  */
-extern lbm_value lbm_wait_ctx(lbm_cid cid);
+extern bool lbm_wait_ctx(lbm_cid cid, uint32_t timeout_ms);
+
 
 /** Creates a context and initializes it with the provided program. The context
  * is added to the ready queue and will start executing when the evaluator is free.
@@ -139,7 +142,18 @@ extern void lbm_kill_eval(void);
  * \return Current state of the evaluator.
  */
 extern uint32_t lbm_get_eval_state(void);
-
+/** Provide a description of an error as a string.
+ *  Use when implementing for example extensions to
+ *  report an error message to the programmer in case
+ *  the extension is used incorrectly.
+ *
+ *  The error string can be allocates in lbm_memory
+ *  and will in that case be freed when the context
+ *  that errored is removed.
+ * \param error_str
+ * \return 1 on success and 0 on failure.
+ */
+extern int lbm_set_error_reason(char *error_str);
 /** Create a context and enqueue it as runnable.
  *
  * \param program The program to evaluate in the context.
@@ -148,8 +162,6 @@ extern uint32_t lbm_get_eval_state(void);
  * \return
  */
 extern lbm_cid lbm_create_ctx(lbm_value program, lbm_value env, uint32_t stack_size);
-
-/* statistics interface */
 /**  Iterate over all ready contexts and apply function on each context.
  *
  * \param f Function to apply to each context.
@@ -171,12 +183,6 @@ extern void lbm_blocked_iterator(ctx_fun f, void*, void*);
  * \param arg2 Same as above
  */
 extern void lbm_done_iterator(ctx_fun f, void*, void*);
-
-/*
-  Callback routines for sleeping and timestamp generation.
-  Depending on target platform these will be implemented in different ways.
-  Todo: It may become necessary to also add a mutex callback.
-*/
 /** Set a usleep callback for use by the evaluator thread.
  *
  * \param fptr Pointer to a sleep function.
@@ -193,7 +199,16 @@ extern void lbm_set_timestamp_us_callback(uint32_t (*fptr)(void));
  * \param fptr Pointer to a "done" function.
  */
 extern void lbm_set_ctx_done_callback(void (*fptr)(eval_context_t *));
-
+/** Set a "printf" callback function. This function will be called by
+ * the evaluator to report error strings back to the user.
+ *
+ * \param fptr Pointer to a "printf" function.
+ */
+extern void lbm_set_printf_callback(int (*prnt)(const char*, ...));
+/** Set a callback for dynamically loading code associated with
+ * an undefined symbol
+ */
+extern void lbm_set_dynamic_load_callback(bool (*fptr)(const char *, const char **));
 /** Create a token stream for parsing for code
  *
  * \param str character stream to convert into a token stream.
@@ -207,6 +222,12 @@ extern lbm_value lbm_create_token_stream(lbm_tokenizer_char_stream_t *str);
  * \param msg Message to deliver
  * \return lbm_enc_sym(SYM_NIL) on failure and lbm_enc_sym(SYM_TRUE) on success.
  */
-lbm_value lbm_find_receiver_and_send(lbm_cid cid, lbm_value msg);
-
+extern lbm_value lbm_find_receiver_and_send(lbm_cid cid, lbm_value msg);
+/** Perform garbage collection,
+ * If this is called from another thread than the eval thread, evaluation must be
+ * paused! Or there will be lots of trouble!
+ *
+ * \return 1 on success
+ */
+extern int lbm_perform_gc(void);
 #endif

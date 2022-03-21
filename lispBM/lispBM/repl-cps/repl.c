@@ -26,8 +26,20 @@
 #include <ctype.h>
 
 #include "lispbm.h"
+#include "extensions/array_extensions.h"
 
 #define EVAL_CPS_STACK_SIZE 256
+#define GC_STACK_SIZE 256
+#define PRINT_STACK_SIZE 256
+#define EXTENSION_STORAGE_SIZE 256
+#define VARIABLE_STORAGE_SIZE 256
+
+#define WAIT_TIMEOUT 2500
+
+uint32_t gc_stack_storage[GC_STACK_SIZE];
+uint32_t print_stack_storage[PRINT_STACK_SIZE];
+extension_fptr extension_storage[EXTENSION_STORAGE_SIZE];
+lbm_value variable_storage[VARIABLE_STORAGE_SIZE];
 
 static volatile bool allow_print = true;
 
@@ -132,12 +144,14 @@ void done_callback(eval_context_t *ctx) {
   } else {
     printf("<< Context %d finished with value %s >>\n", cid, output);
   }
+  printf("stack max:  %d\n", ctx->K.max_sp);
+  printf("stack size: %u\n", ctx->K.size);
+  printf("stack sp:   %d\n", ctx->K.sp);
 
   //  if (!eval_cps_remove_done_ctx(cid, &t)) {
   //   printf("Error: done context (%d)  not in list\n", cid);
   //}
   fflush(stdout);
-
 }
 
 uint32_t timestamp_callback() {
@@ -152,6 +166,31 @@ void sleep_callback(uint32_t us) {
   s.tv_sec = 0;
   s.tv_nsec = (long)us * 1000;
   nanosleep(&s, &r);
+}
+
+
+bool dyn_load(const char *str, const char **code) {
+
+  printf("dyn_load: %s\n", str);
+
+  bool res = false;
+  if (strncmp(str, "defun", 5) == 0) {
+    *code = "(define defun (macro (name args body) `(define ,name (lambda ,args ,body))))";
+    res = true;
+  } else if (strncmp(str, "f", 1) == 0) {
+    *code = "(defun f (x) (+ x 1))";
+    res = true;
+  } else if (strncmp(str, "g", 1) == 0) {
+    *code = "(defun g (x) (+ 100 (f x)))";
+    res = true;
+  } else if (strncmp(str, "h", 1) == 0) {
+    *code = "(defun h (x) (cons (g x) nil))";
+    res = true;
+  } else if (strncmp(str, "i", 1) == 0) {
+    *code = "(defun i (x) (if (= x 0) 0 (+ (i (- x 1)) x)))";
+    res = true;
+  }
+  return res;
 }
 
 
@@ -297,8 +336,17 @@ void ctx_exists(eval_context_t *ctx, void *arg1, void *arg2) {
   }
 }
 
+
+void sym_it(const char *str) {
+  printf("%s\n", str);
+}
+
 static uint32_t memory[LBM_MEMORY_SIZE_8K];
 static uint32_t bitmap[LBM_MEMORY_BITMAP_SIZE_8K];
+
+char char_array[1024];
+uint32_t word_array[1024];
+
 
 int main(int argc, char **argv) {
   char str[1024];
@@ -311,6 +359,11 @@ int main(int argc, char **argv) {
   unsigned int heap_size = 2048;
   lbm_cons_t *heap_storage = NULL;
 
+  for (int i = 0; i < 1024; i ++) {
+    char_array[i] = (char)i;
+    word_array[i] = (uint32_t)i;
+  }
+
   //setup_terminal();
 
   heap_storage = (lbm_cons_t*)malloc(sizeof(lbm_cons_t) * heap_size);
@@ -319,12 +372,23 @@ int main(int argc, char **argv) {
   }
 
   lbm_init(heap_storage, heap_size,
-              memory, LBM_MEMORY_SIZE_8K,
-              bitmap, LBM_MEMORY_BITMAP_SIZE_8K);
+           gc_stack_storage, GC_STACK_SIZE,
+           memory, LBM_MEMORY_SIZE_8K,
+           bitmap, LBM_MEMORY_BITMAP_SIZE_8K,
+           print_stack_storage, PRINT_STACK_SIZE,
+           extension_storage, EXTENSION_STORAGE_SIZE);
 
   lbm_set_ctx_done_callback(done_callback);
   lbm_set_timestamp_us_callback(timestamp_callback);
   lbm_set_usleep_callback(sleep_callback);
+  lbm_set_dynamic_load_callback(dyn_load);
+  lbm_set_printf_callback(printf);
+
+  lbm_variables_init(variable_storage, VARIABLE_STORAGE_SIZE);
+
+  if (!lbm_array_extensions_init()) {
+    printf("error adding array extensions");
+  }
 
   res = lbm_add_extension("print", ext_print);
   if (res)
@@ -390,6 +454,14 @@ int main(int argc, char **argv) {
         curr = lbm_cdr(curr);
         printf("  %s\r\n",output);
       }
+      printf("Variables:\r\n");
+      for (int i = 0; i < lbm_get_num_variables(); i ++) {
+
+        const char *name = lbm_get_variable_name_by_index(i);
+        lbm_print_value(output,1024, lbm_get_variable_by_index(i));
+        printf("  %s = %s\r\n", name ? name : "error", output);
+      }
+
     }else if (n >= 5 && strncmp(str, ":load", 5) == 0) {
       char *file_str = load_file(&str[5]);
       if (file_str) {
@@ -428,10 +500,14 @@ int main(int argc, char **argv) {
       bool exists = false;
       lbm_done_iterator(ctx_exists, (void*)&id, (void*)&exists);
       if (exists) {
-        lbm_wait_ctx((lbm_cid)id);
+        if (!lbm_wait_ctx((lbm_cid)id, WAIT_TIMEOUT)) {
+          printf("Timout while waiting for context %d\n", id);
+        }
       }
     } else if (n >= 5 && strncmp(str, ":quit", 5) == 0) {
-      break;
+            break;
+    } else if (strncmp(str, ":symbols", 8) == 0) {
+      lbm_symrepr_name_iterator(sym_it);
     } else if (strncmp(str, ":reset", 6) == 0) {
       lbm_pause_eval();
       while(lbm_get_eval_state() != EVAL_CPS_STATE_PAUSED) {
@@ -439,8 +515,15 @@ int main(int argc, char **argv) {
       }
 
       lbm_init(heap_storage, heap_size,
-                  memory, LBM_MEMORY_SIZE_8K,
-                  bitmap, LBM_MEMORY_BITMAP_SIZE_8K);
+               gc_stack_storage, GC_STACK_SIZE,
+               memory, LBM_MEMORY_SIZE_8K,
+               bitmap, LBM_MEMORY_BITMAP_SIZE_8K,
+               print_stack_storage, PRINT_STACK_SIZE,
+               extension_storage, EXTENSION_STORAGE_SIZE);
+
+      lbm_variables_init(variable_storage, VARIABLE_STORAGE_SIZE);
+
+      lbm_array_extensions_init();
 
       lbm_add_extension("print", ext_print);
     } else if (strncmp(str, ":prelude", 8) == 0) {
@@ -454,7 +537,7 @@ int main(int argc, char **argv) {
                    &string_tok);
 
 
-      lbm_load_and_define_program(&string_tok, "prelude");
+      lbm_load_and_eval_program(&string_tok);
 
       lbm_continue_eval();
       /* Something better is needed.
@@ -493,8 +576,33 @@ int main(int argc, char **argv) {
     } else if (strncmp(str, ":step", 5) == 0) {
 
       int num = atoi(str + 5);
-      
+
       lbm_step_n_eval((uint32_t)num);
+    } else if (strncmp(str, ":undef", 6) == 0) {
+      lbm_pause_eval();
+      while(lbm_get_eval_state() != EVAL_CPS_STATE_PAUSED) {
+        sleep_callback(10);
+      }
+      char *sym = str + 7;
+      printf("undefining: %s\n", sym);
+      printf("%s\n", lbm_undefine(sym) ? "Cleared bindings" : "No definition found");
+      lbm_continue_eval();
+    } else if (strncmp(str, ":array", 6) == 0) {
+      lbm_pause_eval_with_gc(30);
+      while(lbm_get_eval_state() != EVAL_CPS_STATE_PAUSED) {
+        sleep_callback(10);
+      }
+      printf("Evaluator paused\n");
+
+      lbm_value arr_val;
+      lbm_share_array(&arr_val, char_array, LBM_VAL_TYPE_CHAR,1024);
+      lbm_define("c-arr", arr_val);
+
+      lbm_share_array(&arr_val, (char *)word_array, LBM_PTR_TYPE_BOXED_I,1024);
+      lbm_define("i-arr", arr_val);
+
+      lbm_continue_eval();
+
     } else {
       /* Get exclusive access to the heap */
       lbm_pause_eval();
@@ -513,7 +621,7 @@ int main(int argc, char **argv) {
       /* Something better is needed.
          this sleep ís to ensure the string is alive until parsing
          is done */
-      sleep_callback(10000);
+      sleep_callback(250000);
     }
   }
   free(heap_storage);

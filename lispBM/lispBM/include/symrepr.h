@@ -41,39 +41,48 @@
 #define SYM_LAMBDA        0x4
 #define SYM_CLOSURE       0x5
 #define SYM_LET           0x6
-#define SYM_RERROR        0x7   /* READ ERROR */
-#define SYM_TERROR        0x8   /* TYPE ERROR */
-#define SYM_EERROR        0x9   /* EVAL ERROR */
-#define SYM_MERROR        0xA
-#define SYM_DIVZERO       0xB
-#define SYM_FATAL_ERROR   0xC  /* Runtime system is corrupt */
-#define SYM_STACK_ERROR   0xD
-#define SYM_DEFINE        0xE
-#define SYM_PROGN         0xF
-#define SYM_READ          0x10
-#define SYM_READ_PROGRAM  0x11
-#define SYM_DONTCARE      0x12
-#define SYM_MATCH         0x13
-#define SYM_SEND          0x14
-#define SYM_RECEIVE       0x15
+#define SYM_DEFINE        0x7
+#define SYM_PROGN         0x8
+#define SYM_READ          0x9
+#define SYM_READ_PROGRAM  0xA
+#define SYM_DONTCARE      0xB
+#define SYM_MATCH         0xC
+#define SYM_SEND          0xD
+#define SYM_RECEIVE       0xE
+#define SYM_MACRO         0xF
+#define SYM_MACRO_EXPAND  0x10
+#define SYM_CALLCC        0x11
+#define SYM_CONT          0x12
+#define SYM_SETVAR        0x13
 
-#define SYM_ARRAY_TYPE     0x20
-#define SYM_BOXED_I_TYPE   0x21
-#define SYM_BOXED_U_TYPE   0x22
-#define SYM_BOXED_F_TYPE   0x23
-#define SYM_REF_TYPE       0x24
-#define SYM_RECOVERED      0x26
-#define SYM_BYTECODE_TYPE  0x27
-#define SYM_NONSENSE       0x28
-#define SYM_NOT_FOUND      0x29
-#define SYM_NO_MATCH       0x2A
-#define SYM_MATCH_ANY      0x2B
-#define SYM_MATCH_I28      0x2C
-#define SYM_MATCH_U28      0x2D
-#define SYM_MATCH_U32      0x2E
-#define SYM_MATCH_I32      0x2F
-#define SYM_MATCH_FLOAT    0x30
-#define SYM_MATCH_CONS     0x31
+// 0x20 - 0x2F are errors
+#define SYM_RERROR        0x20  /* READ ERROR */
+#define SYM_TERROR        0x21  /* TYPE ERROR */
+#define SYM_EERROR        0x22  /* EVAL ERROR */
+#define SYM_MERROR        0x23
+#define SYM_NOT_FOUND     0x24
+#define SYM_DIVZERO       0x25
+#define SYM_FATAL_ERROR   0x26 /* Runtime system is corrupt */
+#define SYM_STACK_ERROR   0x27
+#define SYM_RECOVERED     0x28
+
+
+#define SYM_ARRAY_TYPE     0x30
+#define SYM_BOXED_I_TYPE   0x31
+#define SYM_BOXED_U_TYPE   0x32
+#define SYM_BOXED_F_TYPE   0x33
+#define SYM_STREAM_TYPE    0x34
+#define SYM_BYTECODE_TYPE  0x37
+#define SYM_NONSENSE       0x38
+
+#define SYM_NO_MATCH       0x39
+#define SYM_MATCH_ANY      0x3A
+#define SYM_MATCH_I28      0x3B
+#define SYM_MATCH_U28      0x3C
+#define SYM_MATCH_U32      0x3D
+#define SYM_MATCH_I32      0x3E
+#define SYM_MATCH_FLOAT    0x3F
+#define SYM_MATCH_CONS     0x40
 
 // Type identifying symbols
 #define SYM_TYPE_LIST      0x50
@@ -85,8 +94,9 @@
 #define SYM_TYPE_ARRAY     0x56
 #define SYM_TYPE_SYMBOL    0x57
 #define SYM_TYPE_CHAR      0x58
-#define SYM_TYPE_REF       0x59
-#define SYM_TYPE_STREAM    0x5A
+#define SYM_TYPE_BYTE      0x59
+#define SYM_TYPE_REF       0x5A
+#define SYM_TYPE_STREAM    0x5B
 
 //Relevant for the tokenizer
 #define SYM_OPENPAR        0x70
@@ -96,6 +106,7 @@
 #define SYM_COMMAAT        0x74
 #define SYM_TOKENIZER_DONE 0x75
 #define SYM_DOT            0x76
+#define SYM_QUOTE_IT       0x77
 
 // Fundamental Operations
 #define FUNDAMENTALS_START      0x100
@@ -108,8 +119,11 @@
 #define SYM_NUMEQ               0x106
 #define SYM_LT                  0x107
 #define SYM_GT                  0x108
-#define SYM_EVAL                0x109
-#define SYM_EVAL_PROGRAM        0x10A
+#define SYM_LEQ                 0x109
+#define SYM_GEQ                 0x10A
+#define SYM_EVAL                0x10B
+#define SYM_EVAL_PROGRAM        0x10C
+#define SYM_PERFORM_GC          0x10D
 
 #define SYM_AND                 0x110
 #define SYM_OR                  0x111
@@ -127,7 +141,7 @@
 
 #define SYM_ARRAY_READ          0x130
 #define SYM_ARRAY_WRITE         0x131
-//#define SYM_ARRAY_CREATE        0x132
+#define SYM_ARRAY_CREATE        0x132
 
 #define SYM_SYMBOL_TO_STRING    0x140
 #define SYM_STRING_TO_SYMBOL    0x141
@@ -150,16 +164,39 @@
 //#define SYM_STREAM_DROP         0x163
 //#define SYM_STREAM_PUT          0x164
 
+#define SYM_SHL                 0x170
+#define SYM_SHR                 0x171
+#define SYM_BITWISE_AND         0x172
+#define SYM_BITWISE_OR          0x173
+#define SYM_BITWISE_XOR         0x174
+#define SYM_BITWISE_NOT         0x175
+
 #define SYM_TYPE_OF             0x200
 #define FUNDAMENTALS_END        0x200
 
-#define MAX_SPECIAL_SYMBOLS 4096 // 12bits (highest id allowed is 0xFFFF)
+#define SPECIAL_SYMBOLS_START    0
+#define SPECIAL_SYMBOLS_END      0xFFFF
+#define EXTENSION_SYMBOLS_START  0x10000
+#define EXTENSION_SYMBOLS_END    0x1FFFF
+#define VARIABLE_SYMBOLS_START   0x20000
+#define VARIABLE_SYMBOLS_END     0x2FFFF
+#define RUNTIME_SYMBOLS_START    0x30000
+#define MAX_SYMBOL_VALUE 0x0FFFFFFF
+
+
+typedef void (*symrepr_name_iterator_fun)(const char *);
+
 
 /** Initialize the symbol table.
  *
  * \return 1
  */
 extern int lbm_symrepr_init(void);
+/** Iterate over all symbol names as strings
+ *
+ * \param symrepr_name_iterator_fun function taking a string
+ */
+extern void lbm_symrepr_name_iterator(symrepr_name_iterator_fun f);
 /** Add a symbol to the symbol table. The symbol name string is copied to arrays and symbols memory.
  *
  * \param name String representation of the symbol.
@@ -167,6 +204,13 @@ extern int lbm_symrepr_init(void);
  * \return 1 for success and 0 for failure.
  */
 extern int lbm_add_symbol(char *name, lbm_uint *id);
+/** Add a variable-symbol to the symbol table. The symbol name string is copied to arrays and symbols memory.
+ *
+ * \param name String representation of the symbol.
+ * \param id Resulting id is returned through this argument.
+ * \return 1 for success and 0 for failure.
+ */
+extern int lbm_add_variable_symbol(char *name, lbm_uint* id);
 /** Add a symbol to the symbol table. The name is assumed to be a statically allocated string.
  *
  * \param name Statically allocated name string.
@@ -174,6 +218,14 @@ extern int lbm_add_symbol(char *name, lbm_uint *id);
  * \return 1 for success and 0 for failure.
  */
 extern int lbm_add_symbol_const(char *name, lbm_uint *id);
+/** Add an extension symbol to the symbol table.
+ *  The name is assumed to be statically allocated.
+ *
+ * \param name Statically allocated name string.
+ * \param id Resulting id is returned through this argument.
+ * \return 1 for success and 0 for failure.
+ */
+extern int lbm_add_extension_symbol_const(char *name, lbm_uint* id);
 /** Look up an id from the symbol table given a name.
  *
  * \param name Name string to look up.
@@ -188,20 +240,12 @@ extern int lbm_get_symbol_by_name(char *name, lbm_uint *id);
  */
 extern const char* lbm_get_name_by_symbol(lbm_uint id);
 
+extern int lbm_get_num_variables(void);
+
 /**
  *
  * \return The amount of space occupied by the symbol table in bytes.
  */
 extern unsigned int lbm_get_symbol_table_size(void);
-
-static inline bool lbm_is_error(lbm_uint symrep){
-  return (symrep == SYM_RERROR ||
-          symrep == SYM_TERROR ||
-          symrep == SYM_RERROR ||
-          symrep == SYM_MERROR ||
-          symrep == SYM_EERROR ||
-          symrep == SYM_FATAL_ERROR);
-}
-
 
 #endif

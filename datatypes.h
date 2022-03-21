@@ -1,5 +1,5 @@
 /*
-	Copyright 2016 - 2021 Benjamin Vedder	benjamin@vedder.se
+	Copyright 2016 - 2022 Benjamin Vedder	benjamin@vedder.se
 
 	This file is part of the VESC firmware.
 
@@ -785,16 +785,6 @@ typedef struct {
 	uint16_t turntilt_erpm_boost_end;
 } balance_config;
 
-// CAN status modes
-typedef enum {
-	CAN_STATUS_DISABLED = 0,
-	CAN_STATUS_1,
-	CAN_STATUS_1_2,
-	CAN_STATUS_1_2_3,
-	CAN_STATUS_1_2_3_4,
-	CAN_STATUS_1_2_3_4_5
-} CAN_STATUS_MODE;
-
 typedef enum {
 	SHUTDOWN_MODE_ALWAYS_OFF = 0,
 	SHUTDOWN_MODE_ALWAYS_ON,
@@ -838,19 +828,6 @@ typedef struct {
 	float gyro_offsets[3];
 } imu_config;
 
-typedef struct {
-	uint8_t is_connected;
-	uint8_t AGC_value;
-	uint16_t magnitude;
-	uint8_t is_OCF;
-	uint8_t is_COF;
-	uint8_t is_Comp_low;
-	uint8_t is_Comp_high;
-	uint16_t serial_diag_flgs;
-	uint16_t serial_magnitude;
-	uint16_t serial_error_flags;
-}AS504x_diag;
-
 typedef enum {
 	CAN_MODE_VESC = 0,
 	CAN_MODE_UAVCAN,
@@ -877,8 +854,10 @@ typedef struct {
 	uint8_t controller_id;
 	uint32_t timeout_msec;
 	float timeout_brake_current;
-	CAN_STATUS_MODE send_can_status;
-	uint32_t send_can_status_rate_hz;
+	uint32_t can_status_rate_1;
+	uint8_t can_status_msgs_r1;
+	uint32_t can_status_rate_2;
+	uint8_t can_status_msgs_r2;
 	CAN_BAUD can_baud_rate;
 	bool pairing_done;
 	bool permanent_uart_enabled;
@@ -1075,7 +1054,12 @@ typedef enum {
 	COMM_LISP_ERASE_CODE,
 	COMM_LISP_SET_RUNNING,
 	COMM_LISP_GET_STATS,
-	COMM_LISP_PRINT
+	COMM_LISP_PRINT,
+
+	COMM_BMS_SET_BATT_TYPE,
+	COMM_BMS_GET_BATT_TYPE,
+
+	COMM_LISP_REPL_CMD,
 } COMM_PACKET_ID;
 
 // CAN commands
@@ -1137,7 +1121,8 @@ typedef enum {
 	CAN_PACKET_BMS_AH_WH_DIS_TOTAL,
 	CAN_PACKET_UPDATE_PID_POS_OFFSET,
 	CAN_PACKET_POLL_ROTOR_POS,
-	CAN_PACKET_BMS_BOOT,
+	CAN_PACKET_NOTIFY_BOOT,
+	CAN_PACKET_STATUS_6,
 	CAN_PACKET_MAKE_ENUM_32_BITS = 0xFFFFFFFF,
 } CAN_PACKET_ID;
 
@@ -1210,6 +1195,15 @@ typedef struct {
 	float v_in;
 	int32_t tacho_value;
 } can_status_msg_5;
+
+typedef struct {
+	int id;
+	systime_t rx_time;
+	float adc_1;
+	float adc_2;
+	float adc_3;
+	float ppm;
+} can_status_msg_6;
 
 typedef struct {
 	int id;

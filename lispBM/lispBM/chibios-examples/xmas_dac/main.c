@@ -28,10 +28,19 @@
 
 #include "lispbm.h"
 
-#define EVAL_WA_SIZE THD_WORKING_AREA_SIZE(1024)
+#define EVAL_WA_SIZE THD_WORKING_AREA_SIZE(2048)
 #define EVAL_CPS_STACK_SIZE 256
+#define GC_STACK_SIZE 256
+#define PRINT_STACK_SIZE 256
+#define EXTENSION_STORAGE_SIZE 256
+
+#define WAIT_TIMEOUT 2500
 
 #define HEAP_SIZE 8192
+
+uint32_t gc_stack_storage[GC_STACK_SIZE];
+uint32_t print_stack_storage[PRINT_STACK_SIZE];
+extension_fptr extension_storage[EXTENSION_STORAGE_SIZE];
 
 lbm_cons_t heap[HEAP_SIZE] __attribute__ ((aligned (8)));
 
@@ -316,8 +325,11 @@ int main(void) {
 
 
   if (!lbm_init(heap, HEAP_SIZE,
-                   memory_array, LBM_MEMORY_SIZE_8K,
-                   bitmap_array, LBM_MEMORY_BITMAP_SIZE_8K)) {
+                gc_stack_storage, GC_STACK_SIZE,
+                memory_array, LBM_MEMORY_SIZE_8K,
+                bitmap_array, LBM_MEMORY_BITMAP_SIZE_8K,
+                print_stack_storage, PRINT_STACK_SIZE,
+                extension_storage, EXTENSION_STORAGE_SIZE)) {
     chprintf(chp,"Initializing LispBM failed\r\n");
     return 0;
   }
@@ -349,14 +361,22 @@ int main(void) {
   }
 
   prelude_load(&string_tok_state,
-                   &string_tok);
+               &string_tok);
 
   lbm_cid cid = lbm_load_and_eval_program(&string_tok);
+  chprintf(chp,"whats going on here\n");
 
+  if (!lbm_wait_ctx(cid, WAIT_TIMEOUT)) {
+    chprintf(chp,"Wait for prelude to load timed out\r\n");
+  } else {
+    chprintf(chp,"Prelude loaded!\r\n");
+  }
+  lbm_pause_eval();
+  while(lbm_get_eval_state() != EVAL_CPS_STATE_PAUSED) {
+    chprintf(chp,"pause sleeping\n");
+    sleep_callback(1000);
+  }
   lbm_continue_eval();
-
-  lbm_wait_ctx(cid);
-
   chprintf(chp,"Lisp REPL started (ChibiOS)!\r\n");
 
   while (1) {
@@ -384,7 +404,7 @@ int main(void) {
     } else if (strncmp(str, ":wait", 5) == 0) {
       int cid = atoi(str+5);
       chprintf(chp,"waiting for cid: %d\r\n", cid);
-      lbm_wait_ctx(cid);
+      lbm_wait_ctx(cid, WAIT_TIMEOUT);
     } else if (strncmp(str, ":read", 5) == 0) {
       memset(file_buffer, 0, 4096);
       bool done = false;
@@ -406,7 +426,7 @@ int main(void) {
       chprintf(chp, "received %d bytes\r\n", strlen(file_buffer));
 
       if (done) {
-        lbm_value t;
+        //lbm_value t;
 
         lbm_create_char_stream_from_string(&string_tok_state,
                                               &string_tok,
@@ -414,7 +434,7 @@ int main(void) {
         lbm_cid cid = lbm_load_and_eval_program(&string_tok);
 
         lbm_continue_eval();
-        lbm_wait_ctx((lbm_cid)cid);
+        lbm_wait_ctx((lbm_cid)cid, WAIT_TIMEOUT);
       }
     } else {
 
@@ -438,7 +458,7 @@ int main(void) {
       lbm_continue_eval();
 
       printf("started ctx: %u\n", cid);
-      lbm_wait_ctx((lbm_cid)cid);
+      lbm_wait_ctx((lbm_cid)cid, WAIT_TIMEOUT);
     }
   }
 }
