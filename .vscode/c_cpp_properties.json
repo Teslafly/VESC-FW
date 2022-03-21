@@ -1,0 +1,19 @@
+{
+    "configurations": [
+        {
+            "name": "vscode_stm32_c_cpp_properties",
+            "compilerPath": "C:\\dev\\teslafly_bldc_dev\\tools\\gcc-arm-none-eabi-7-2018-q2-update\\bin\\arm-none-eabi-gcc.exe",
+            "includePath": [
+                "${workspaceRoot}"
+            ],
+            "defines": [
+                "USE_HAL_DRIVER",
+                "STM32F407xx"
+            ],
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-x64"
+        }
+    ],
+    "version": 4
+}
