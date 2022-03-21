@@ -6,7 +6,7 @@
         {
             "label": "build",
             "type": "shell",
-            "command": "make",
+            "command": "make fw_Moxie_drive_24",
             "problemMatcher": [
                 "$gcc"
             ]
@@ -15,7 +15,7 @@
         {
             "label": "upload",
             "type": "shell",
-            "command": "make upload"
+            "command": "make fw_Moxie_drive_24_upload"
         }
     ]
 }

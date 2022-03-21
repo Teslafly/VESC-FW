@@ -10,20 +10,23 @@
             "request": "launch",
             "type": "cortex-debug",
             "cwd": "${workspaceRoot}",
-            "executable": "${workspaceRoot}/build/BLDC_4_ChibiOS.elf",
+            // "executable": "${workspaceRoot}/build/BLDC_4_ChibiOS.elf",
+            "executable": "${workspaceRoot}/build/Moxie_drive_24/Moxie_drive_24.elf",
             "servertype": "openocd",
             "device": "stm32f4x",
-            "svdFile": "./STM32F407.svd",
+            "svdFile": ".vscode/STM32F407.svd",
             "configFiles": [
-                "interface/stlink-v2.cfg",
-                "target/stm32f4x_stlink.cfg"
+                "interface/stlink.cfg",
+                "target/stm32f4x.cfg"
             ],
             "linux": {
                 "preLaunchTask": "build"
             },
             "windows": {
+                "armToolchainPath": "${workspaceRoot}/tools/gcc-arm-none-eabi-7-2018-q2-update/bin",
                 "preLaunchTask": "build"
             },
+            
         }       
     ]
 }
