@@ -118,17 +118,17 @@
  * 14:	IN1		SENS2
  */
 
-#define HW_ADC_CHANNELS			15
 #define HW_ADC_INJ_CHANNELS		3
 #define HW_ADC_NBR_CONV			5
+#define HW_ADC_CHANNELS			(HW_ADC_NBR_CONV * 3)
 
 // ADC Indexes
-#define ADC_IND_SENS1			0
-#define ADC_IND_SENS2			1
-#define ADC_IND_SENS3			2
-#define ADC_IND_CURR1			3
-#define ADC_IND_CURR2			4
-#define ADC_IND_CURR3			5
+#define ADC_IND_SENS1			3
+#define ADC_IND_SENS2			4
+#define ADC_IND_SENS3			5
+#define ADC_IND_CURR1			0
+#define ADC_IND_CURR2			1
+#define ADC_IND_CURR3			2
 #define ADC_IND_VIN_SENS		11
 #define ADC_IND_EXT				6
 #define ADC_IND_EXT2			7
@@ -138,6 +138,8 @@
 #if defined(HW60_IS_MK3) || defined(HW60_IS_MK4) || defined(HW60_IS_MK5)
 #define ADC_IND_SHUTDOWN		10
 #endif
+
+//#define ADC_IND_I_OVERSAMP		15
 
 // -------- Current sensor test
 #if 0
