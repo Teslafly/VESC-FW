@@ -25,13 +25,12 @@ else
   CFLAGS += $(UNKNOWN_CXXFLAGS)
 endif
 
-CFLAGS += -Wall -Werror
+CFLAGS += -Wall -Wdouble-promotion -Werror
 CFLAGS += -g
 CFLAGS += $(patsubst %,-I%,$(EXTRAINCDIRS)) -I.
-CFLAGS += -DUNIT_TEST
 
 CONLYFLAGS += -std=gnu99
 
-SRC := $(TOP)/utils.c
+SRC := $(TOP)/utils_math.c
 
 include $(TOP)/make/unittest.mk
