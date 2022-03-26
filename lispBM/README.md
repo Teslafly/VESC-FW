@@ -35,7 +35,7 @@ Should work for all types.
 (timeout-reset)
 ```
 
-Reset the timeout that stops the motor. This has to be run on at least every second to keep the motor running. The timeout time can be configured in App Settings->General.
+Reset the timeout that stops the motor. This has to be run on at least every second to keep the motor running. The timeout time can be configured in App Settings->General. The [Motor Set Commands](#motor-set-commands) will also reset the timeout when they are called.
 
 #### get-ppm
 
@@ -100,27 +100,27 @@ Get currently selected motor on dual motor hardware.
 Get value from BMS. Examples:
 
 ```clj
-(get-bms-val "v_tot") ; Total voltage
-(get-bms-val "v_charge") ; Charge input voltage
-(get-bms-val "i_in_ic") ; Measured current (negative means charging)
-(get-bms-val "ah_cnt") ; Amp hour counter
-(get-bms-val "wh_cnt") ; Watt hour counter
-(get-bms-val "cell_num") ; Number of cells in series
-(get-bms-val "v_cell" 2) ; Cell 3 voltage (index starts from 0)
-(get-bms-val "bal_state 2") ; Cell 3 balancing state. 0: not balancing, 1: balancing
-(get-bms-val "temp_adc_num") ; Temperature sensor count
-(get-bms-val "temps_adc" 2) ; Get sensor 3 temperature (index starts from 0)
-(get-bms-val "temp_ic") ; Balance IC temperature
-(get-bms-val "temp_hum") ; Humidity sensor temperature
-(get-bms-val "hum") ; Humidity
-(get-bms-val "temp_cell_max") ; Maximum cell temperature
-(get-bms-val "soc") ; State of charge (0.0 to 1.0)
-(get-bms-val "can_id") ; CAN ID of BMS
-(get-bms-val "ah_cnt_chg_total") ; Total ah charged
-(get-bms-val "wh_cnt_chg_total") ; Total wh charged
-(get-bms-val "ah_cnt_dis_total") ; Total ah discharged
-(get-bms-val "wh_cnt_dis_total") ; Total wh discharged
-(get-bms-val "msg_age") ; Age of last message from BMS in seconds
+(get-bms-val 'bms-v-tot) ; Total voltage
+(get-bms-val 'bms-v-charge) ; Charge input voltage
+(get-bms-val 'bms-i-in-ic) ; Measured current (negative means charging)
+(get-bms-val 'bms-ah-cnt) ; Amp hour counter
+(get-bms-val 'bms-wh-cnt) ; Watt hour counter
+(get-bms-val 'bms-cell-num) ; Number of cells in series
+(get-bms-val 'bms-v-cell 2) ; Cell 3 voltage (index starts from 0)
+(get-bms-val 'bms-bal-state 2) ; Cell 3 balancing state. 0: not balancing, 1: balancing
+(get-bms-val 'bms-temp-adc-num) ; Temperature sensor count
+(get-bms-val 'bms-temps-adc 2) ; Get sensor 3 temperature (index starts from 0)
+(get-bms-val 'bms-temp-ic) ; Balance IC temperature
+(get-bms-val 'bms-temp-hum) ; Humidity sensor temperature
+(get-bms-val 'bms-hum) ; Humidity
+(get-bms-val 'bms-temp-cell-max) ; Maximum cell temperature
+(get-bms-val 'bms-soc) ; State of charge (0.0 to 1.0)
+(get-bms-val 'bms-can-id) ; CAN ID of BMS
+(get-bms-val 'bms-ah-cnt-chg-total) ; Total ah charged
+(get-bms-val 'bms-wh-cnt-chg-total) ; Total wh charged
+(get-bms-val 'bms-ah-cnt-dis-total) ; Total ah discharged
+(get-bms-val 'bms-wh-cnt-dis-total) ; Total wh discharged
+(get-bms-val 'bms-msg-age) ; Age of last message from BMS in seconds
 ```
 
 #### get-adc
@@ -130,6 +130,14 @@ Get value from BMS. Examples:
 ```
 
 Get ADC voltage on channel ch (0, 1 or 2).
+
+#### get-adc-decoded
+
+```clj
+(get-adc-decoded ch)
+```
+
+Get decoded ADC value on channel ch (0 or 1). Decoded means that the voltage is mapped to the range 0 to 1 according to the configuration in the ADC app. Note that the ADC app must be running for this function to work. No throttle curve is applied to this value, but you can use the [throttle-curve](#throttle-curve) function to apply one if desired.
 
 #### systime
 
@@ -218,13 +226,67 @@ Example of sending the numbers 1, 2, 3 and 4:
 
 *dataList* can be a list or a [byte array](#byte-arrays).
 
-#### sleep-secs
-
-Sleep for seconds seconds. Also works with floating point numbers.
+#### sleep
 
 ```clj
-(sleep-secs seconds)
+(sleep seconds)
 ```
+
+Sleep for *seconds* seconds. Example:
+
+```clj
+(sleep 0.05) ; Sleep for 0.05 seconds (50 ms)
+```
+
+#### get-remote-state
+
+```clj
+(get-remote-state)
+```
+
+Get button and joystick state of connected remote. Note that a remote app such as the VESC remote or nunchuk must be configured and running for this to work. Returns the following list:
+
+```clj
+(js-y js-x bt-c bt-z is-rev)
+; Where
+; js-y : Joystick Y axis, range -1.0 to 1.0
+; js-x : Joystick X axis, range -1.0 to 1.0
+; bt-c : C button pressed state, 0 or 1
+; bt-z : Z button pressed state, 0 or 1
+; is-rev : Reverse active, 0 or 1
+```
+
+#### eeprom-store-f
+
+```clj
+(eeprom-store-f addr number)
+```
+
+Store float number on emulated eeprom at address addr. Addr range: 0 to 63. Note that this will stop the motor briefly as writing to the flash memory cannot be done at the same time as the motor is running.
+
+#### eeprom-read-f
+
+```clj
+(eeprom-read-f addr)
+```
+
+Read float number on emulated eeprom at address addr. Addr range: 0 to 63. If nothing was stored on that address this function returns nil.
+
+#### eeprom-store-i
+
+```clj
+(eeprom-store-i addr number)
+```
+
+Same as eeprom-store-f, but store number as i32 instead of float.
+
+#### eeprom-read-i
+
+```clj
+(eeprom-read-i addr number)
+```
+
+Same as eeprom-read-i, but read number as i32 instead of float.
 
 ### Motor Set Commands
 
@@ -492,6 +554,20 @@ Get speed in meters per second over CAN-bus on VESC with id. The gearing, wheel 
 
 Get distance traveled in meters over CAN-bus on VESC with id. As with (canget-speed id), the local configuration will be used to convert the tachometer value to meters.
 
+#### canget-ppm
+```clj
+(canget-ppm id)
+```
+
+Get PPM-input from the VESC with id on the CAN-bus. Note that CAN status message 6 as well as the PPM-app must be active on that VESC for this function to work.
+
+#### canget-adc
+```clj
+(canget-adc id ch)
+```
+
+Get ADC channel ch from the VESC with id on the CAN-bus. Note that CAN status message 6 must be active on that VESC for this function to work.
+
 #### can-list-devs
 ```clj
 (can-list-devs)
@@ -625,6 +701,13 @@ Converts x from radians to degrees.
 ```
 
 Rotate vector x1,x2,x3 around roll, pitch and yaw. optRev (1 or 0) will apply the rotation in reverse (apply the inverse of the rotation matrix) if set to 1.
+
+#### throttle-curve
+```clj
+(throttle-curve value accel brake mode)
+```
+
+Apply throttle curve on value. accel (range -1 to 1) is the curve constant for acceleration (when value is greater than 0) and brake (range -1 to 1) is the curve constant for braking (when value is less than 0). mode (0, 1 or 2) is the throttle curve mode. Negative curve constants mean that the throttle will be gentler in the beginning and more aggressive with towards the end and positive curve constants mean the opposite. The modes are 0: Exponential, 1: Natural and 2: Polynomial. You can have a look at the throttle curves in VESC Tool for the PPM, ADC or VESC Remote app and experiment with the mode and curve constants to see a plot of the response.
 
 ### Bit Operations
 
@@ -779,7 +862,7 @@ Same as uart-read-bytes, but will return when the byte end is read.
 (i2c-start)
 ```
 
-Start the I2C driver on the COMM-port on the VESC. If any app is using the UART pins it will be stopped first.
+Start the I2C driver on the COMM-port on the VESC. If any app is using the I2C pins it will be stopped first.
 
 #### i2c-tx-rx
 
@@ -805,9 +888,154 @@ Send array (or list) arrTx to the I2C-device with address addr. Optionally recei
 
 Sends a sequence of bits in an attempt to restore the i2c-bus. Can be used if an i2c-device hangs and refuses to respond.
 
+### GPIO
+
+These functions allow using GPIO-pins from lispBM. The UART and SWD pins can currently be used. NOTE: If you are using the SWD-pins a SWD-programmer won't work after that until the next reset.
+
+#### gpio-configure
+
+```clj
+(gpio-configure pin mode)
+```
+
+Configure GPIO pin to mode. Example:
+
+```clj
+(gpio-configure 'pin-rx 'pin-mode-out) ; Set pin RX to output
+
+; Available pins
+'pin-rx     ; RX-pin on the COMM-port
+'pin-tx     ; TX-pin on the COMM-port
+'pin-swdio  ; IO-pin on the SWD-port
+'pin-swclk  ; CLK-pin on the SWD-port
+
+; Available modes
+'pin-mode-out    ; Output
+'pin-mode-od     ; Open drain output
+'pin-mode-in     ; Input
+'pin-mode-in-pu  ; Input with pull-up resistor
+'pin-mode-in-pd  ; Input with pull-down resistor
+```
+
+#### gpio-write
+
+```clj
+(gpio-write pin state)
+```
+
+Write state to pin. If the pin is set to an output 1 will set it to VCC and 0 to GND. If the pin is open drain 1 will set it floating and 0 will set it to GND. Example:
+
+```clj
+(gpio-write 'pin-rx 1) ; Set pin rx to 1
+```
+
+#### gpio-read
+
+```clj
+(gpio-read pin)
+```
+
+Read state of pin. Returns 1 if the pin is high, 0 otherwise.
+
+### Loops
+
+In general it is encouraged to do iteration by recursion, but there are a few loop constructs available for convenience.
+
+#### loopfor
+
+```clj
+(loopfor it start cond update body)
+```
+
+For-loop. it is the iterator, start is what it is initialized to, cond is the condition that has the be true for the loop to continue running, update is how to update the iterator after each iteration and body is the code to execute each iteration. The iterator can be accessed from within body. Example:
+
+```clj
+(loopfor i 0 (< i 5) (+ i 1)
+    (progn
+        (print i)
+        (sleep 0.5)
+))
+
+Output:
+0
+1
+2
+3
+4
+```
+
+#### loopwhile
+
+```clj
+(loopwhile cond body)
+```
+
+While-loop. cond is the condition that has the be true for the loop to continue running and body is the code to execute each iteration. Example:
+
+```clj
+(define i 0)
+
+(loopwhile (< i 5)
+    (progn
+        (print i)
+        (sleep 0.5)
+        (define i (+ i 1))
+))
+
+Output:
+0
+1
+2
+3
+4
+```
+
+#### looprange
+
+```clj
+(looprange it start end body)
+```
+
+Range-loop. Iterate it from start to end and evaluate body for each iteration. The iterator can be accessed from within body. Example:
+
+```clj
+(looprange i 0 5
+    (progn
+        (print i)
+        (sleep 0.5)
+))
+
+Output:
+0
+1
+2
+3
+4
+```
+
 ### Useful Lisp Functions
 
 There are a number of lisp functions that can be used from lispBM in the VESC firmware. They will be loaded to the environment the first time they are used, so they do not use up memory before the first use.
+
+#### defun
+
+```clj
+(defun (args) body)
+```
+
+Shorthand macro for defining a function. Example:
+
+```clj
+; Create function f with argument x that prints x
+(defun f (x)
+    (print x)
+)
+
+; The above is equivalent to
+(define f (lambda (x)
+    (print x)
+))
+```
 
 #### map
 
@@ -830,11 +1058,11 @@ This example creates an anonymous function that takes one argument and returns t
 (iota n)
 ```
 
-Create list from 0 to n. Example:
+Create list from 0 to n, excluding n. Example:
 
 ```clj
 (iota 5)
-> (0 1 2 3 4 5)
+> (0 1 2 3 4)
 ```
 
 #### range
@@ -843,11 +1071,11 @@ Create list from 0 to n. Example:
 (range start end)
 ```
 
-Create a list from start to end. Example:
+Create a list from start to end, excluding end. Example:
 
 ```clj
 (range 2 8)
-> (2 3 4 5 6 7 8)
+> (2 3 4 5 6 7)
 ```
 
 #### foldl
@@ -932,6 +1160,236 @@ Filter list by keeping the elements on which f returns true. Example:
 > (3 2 4)
 ```
 
+#### sort
+
+```clj
+(sort f lst)
+```
+
+Sort list lst using comparison function f. Example:
+
+```clj
+(sort < '(5 6 2 1 5 63 33 7 7 8))
+> (1 2 5 5 6 7 7 8 33 63)
+
+(sort > '(5 6 2 1 5 63 33 7 7 8))
+> (63 33 8 7 7 6 5 5 2 1)
+
+; Split sentence to words and sort them in ascending order
+(sort str-cmp-asc (str-split "this is a string" " "))
+> ("a" "is" "string" "this")
+```
+
+### String Manipulation
+
+#### str-from-n
+
+```clj
+(str-from-n n optFormat)
+```
+
+Create a string from the number n. Also takes an optional format argument optFormat that works in the same way as the printf-function in C. The optFormat argument can also be used together with other characters as long as the resulting output string is shorter than 100 characters. Example:
+
+```clj
+(str-from-n 10)
+> "10"
+
+(str-from-n 2.5)
+> "2.500000"
+
+(str-from-n 2.5 "%.1f")
+> "2.5"
+
+(str-from-n 10 "0x%04X") ; Here we also append 0x in front of optFormat
+> "0x000A"
+
+(str-from-n 0.023e3)
+> "2.500000"
+```
+
+#### str-merge
+
+```clj
+(str-merge str1 str2 ...)
+```
+
+Merge a number of strings into one. Example:
+
+```clj
+(str-merge "A" "bC" "D")
+> "AbCD"
+
+(str-merge "Num1: " (str-from-n 10) " Num2: " (str-from-n 2.1 "%.1f"))
+> "Num1: 10 Num2: 2.1"
+```
+
+#### str-to-i
+
+```clj
+(str-to-i str optBase)
+```
+
+Convert string to integer. By default the base is chosen automatically, but it can also be specified. Example:
+
+```clj
+(str-to-i "123")
+> {123}
+
+(str-to-i "a" 16)
+> {10}
+
+(str-to-i "0xa") ; Automatic base16 if str starts with 0x
+> {10}
+```
+
+#### str-to-f
+
+```clj
+(str-to-f str)
+```
+
+Convert string to floating point number. Example:
+
+```clj
+(str-to-f "2.5")
+> {2.500000}
+
+; Also supports scientific notation
+(str-to-f "0.0025e3")
+> {2.500000}
+```
+
+#### str-part
+
+```clj
+(str-part str start optN)
+```
+
+Take part of string str starting at start for optN characters. If optN is omitted the rest of str will be taken. Example:
+
+```clj
+(str-part "Hello World!" 6)
+> "World!"
+
+(str-part "Hello World!" 6 2)
+> "Wo"
+
+(str-part "Hello World!" 0 2)
+> "He"
+```
+
+#### str-split
+
+```clj
+(str-split str delim)
+```
+
+Split string str into tokens using delimiter delim. If delim is a number str will be split into tokens the size of that number. Example:
+
+```clj
+(str-split "This is a test" " ")
+> ("This" "is" "a" "test")
+
+(str-split "this_o_is_o_a_o_test" "_o_")
+> ("This" "is" "a" "test")
+
+(str-split "This is a test" 3)
+> ("Thi" "s i" "s a" " te" "st")
+
+(str-split "This is a test" 1)
+> ("T" "h" "i" "s" " " "i" "s" " " "a" " " "t" "e" "s" "t")
+```
+
+#### str-replace
+
+```clj
+(str-replace str rep optWith)
+```
+
+Replace every occurrence of rep in str with opnWith. If optWith is omitted every rep will be removed. Example:
+
+```clj
+(str-replace "Hello World!" "World" "LispBM")
+> "Hello LispBM!"
+
+(str-replace "Hello World!" " World")
+> "Hello!"
+```
+
+#### str-to-upper
+
+```clj
+(str-to-upper str)
+```
+
+Convert string str to upper case. Example:
+
+```clj
+(str-to-upper "TesTt")
+> "TESTT"
+```
+
+#### str-to-lower
+
+```clj
+(str-to-lower str)
+```
+
+Convert string str to lower case. Example:
+
+```clj
+(str-to-lower "TesTt")
+> "testt"
+```
+
+#### str-cmp
+
+```clj
+(str-cmp str1 str1)
+```
+
+Compare strings str1 and str2. Works in the same way as the strcmp-function in C, meaning that equal strings return 0 and different strings return their difference according how they would be sorted. Example:
+
+```clj
+(str-cmp "Hello" "Hello")
+> 0
+
+(str-cmp "Hello" "World")
+> -15
+
+(str-cmp "World" "Hello")
+> 15
+```
+
+#### str-cmp-asc
+
+```clj
+(str-cmp-asc str1 str1)
+```
+
+Return true if str1 comes before str2, nil otherwise. Useful for sorting strings using the [sort](#sort) function in ascending order.
+
+#### str-cmp-dsc
+
+```clj
+(str-cmp-dsc str1 str1)
+```
+
+Return true if str2 comes before str1, nil otherwise. Useful for sorting strings using the [sort](#sort) function in descending order.
+
+#### str-len
+
+```clj
+(str-len str)
+```
+
+Calculate length of string str excluding the null termination. Example:
+
+```clj
+(str-len "Hello")
+> 5
+```
+
 ## Events
 
 Events can be used to execute code for certain events, such as when CAN-frames are received. To use events you must first register an event handler, then enable the events you want to receive. As the event handler blocks until the event arrives it is useful to spawn a thread to handle events so that other things can be done in the main thread at the same time.
@@ -950,8 +1408,8 @@ The following example shows how to spawn a thread that handles SID (standard-id)
 
 (define event-handler (lambda ()
     (progn
-        (recv ((signal-can-sid (? id) . (? data)) (proc-sid id data))
-        (recv ((signal-data-rx ? data) (proc-data data))
+        (recv ((event-can-sid (? id) . (? data)) (proc-sid id data))
+        (recv ((event-data-rx ? data) (proc-data data))
               (_ nil)) ; Ignore other events
         (event-handler) ; Call self again to make this a loop
 )))
@@ -960,18 +1418,18 @@ The following example shows how to spawn a thread that handles SID (standard-id)
 (event-register-handler (spawn event-handler))
 
 ; Enable the CAN event for standard ID (SID) frames
-(event-enable "event-can-sid")
+(event-enable 'event-can-sid)
 
 ; Enable the custom app data event
-(event-enable "event-data-rx")
+(event-enable 'event-data-rx)
 ```
 
 Possible events to register are
 
 ```clj
-(event-enable "event-can-sid") ; Sends (signal-can-sid id data), where id is U32 and data is a byte array
-(event-enable "event-can-eid") ; Sends (signal-can-eid id data), where id is U32 and data is a byte array
-(event-enable "event-data-rx") ; Sends (signal-data-rx data), where data is a list of i28
+(event-enable 'event-can-sid) ; Sends (signal-can-sid id data), where id is U32 and data is a byte array
+(event-enable 'event-can-eid) ; Sends (signal-can-eid id data), where id is U32 and data is a byte array
+(event-enable 'event-data-rx) ; Sends (signal-data-rx data), where data is a byte array
 ```
 
 The CAN-frames arrive whenever data is received on the CAN-bus and data-rx is received for example when data is sent from a Qml-script in VESC Tool.

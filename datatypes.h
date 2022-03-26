@@ -1,5 +1,5 @@
 /*
-	Copyright 2016 - 2021 Benjamin Vedder	benjamin@vedder.se
+	Copyright 2016 - 2022 Benjamin Vedder	benjamin@vedder.se
 
 	This file is part of the VESC firmware.
 
@@ -60,7 +60,9 @@ typedef enum {
 	FOC_SENSOR_MODE_ENCODER,
 	FOC_SENSOR_MODE_HALL,
 	FOC_SENSOR_MODE_HFI,
-	FOC_SENSOR_MODE_HFI_START
+	FOC_SENSOR_MODE_HFI_START,
+	FOC_SENSOR_MODE_HFI_V2,
+	FOC_SENSOR_MODE_HFI_V3
 } mc_foc_sensor_mode;
 
 // Auxiliary output mode
@@ -312,6 +314,11 @@ typedef enum {
 	MTPA_MODE_IQ_MEASURED
 } MTPA_MODE;
 
+typedef enum {
+	SPEED_SRC_CORRECTED = 0,
+	SPEED_SRC_OBSERVER,
+} SPEED_SRC;
+
 typedef struct {
 	// Limits
 	float l_current_max;
@@ -414,6 +421,8 @@ typedef struct {
 	float foc_hfi_voltage_start;
 	float foc_hfi_voltage_run;
 	float foc_hfi_voltage_max;
+	float foc_hfi_gain;
+	float foc_hfi_hyst;
 	float foc_sl_erpm_hfi;
 	uint16_t foc_hfi_start_samples;
 	float foc_hfi_obs_ovr_sec;
@@ -430,6 +439,7 @@ typedef struct {
 	float foc_fw_duty_start;
 	float foc_fw_ramp_time;
 	float foc_fw_q_current_factor;
+	SPEED_SRC foc_speed_soure;
 
 	// GPDrive
 	int gpd_buffer_notify_left;
@@ -785,16 +795,6 @@ typedef struct {
 	uint16_t turntilt_erpm_boost_end;
 } balance_config;
 
-// CAN status modes
-typedef enum {
-	CAN_STATUS_DISABLED = 0,
-	CAN_STATUS_1,
-	CAN_STATUS_1_2,
-	CAN_STATUS_1_2_3,
-	CAN_STATUS_1_2_3_4,
-	CAN_STATUS_1_2_3_4_5
-} CAN_STATUS_MODE;
-
 typedef enum {
 	SHUTDOWN_MODE_ALWAYS_OFF = 0,
 	SHUTDOWN_MODE_ALWAYS_ON,
@@ -864,8 +864,10 @@ typedef struct {
 	uint8_t controller_id;
 	uint32_t timeout_msec;
 	float timeout_brake_current;
-	CAN_STATUS_MODE send_can_status;
-	uint32_t send_can_status_rate_hz;
+	uint32_t can_status_rate_1;
+	uint8_t can_status_msgs_r1;
+	uint32_t can_status_rate_2;
+	uint8_t can_status_msgs_r2;
 	CAN_BAUD can_baud_rate;
 	bool pairing_done;
 	bool permanent_uart_enabled;
@@ -1130,6 +1132,7 @@ typedef enum {
 	CAN_PACKET_UPDATE_PID_POS_OFFSET,
 	CAN_PACKET_POLL_ROTOR_POS,
 	CAN_PACKET_NOTIFY_BOOT,
+	CAN_PACKET_STATUS_6,
 	CAN_PACKET_MAKE_ENUM_32_BITS = 0xFFFFFFFF,
 } CAN_PACKET_ID;
 
@@ -1202,6 +1205,15 @@ typedef struct {
 	float v_in;
 	int32_t tacho_value;
 } can_status_msg_5;
+
+typedef struct {
+	int id;
+	systime_t rx_time;
+	float adc_1;
+	float adc_2;
+	float adc_3;
+	float ppm;
+} can_status_msg_6;
 
 typedef struct {
 	int id;

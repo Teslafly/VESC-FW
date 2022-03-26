@@ -23,7 +23,8 @@
 #include "mcpwm.h"
 #include "mcpwm_foc.h"
 #include "mc_interface.h"
-#include "utils.h"
+#include "utils_math.h"
+#include "utils_sys.h"
 #include "stm32f4xx_conf.h"
 #include "timeout.h"
 #include "commands.h"
@@ -35,6 +36,7 @@
 #include "worker.h"
 #include "crc.h"
 #include "terminal.h"
+#include "firmware_metadata.h"
 
 #include <string.h>
 #include <math.h>
@@ -1066,8 +1068,8 @@ bool conf_general_measure_flux_linkage_openloop(float current, float duty,
 		id_avg /= samples2;
 
 		float rad_s = RPM2RADPS_f(rpm_now);
-		float v_mag = sqrtf(SQ(vq_avg) + SQ(vd_avg));
-		float i_mag = sqrtf(SQ(iq_avg) + SQ(id_avg));
+		float v_mag = NORM2_f(vq_avg, vd_avg);
+		float i_mag = NORM2_f(iq_avg, id_avg);
 		*linkage = (v_mag - res * i_mag) / rad_s - i_mag * ind;
 
 		mcconf->foc_motor_r = res;
@@ -1909,9 +1911,9 @@ int conf_general_detect_apply_all_foc_can(bool detect_can, float max_power_loss,
 
 	// Store and send settings
 	if (res >= 0) {
-		if (appconf->controller_id != id_new || appconf->send_can_status != CAN_STATUS_1_2_3_4) {
+		if (appconf->controller_id != id_new || appconf->can_status_msgs_r1 != 0b00001111) {
 			appconf->controller_id = id_new;
-			appconf->send_can_status = CAN_STATUS_1_2_3_4;
+			appconf->can_status_msgs_r1 = 0b00001111;
 			conf_general_store_app_configuration(appconf);
 			app_set_configuration(appconf);
 			commands_send_appconf(COMM_GET_APPCONF, appconf);

@@ -31,7 +31,7 @@
 #define LISP_MEM_BITMAP_SIZE	LBM_MEMORY_BITMAP_SIZE_8K
 #define GC_STACK_SIZE			160
 #define PRINT_STACK_SIZE		128
-#define EXTENSION_STORAGE_SIZE	160
+#define EXTENSION_STORAGE_SIZE	180
 #define VARIABLE_STORAGE_SIZE	128
 
 __attribute__((section(".ram4"))) static lbm_cons_t heap[HEAP_SIZE] __attribute__ ((aligned (8)));
@@ -153,7 +153,7 @@ void lispif_process_cmd(unsigned char *data, unsigned int len,
 
 		lbm_get_heap_state(&heap_state);
 		if (heap_state.gc_num > 0) {
-			heap_use = 100.0 * (float)(HEAP_SIZE - heap_state.gc_recovered) / (float)HEAP_SIZE;
+			heap_use = 100.0 * (float)(HEAP_SIZE - heap_state.gc_last_free) / (float)HEAP_SIZE;
 		}
 
 		mem_use = 100.0 * (float)(lbm_memory_num_words() - lbm_memory_num_free()) / (float)lbm_memory_num_words();
@@ -173,13 +173,13 @@ void lispif_process_cmd(unsigned char *data, unsigned int len,
 		strcpy((char*)(send_buffer_global + ind), r_buf); ind += strlen(r_buf) + 1;
 
 		lbm_value curr = *lbm_get_env_ptr();
-		while (lbm_type_of(curr) == LBM_PTR_TYPE_CONS) {
+		while (lbm_type_of(curr) == LBM_TYPE_CONS) {
 			lbm_value key_val = lbm_car(curr);
-			if (lbm_type_of(lbm_car(key_val)) == LBM_VAL_TYPE_SYMBOL && lbm_is_number(lbm_cdr(key_val))) {
+			if (lbm_type_of(lbm_car(key_val)) == LBM_TYPE_SYMBOL && lbm_is_number(lbm_cdr(key_val))) {
 				const char *name = lbm_get_name_by_symbol(lbm_dec_sym(lbm_car(key_val)));
 				strcpy((char*)(send_buffer_global + ind), name);
 				ind += strlen(name) + 1;
-				buffer_append_float32_auto(send_buffer_global, lbm_dec_as_f(lbm_cdr(key_val)), &ind);
+				buffer_append_float32_auto(send_buffer_global, lbm_dec_as_float(lbm_cdr(key_val)), &ind);
 			}
 
 			if (ind > 300) {
@@ -195,7 +195,11 @@ void lispif_process_cmd(unsigned char *data, unsigned int len,
 			if (lbm_is_number(var) && name) {
 				strcpy((char*)(send_buffer_global + ind), name);
 				ind += strlen(name) + 1;
-				buffer_append_float32_auto(send_buffer_global, lbm_dec_as_f(var), &ind);
+				buffer_append_float32_auto(send_buffer_global, lbm_dec_as_float(var), &ind);
+
+				if (ind > 300) {
+					break;
+				}
 			}
 		}
 
@@ -212,7 +216,7 @@ void lispif_process_cmd(unsigned char *data, unsigned int len,
 			char *str = (char*)data;
 
 			if (len <= 1) {
-				commands_printf_lisp(" ");
+				commands_printf_lisp(">");
 			} else if (len >= 5 && strncmp(str, ":help", 5) == 0) {
 				commands_printf_lisp("== Special Commands ==");
 				commands_printf_lisp(
@@ -266,7 +270,7 @@ void lispif_process_cmd(unsigned char *data, unsigned int len,
 				char output[128];
 
 				commands_printf_lisp("Environment:\n");
-				while (lbm_type_of(curr) == LBM_PTR_TYPE_CONS) {
+				while (lbm_type_of(curr) == LBM_TYPE_CONS) {
 					lbm_print_value(output, sizeof(output), lbm_car(curr));
 					curr = lbm_cdr(curr);
 					commands_printf_lisp("  %s",output);

@@ -27,12 +27,17 @@
 
 #include "lispbm.h"
 
-#define EVAL_WA_SIZE THD_WORKING_AREA_SIZE(1024)
+#include "lbm_llama_ascii.h"
+#include "lbm_version.h"
+
+#define EVAL_WA_SIZE THD_WORKING_AREA_SIZE(2048)
 #define EVAL_CPS_STACK_SIZE 256
 #define GC_STACK_SIZE 256
 #define PRINT_STACK_SIZE 256
 #define HEAP_SIZE 2048
 #define EXTENSION_STORAGE_SIZE 256
+
+#define WAIT_TIMEOUT 2500
 
 uint32_t gc_stack_storage[GC_STACK_SIZE];
 uint32_t print_stack_storage[PRINT_STACK_SIZE];
@@ -123,17 +128,17 @@ lbm_value ext_print(lbm_value *args, lbm_uint argn) {
   for (lbm_uint i = 0; i < argn; i ++) {
     lbm_value t = args[i];
 
-    if (lbm_is_ptr(t) && lbm_type_of(t) == LBM_PTR_TYPE_ARRAY) {
+    if (lbm_is_ptr(t) && lbm_type_of(t) == LBM_TYPE_ARRAY) {
       lbm_array_header_t *array = (lbm_array_header_t *)lbm_car(t);
       switch (array->elt_type){
-      case LBM_VAL_TYPE_CHAR:
-        chprintf(chp,"%s", (char*)array + 8);
+      case LBM_TYPE_CHAR:
+        chprintf(chp,"%s", (char*)array->data);
         break;
       default:
         return lbm_enc_sym(SYM_NIL);
         break;
       }
-    } else if (lbm_type_of(t) == LBM_VAL_TYPE_CHAR) {
+    } else if (lbm_type_of(t) == LBM_TYPE_CHAR) {
       if (lbm_dec_char(t) =='\n') {
         chprintf(chp, "\r\n");
       } else {
@@ -221,6 +226,9 @@ int main(void) {
     chprintf(chp,"Error starting evaluator thread.\r\n");
     return 0;
   }
+
+  chprintf(chp,"%s\n", llama_ascii);
+  chprintf(chp,"LispBM Version %d.%d.%d\r\n\r\n", LBM_MAJOR_VERSION, LBM_MINOR_VERSION, LBM_PATCH_VERSION);
   chprintf(chp,"Lisp REPL started (ChibiOS)!\r\n");
 
   while (1) {
@@ -247,7 +255,7 @@ int main(void) {
     } else if (strncmp(str, ":env", 4) == 0) {
       lbm_value curr = *lbm_get_env_ptr();
       chprintf(chp,"Environment:\r\n");
-      while (lbm_type_of(curr) == LBM_PTR_TYPE_CONS) {
+      while (lbm_type_of(curr) == LBM_TYPE_CONS) {
         res = lbm_print_value(outbuf,1024, lbm_car(curr));
         curr = lbm_cdr(curr);
 
@@ -284,7 +292,7 @@ int main(void) {
       bool exists = false;
       lbm_done_iterator(ctx_exists, (void*)&id, (void*)&exists);
       if (exists) {
-        lbm_wait_ctx((lbm_cid)id);
+        lbm_wait_ctx((lbm_cid)id, WAIT_TIMEOUT);
       }
     } else if (strncmp(str, ":pause", 6) == 0) {
       lbm_pause_eval();
@@ -327,7 +335,12 @@ int main(void) {
       lbm_cid cid = lbm_load_and_eval_program(&string_tok);
 
       lbm_continue_eval();
-      lbm_wait_ctx((lbm_cid)cid);
+      if (!lbm_wait_ctx((lbm_cid)cid, WAIT_TIMEOUT)) {
+        chprintf(chp,"Wait for prelude to load timed out.\r\n");
+      } else {
+        chprintf(chp,"Prelude loaded.\r\n");
+      }
+
     } else if (strncmp(str, ":quit", 5) == 0) {
 
       break;
@@ -363,7 +376,7 @@ int main(void) {
         lbm_cid cid = lbm_load_and_eval_program(&string_tok);
 
         lbm_continue_eval();
-        lbm_wait_ctx((lbm_cid)cid);
+        lbm_wait_ctx((lbm_cid)cid, WAIT_TIMEOUT);
 
       }
     } else {
@@ -389,7 +402,7 @@ int main(void) {
       lbm_continue_eval();
 
       printf("started ctx: %u\n", cid);
-      lbm_wait_ctx((lbm_cid)cid);
+      lbm_wait_ctx((lbm_cid)cid, WAIT_TIMEOUT);
     }
   }
 }

@@ -34,7 +34,8 @@
 #include "servo_dec.h"
 #include "comm_can.h"
 #include "flash_helper.h"
-#include "utils.h"
+#include "utils_math.h"
+#include "utils_sys.h"
 #include "packet.h"
 #include "encoder/encoder.h"
 #include "nrf_driver.h"
@@ -678,7 +679,7 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 		int32_t ind = 0;
 		uint8_t send_buffer[50];
 		send_buffer[ind++] = COMM_GET_DECODED_CHUK;
-		buffer_append_int32(send_buffer, (int32_t)(app_nunchuk_get_decoded_chuk() * 1000000.0), &ind);
+		buffer_append_int32(send_buffer, (int32_t)(app_nunchuk_get_decoded_y() * 1000000.0), &ind);
 		reply_func(send_buffer, ind);
 	} break;
 

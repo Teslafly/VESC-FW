@@ -27,7 +27,7 @@
 #include "icm20948.h"
 #include "bmi160_wrapper.h"
 #include "lsm6ds3.h"
-#include "utils.h"
+#include "utils_math.h"
 #include "Fusion.h"
 
 #include <math.h>
@@ -410,6 +410,13 @@ void imu_get_calibration(float yaw, float *imu_cal) {
 
 	ahrs_init_attitude_info(&m_att);
 	FusionAhrsReinitialise(&m_fusionAhrs);
+}
+
+/*
+ * Set the yaw-component of the IMU state. Currently only works for the fusion filter.
+ */
+void imu_set_yaw(float yaw_deg) {
+	FusionAhrsSetYaw(&m_fusionAhrs, yaw_deg);
 }
 
 static void imu_read_callback(float *accel, float *gyro, float *mag) {
