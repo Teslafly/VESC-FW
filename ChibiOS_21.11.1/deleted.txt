@@ -1,0 +1,28 @@
+Folders that were deleted from the base chibios code package for space reasons before git include:
+
+os/common/ext/ADI/
+os/common/ext/RP/
+
+os/common/ext/ST/STM32F0xx
+os/common/ext/ST/STM32F1xx
+os/common/ext/ST/STM32F2xx
+os/common/ext/ST/STM32G0xx
+os/common/ext/ST/STM32L0xx
+os/common/ext/ST/STM32L1xx
+
+os/common/ext/ST/STM32MP1xx
+os/common/ext/ST/STM32WBxx
+os/common/ext/ST/STM32WLxx
+
+demos/ADUCM
+demos/AVR
+demos/LPC21xx
+demos/RP
+demos/SPC5
+demos/ST - various folders
+demos/various
+
+test/
+testex/
+testhal/
+testrt/
