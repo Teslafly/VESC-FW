@@ -19,6 +19,11 @@
             "cwd": "c:/dev/teslafly_bldc_dev/build/60_mk4",
             "binaryPath": "c:\\dev\\teslafly_bldc_dev\\build\\60_mk4\\60_mk4.elf",
             "binaryArgs": []
+        },
+        {
+            "cwd": "/mnt/c/work/reference/teslafly-bldc/build/60_mk5",
+            "binaryPath": "/mnt/c/work/reference/teslafly-bldc/build/60_mk5/60_mk5.elf",
+            "binaryArgs": []
         }
     ]
 }

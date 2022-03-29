@@ -1,8 +1,23 @@
 {
     "configurations": [
         {
-            "name": "vscode_stm32_c_cpp_properties",
+            "name": "vscode_stm32_c_cpp_properties_windows",
             "compilerPath": "${workspaceRoot}/tools/gcc-arm-none-eabi-7-2018-q2-update/bin/arm-none-eabi-gcc.exe",
+            "includePath": [
+                "${workspaceRoot}"
+            ],
+            "defines": [
+                "USE_HAL_DRIVER",
+                "STM32F407xx"
+            ],
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-x64",
+            "configurationProvider": "ms-vscode.makefile-tools"  
+        },
+        {
+            "name": "vscode_stm32_c_cpp_properties_linux",
+            "compilerPath": "${workspaceRoot}/tools/gcc-arm-none-eabi-7-2018-q2-update/bin/arm-none-eabi-gcc",
             "includePath": [
                 "${workspaceRoot}"
             ],
