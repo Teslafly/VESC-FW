@@ -86,7 +86,7 @@
  * @brief   Enables the I2C subsystem.
  */
 #if !defined(HAL_USE_I2C) || defined(__DOXYGEN__)
-#define HAL_USE_I2C                 TRUE
+#define HAL_USE_I2C                         FALSE
 #endif
 
 /**
@@ -100,7 +100,7 @@
  * @brief   Enables the ICU subsystem.
  */
 #if !defined(HAL_USE_ICU) || defined(__DOXYGEN__)
-#define HAL_USE_ICU                 TRUE
+#define HAL_USE_ICU                         FALSE
 #endif
 
 /**
@@ -149,14 +149,28 @@
  * @brief   Enables the SERIAL over USB subsystem.
  */
 #if !defined(HAL_USE_SERIAL_USB) || defined(__DOXYGEN__)
-#define HAL_USE_SERIAL_USB          TRUE
+#define HAL_USE_SERIAL_USB                  FALSE
+#endif
+
+/**
+ * @brief   Enables the SIO subsystem.
+ */
+#if !defined(HAL_USE_SIO) || defined(__DOXYGEN__)
+#define HAL_USE_SIO                         FALSE
 #endif
 
 /**
  * @brief   Enables the SPI subsystem.
  */
 #if !defined(HAL_USE_SPI) || defined(__DOXYGEN__)
-#define HAL_USE_SPI                 TRUE
+#define HAL_USE_SPI                         FALSE
+#endif
+
+/**
+ * @brief   Enables the TRNG subsystem.
+ */
+#if !defined(HAL_USE_TRNG) || defined(__DOXYGEN__)
+#define HAL_USE_TRNG                        FALSE
 #endif
 
 /**
@@ -170,7 +184,41 @@
  * @brief   Enables the USB subsystem.
  */
 #if !defined(HAL_USE_USB) || defined(__DOXYGEN__)
-#define HAL_USE_USB                 TRUE
+#define HAL_USE_USB                         FALSE
+#endif
+
+/**
+ * @brief   Enables the WDG subsystem.
+ */
+#if !defined(HAL_USE_WDG) || defined(__DOXYGEN__)
+#define HAL_USE_WDG                         FALSE
+#endif
+
+/**
+ * @brief   Enables the WSPI subsystem.
+ */
+#if !defined(HAL_USE_WSPI) || defined(__DOXYGEN__)
+#define HAL_USE_WSPI                        FALSE
+#endif
+
+/*===========================================================================*/
+/* PAL driver related settings.                                              */
+/*===========================================================================*/
+
+/**
+ * @brief   Enables synchronous APIs.
+ * @note    Disabling this option saves both code and data space.
+ */
+#if !defined(PAL_USE_CALLBACKS) || defined(__DOXYGEN__)
+#define PAL_USE_CALLBACKS                   FALSE
+#endif
+
+/**
+ * @brief   Enables synchronous APIs.
+ * @note    Disabling this option saves both code and data space.
+ */
+#if !defined(PAL_USE_WAIT) || defined(__DOXYGEN__)
+#define PAL_USE_WAIT                        FALSE
 #endif
 
 /*===========================================================================*/
@@ -201,7 +249,56 @@
  * @brief   Sleep mode related APIs inclusion switch.
  */
 #if !defined(CAN_USE_SLEEP_MODE) || defined(__DOXYGEN__)
-#define CAN_USE_SLEEP_MODE          TRUE
+#define CAN_USE_SLEEP_MODE                  TRUE
+#endif
+
+/**
+ * @brief   Enforces the driver to use direct callbacks rather than OSAL events.
+ */
+#if !defined(CAN_ENFORCE_USE_CALLBACKS) || defined(__DOXYGEN__)
+#define CAN_ENFORCE_USE_CALLBACKS           FALSE
+#endif
+
+/*===========================================================================*/
+/* CRY driver related settings.                                              */
+/*===========================================================================*/
+
+/**
+ * @brief   Enables the SW fall-back of the cryptographic driver.
+ * @details When enabled, this option, activates a fall-back software
+ *          implementation for algorithms not supported by the underlying
+ *          hardware.
+ * @note    Fall-back implementations may not be present for all algorithms.
+ */
+#if !defined(HAL_CRY_USE_FALLBACK) || defined(__DOXYGEN__)
+#define HAL_CRY_USE_FALLBACK                FALSE
+#endif
+
+/**
+ * @brief   Makes the driver forcibly use the fall-back implementations.
+ */
+#if !defined(HAL_CRY_ENFORCE_FALLBACK) || defined(__DOXYGEN__)
+#define HAL_CRY_ENFORCE_FALLBACK            FALSE
+#endif
+
+/*===========================================================================*/
+/* DAC driver related settings.                                              */
+/*===========================================================================*/
+
+/**
+ * @brief   Enables synchronous APIs.
+ * @note    Disabling this option saves both code and data space.
+ */
+#if !defined(DAC_USE_WAIT) || defined(__DOXYGEN__)
+#define DAC_USE_WAIT                        TRUE
+#endif
+
+/**
+ * @brief   Enables the @p dacAcquireBus() and @p dacReleaseBus() APIs.
+ * @note    Disabling this option saves both code and data space.
+ */
+#if !defined(DAC_USE_MUTUAL_EXCLUSION) || defined(__DOXYGEN__)
+#define DAC_USE_MUTUAL_EXCLUSION            TRUE
 #endif
 
 /*===========================================================================*/
@@ -304,18 +401,38 @@
  *          default configuration.
  */
 #if !defined(SERIAL_DEFAULT_BITRATE) || defined(__DOXYGEN__)
-#define SERIAL_DEFAULT_BITRATE      115200
+#define SERIAL_DEFAULT_BITRATE              38400
 #endif
 
 /**
  * @brief   Serial buffers size.
  * @details Configuration parameter, you can change the depth of the queue
  *          buffers depending on the requirements of your application.
- * @note    The default is 64 bytes for both the transmission and receive
+ * @note    The default is 16 bytes for both the transmission and receive
  *          buffers.
  */
 #if !defined(SERIAL_BUFFERS_SIZE) || defined(__DOXYGEN__)
-#define SERIAL_BUFFERS_SIZE         128
+#define SERIAL_BUFFERS_SIZE                 16
+#endif
+
+/*===========================================================================*/
+/* SIO driver related settings.                                              */
+/*===========================================================================*/
+
+/**
+ * @brief   Default bit rate.
+ * @details Configuration parameter, this is the baud rate selected for the
+ *          default configuration.
+ */
+#if !defined(SIO_DEFAULT_BITRATE) || defined(__DOXYGEN__)
+#define SIO_DEFAULT_BITRATE                 38400
+#endif
+
+/**
+ * @brief   Support for thread synchronization API.
+ */
+#if !defined(SIO_USE_SYNCHRONIZATION) || defined(__DOXYGEN__)
+#define SIO_USE_SYNCHRONIZATION             TRUE
 #endif
 
 /*===========================================================================*/
@@ -326,11 +443,19 @@
  * @brief   Serial over USB buffers size.
  * @details Configuration parameter, the buffer size must be a multiple of
  *          the USB data endpoint maximum packet size.
- * @note    The default is 64 bytes for both the transmission and receive
+ * @note    The default is 256 bytes for both the transmission and receive
  *          buffers.
  */
 #if !defined(SERIAL_USB_BUFFERS_SIZE) || defined(__DOXYGEN__)
-#define SERIAL_USB_BUFFERS_SIZE     1024
+#define SERIAL_USB_BUFFERS_SIZE             256
+#endif
+
+/**
+ * @brief   Serial over USB number of buffers.
+ * @note    The default is 2 buffers.
+ */
+#if !defined(SERIAL_USB_BUFFERS_NUMBER) || defined(__DOXYGEN__)
+#define SERIAL_USB_BUFFERS_NUMBER           2
 #endif
 
 /*===========================================================================*/
@@ -360,6 +485,64 @@
 #define SPI_USE_MUTUAL_EXCLUSION            TRUE
 #endif
 
+/**
+ * @brief   Handling method for SPI CS line.
+ * @note    Disabling this option saves both code and data space.
+ */
+#if !defined(SPI_SELECT_MODE) || defined(__DOXYGEN__)
+#define SPI_SELECT_MODE                     SPI_SELECT_MODE_PAD
+#endif
+
+/*===========================================================================*/
+/* UART driver related settings.                                             */
+/*===========================================================================*/
+
+/**
+ * @brief   Enables synchronous APIs.
+ * @note    Disabling this option saves both code and data space.
+ */
+#if !defined(UART_USE_WAIT) || defined(__DOXYGEN__)
+#define UART_USE_WAIT                       FALSE
+#endif
+
+/**
+ * @brief   Enables the @p uartAcquireBus() and @p uartReleaseBus() APIs.
+ * @note    Disabling this option saves both code and data space.
+ */
+#if !defined(UART_USE_MUTUAL_EXCLUSION) || defined(__DOXYGEN__)
+#define UART_USE_MUTUAL_EXCLUSION           FALSE
+#endif
+
+/*===========================================================================*/
+/* USB driver related settings.                                              */
+/*===========================================================================*/
+
+/**
+ * @brief   Enables synchronous APIs.
+ * @note    Disabling this option saves both code and data space.
+ */
+#if !defined(USB_USE_WAIT) || defined(__DOXYGEN__)
+#define USB_USE_WAIT                        FALSE
+#endif
+
+/*===========================================================================*/
+/* WSPI driver related settings.                                             */
+/*===========================================================================*/
+
+/**
+ * @brief   Enables synchronous APIs.
+ * @note    Disabling this option saves both code and data space.
+ */
+#if !defined(WSPI_USE_WAIT) || defined(__DOXYGEN__)
+#define WSPI_USE_WAIT                       TRUE
+#endif
+
+/**
+ * @brief   Enables the @p wspiAcquireBus() and @p wspiReleaseBus() APIs.
+ * @note    Disabling this option saves both code and data space.
+ */
+#if !defined(WSPI_USE_MUTUAL_EXCLUSION) || defined(__DOXYGEN__)
+#define WSPI_USE_MUTUAL_EXCLUSION           TRUE
 #endif
 
 #endif /* HALCONF_H */
