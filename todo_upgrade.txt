@@ -1,5 +1,10 @@
 initial changes/mr
 
+compare with changes in chibios_upgrade_new branch for a head start.
+that branch also seems to add support for a new mcu
+
+add list of supported mcu's to readme?
+
 change
 PAL_STM32_PUDR_PULLUP
 to
