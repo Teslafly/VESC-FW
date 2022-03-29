@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2020 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 */
 
 /**
- * @file    templates/chconf.h
+ * @file    rt/templates/chconf.h
  * @brief   Configuration file template.
  * @details A copy of this file must be placed in each project directory, it
  *          contains the application specific kernel settings.
@@ -25,8 +25,29 @@
  * @{
  */
 
-#ifndef _CHCONF_H_
-#define _CHCONF_H_
+#ifndef CHCONF_H
+#define CHCONF_H
+
+#define _CHIBIOS_RT_CONF_
+#define _CHIBIOS_RT_CONF_VER_7_0_
+
+/*===========================================================================*/
+/**
+ * @name System settings
+ * @{
+ */
+/*===========================================================================*/
+
+/**
+ * @brief   Handling of instances.
+ * @note    If enabled then threads assigned to various instances can
+ *          interact each other using the same synchronization objects.
+ *          If disabled then each OS instance is a separate world, no
+ *          direct interactions are handled by the OS.
+ */
+#if !defined(CH_CFG_SMP_MODE)
+#define CH_CFG_SMP_MODE                     FALSE
+#endif
 
 #define CHPRINTF_USE_FLOAT				TRUE
 #define CORTEX_SIMPLIFIED_PRIORITY		TRUE
@@ -106,7 +127,9 @@
  *          function becomes the idle thread and must implement an
  *          infinite loop.
  */
+#if !defined(CH_CFG_NO_IDLE_THREAD)
 #define CH_CFG_NO_IDLE_THREAD               FALSE
+#endif
 
 /** @} */
 
@@ -125,7 +148,9 @@
  * @note    This is not related to the compiler optimization options.
  * @note    The default is @p TRUE.
  */
+#if !defined(CH_CFG_OPTIMIZE_SPEED)
 #define CH_CFG_OPTIMIZE_SPEED               TRUE
+#endif
 
 /** @} */
 
@@ -151,7 +176,9 @@
  *
  * @note    The default is @p TRUE.
  */
+#if !defined(CH_CFG_USE_REGISTRY)
 #define CH_CFG_USE_REGISTRY                 TRUE
+#endif
 
 /**
  * @brief   Threads synchronization APIs.
@@ -160,7 +187,9 @@
  *
  * @note    The default is @p TRUE.
  */
+#if !defined(CH_CFG_USE_WAITEXIT)
 #define CH_CFG_USE_WAITEXIT                 TRUE
+#endif
 
 /**
  * @brief   Semaphores APIs.
@@ -168,7 +197,9 @@
  *
  * @note    The default is @p TRUE.
  */
+#if !defined(CH_CFG_USE_SEMAPHORES)
 #define CH_CFG_USE_SEMAPHORES               TRUE
+#endif
 
 /**
  * @brief   Semaphores queuing mode.
@@ -179,7 +210,9 @@
  *          requirements.
  * @note    Requires @p CH_CFG_USE_SEMAPHORES.
  */
+#if !defined(CH_CFG_USE_SEMAPHORES_PRIORITY)
 #define CH_CFG_USE_SEMAPHORES_PRIORITY      FALSE
+#endif
 
 /**
  * @brief   Mutexes APIs.
@@ -187,7 +220,9 @@
  *
  * @note    The default is @p TRUE.
  */
+#if !defined(CH_CFG_USE_MUTEXES)
 #define CH_CFG_USE_MUTEXES                  TRUE
+#endif
 
 /**
  * @brief   Enables recursive behavior on mutexes.
@@ -197,7 +232,9 @@
  * @note    The default is @p FALSE.
  * @note    Requires @p CH_CFG_USE_MUTEXES.
  */
+#if !defined(CH_CFG_USE_MUTEXES_RECURSIVE)
 #define CH_CFG_USE_MUTEXES_RECURSIVE        FALSE
+#endif
 
 /**
  * @brief   Conditional Variables APIs.
@@ -207,7 +244,9 @@
  * @note    The default is @p TRUE.
  * @note    Requires @p CH_CFG_USE_MUTEXES.
  */
+#if !defined(CH_CFG_USE_CONDVARS)
 #define CH_CFG_USE_CONDVARS                 TRUE
+#endif
 
 /**
  * @brief   Conditional Variables APIs with timeout.
@@ -217,7 +256,9 @@
  * @note    The default is @p TRUE.
  * @note    Requires @p CH_CFG_USE_CONDVARS.
  */
+#if !defined(CH_CFG_USE_CONDVARS_TIMEOUT)
 #define CH_CFG_USE_CONDVARS_TIMEOUT         TRUE
+#endif
 
 /**
  * @brief   Events Flags APIs.
@@ -225,7 +266,9 @@
  *
  * @note    The default is @p TRUE.
  */
+#if !defined(CH_CFG_USE_EVENTS)
 #define CH_CFG_USE_EVENTS                   TRUE
+#endif
 
 /**
  * @brief   Events Flags APIs with timeout.
@@ -235,7 +278,9 @@
  * @note    The default is @p TRUE.
  * @note    Requires @p CH_CFG_USE_EVENTS.
  */
+#if !defined(CH_CFG_USE_EVENTS_TIMEOUT)
 #define CH_CFG_USE_EVENTS_TIMEOUT           TRUE
+#endif
 
 /**
  * @brief   Synchronous Messages APIs.
@@ -244,7 +289,9 @@
  *
  * @note    The default is @p TRUE.
  */
+#if !defined(CH_CFG_USE_MESSAGES)
 #define CH_CFG_USE_MESSAGES                 TRUE
+#endif
 
 /**
  * @brief   Synchronous Messages queuing mode.
@@ -255,7 +302,17 @@
  *          requirements.
  * @note    Requires @p CH_CFG_USE_MESSAGES.
  */
+#if !defined(CH_CFG_USE_MESSAGES_PRIORITY)
 #define CH_CFG_USE_MESSAGES_PRIORITY        FALSE
+#endif
+/** @} */
+
+/*===========================================================================*/
+/**
+ * @name OSLIB options
+ * @{
+ */
+/*===========================================================================*/
 
 /**
  * @brief   Mailboxes APIs.
@@ -494,12 +551,29 @@
   /* System halt code here.*/                                               \
 }
 
+/**
+ * @brief   Trace hook.
+ * @details This hook is invoked each time a new record is written in the
+ *          trace buffer.
+ */
+#define CH_CFG_TRACE_HOOK(tep) {                                            \
+  /* Trace code here.*/                                                     \
+}
+
+/**
+ * @brief   Runtime Faults Collection Unit hook.
+ * @details This hook is invoked each time new faults are collected and stored.
+ */
+#define CH_CFG_RUNTIME_FAULTS_HOOK(mask) {                                  \
+  /* Faults handling code here.*/                                           \
+}
+
 /** @} */
 
 /*===========================================================================*/
 /* Port-specific settings (override port settings defaulted in chcore.h).    */
 /*===========================================================================*/
 
-#endif  /* _CHCONF_H_ */
+#endif  /* CHCONF_H */
 
 /** @} */
