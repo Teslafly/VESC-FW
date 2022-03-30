@@ -34,13 +34,13 @@ endif
 
 # Enable this if you want link time optimizations (LTO)
 ifeq ($(USE_LTO),)
-  USE_LTO = no # yes in chibios example
+  USE_LTO = no
 endif
 
 # If enabled, this option allows to compile the application in THUMB mode.
-ifeq ($(USE_THUMB),)
-  USE_THUMB = yes  # not in chibios example
-endif
+# ifeq ($(USE_THUMB),)
+#   USE_THUMB = yes
+# endif
 
 # Enable this if you want to see the full log while compiling.
 ifeq ($(USE_VERBOSE_COMPILE),)
@@ -80,7 +80,8 @@ endif
 
 # Enable this if you really want to use the STM FWLib.
 ifeq ($(USE_FWLIB),)
-  USE_FWLIB = yes  #in exanple: -mfloat-abi=$(USE_FPU) -mfpu=fpv4-sp-d16
+  USE_FWLIB = yes
+  # USE_FWLIB = -mfloat-abi=$(USE_FPU) -mfpu=fpv4-sp-d16  #new if needed
 endif
 
 #
@@ -92,7 +93,7 @@ endif
 #
 
 # Define project name here
-PROJECT = bldc
+PROJECT = vesc
 
 # Target settings.
 MCU  = cortex-m4
@@ -101,7 +102,8 @@ MCU  = cortex-m4
 CHIBIOS  := ChibiOS_21.11.1
 CONFDIR  := ./hwconf/stm32f4_conf
 BUILDDIR := ./build
-DEPDIR   := ./build/.dep  # moved into build folder
+DEPDIR   := ./.dep  #leave as is  for  now
+# DEPDIR   := ./build/.dep  # moved into build folder
 
 # Licensing files.
 include $(CHIBIOS)/os/license/license.mk
@@ -111,11 +113,12 @@ include $(CHIBIOS)/os/common/ports/ARMCMx/compilers/GCC/mk/startup_stm32f4xx.mk
 include $(CHIBIOS)/os/hal/hal.mk
 include $(CHIBIOS)/os/hal/ports/STM32/STM32F4xx/platform.mk
 # include $(CHIBIOS)/os/hal/boards/ST_STM32F4_DISCOVERY/board.mk
-include $(CHIBIOS)/os/hal/osal/rt/osal.mk
+include $(CHIBIOS)/os/hal/osal/rt-nil/osal.mk
 # RTOS files
 include $(CHIBIOS)/os/rt/rt.mk
-# include $(CHIBIOS)/os/rt/ports/ARMCMx/compilers/GCC/mk/port_v7m.mk #old
-include $(CHIBIOS)/os/common/ports/ARMv7-M/compilers/GCC/mk/port.mk #new
+include $(CHIBIOS)/os/common/ports/ARMv7-M/compilers/GCC/mk/port.mk
+# include $(CHIBIOS)/ext/stdperiph_stm32f4/stm32lib.mk  #if remove bottom include option
+
 # Other files
 include hwconf/hwconf.mk
 include applications/applications.mk
@@ -133,10 +136,8 @@ ifeq ($(USE_LISPBM),1)
 endif
 
 # Define linker script file here
-LDSCRIPT= $(STARTUPLD)/STM32F407xG.ld #new
-
-# # Define linker script file here
-# LDSCRIPT= ld_eeprom_emu.ld #old. may have uncaptured changes
+# LDSCRIPT= $(STARTUPLD)/STM32F407xG.ld #new
+LDSCRIPT= ld_eeprom_emu.ld #old. may have uncaptured changes
 
 # C sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
@@ -216,7 +217,7 @@ ASMSRC = $(STARTUPASM) $(PORTASM) $(OSALASM)
 # may need to remove some things here.
 INCDIR = $(CONFDIR) $(STARTUPINC) $(KERNINC) $(PORTINC) $(OSALINC) \
          $(HALINC) $(PLATFORMINC) \
-         $(CHIBIOS)/os/various \ # needed?
+         $(CHIBIOS)/os/various \
          $(CHIBIOS)/os/hal/lib/streams \
          mcconf \
          appconf \
