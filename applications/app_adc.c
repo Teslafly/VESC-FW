@@ -134,6 +134,24 @@ static THD_FUNCTION(adc_thread, arg) {
 			pwr = filter_val;
 		}
 
+		// fail safe if input voltage out of bounds
+		// todo, get limits from vesc tool. currently just +-10% of start/end values
+		if ((pwr < config.voltage_start * 0.9) & (config.voltage_end * 1.1 > pwr)) {
+			mc_interface_set_brake_current(timeout_get_brake_current());
+
+			if (config.multi_esc) {
+				for (int i = 0;i < CAN_STATUS_MSGS_TO_STORE;i++) {
+					can_status_msg *msg = comm_can_get_status_msg_index(i);
+
+					if (msg->id >= 0 && UTILS_AGE_S(msg->rx_time) < MAX_CAN_AGE) {
+						comm_can_set_current_brake(msg->id, timeout_get_brake_current());
+					}
+				}
+			}
+			ms_without_power = 0;
+			continue;
+		}
+
 		// Map the read voltage
 		switch (config.ctrl_type) {
 		case ADC_CTRL_TYPE_CURRENT_REV_CENTER:
