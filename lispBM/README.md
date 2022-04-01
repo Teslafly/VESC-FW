@@ -11,7 +11,7 @@ This is the VESC-integration of [lispBM](https://github.com/svenssonjoel/lispBM)
 
 ## Documentation
 
-Basics about LispBM are documented [here](http://svenssonjoel.github.io/lbmdoc/html/lbmref.html). The VESC-specific extensions are documented in this section. Note that VESC Tool includes a collection of examples that can be used as a starting point for using lisp on the VESC.
+Basics about LispBM are documented [here](lispBM/doc/lbmref.md). The VESC-specific extensions are documented in this section. Note that VESC Tool includes a collection of examples that can be used as a starting point for using lisp on the VESC.
 
 ### Various Commands
 
@@ -937,6 +937,66 @@ Write state to pin. If the pin is set to an output 1 will set it to VCC and 0 to
 
 Read state of pin. Returns 1 if the pin is high, 0 otherwise.
 
+### Configuration
+
+The following selection of app and motor parameters can be read and set from LispBM:
+
+```clj
+'l-current-min          ; Minimum current in A (a negative value)
+'l-current-max          ; Maximum current in A
+'l-current-min-scale    ; Scaled minimum current, 0.0 to 1.0
+'l-current-max-scale    ; Scaled maximum current, 0.0 to 1.0
+'l-in-current-min       ; Minimum input current in A (a negative value)
+'l-in-current-max       ; Maximum input current in A
+'l-min-erpm             ; Minimum ERPM (a negative value)
+'l-max-erpm             ; Maximum ERPM
+'l-watt-min             ; Minimum power regen in W (a negative value)
+'l-watt-max             ; Maximum power regen in W
+'foc-current-kp         ; FOC current controller KP
+'foc-current-ki         ; FOC current controller KI
+'foc-motor-l            ; Motor inductance in microHenry
+'foc-motor-ld-lq-diff   ; D and Q axis inductance difference in microHenry
+'foc-motor-r            ; Motor resistance in milliOhm
+'foc-motor-flux-linkage ; Motor flux linkage in milliWeber
+'foc-observer-gain      ; Observer gain x1M
+'min-speed              ; Minimum speed in meters per second (a negative value)
+'max-speed              ; Maximum speed in meters per second
+'controller-id          ; VESC CAN ID
+```
+
+#### conf-set
+
+```clj
+(conf-set param value)
+```
+
+Set param to value. This can be done while the motor is running and it will be applied instantly. Note that the parameter won't be stored in flash, so it will be back to the old value on the next boot. To store all parameters that have been changed you can use [conf-store](#conf-store). Example:
+
+```clj
+(conf-set 'max-speed (/ 25 3.6)) ; Set the maximum speed to 25 km/h
+```
+
+#### conf-get
+
+```clj
+(conf-get param optDefault)
+```
+
+Get the value of param. optDefault is an optional argument that can be set to 1 to get the default value of param instead of the current value. Example:
+
+```clj
+(conf-get 'foc-motor-r) ; Get the motor resistance in milliOhm
+(conf-get 'controller-id 1) ; Get the default CAN ID of this VESC
+```
+
+#### conf-store
+
+```clj
+(conf-store)
+```
+
+Store the current configuration to flash. This will stop the motor.
+
 ### Loops
 
 #### loopfor
@@ -1056,6 +1116,32 @@ f
         (sleep 0.5)
 ))
 
+```
+
+#### break
+
+```clj
+(break retval)
+```
+
+break can be used to break out of a loop and return retval (the result of the loop will be retval, otherwise the result of the loop will be the result of the last expression in it). break works in all of the loops above. Example:
+
+```clj
+; Below we make a function to determine if
+; the list lst contains number num
+
+(defun contains (num lst)
+    (loopforeach it lst
+        (if (= it num)
+            (break t)
+            nil
+)))
+
+(contains 346 '(12 33 452 11 22 346 99 12))
+> t
+
+(contains 347 '(12 33 452 11 22 346 99 12))
+> nil
 ```
 
 ### Useful Lisp Functions
