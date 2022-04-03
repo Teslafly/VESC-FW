@@ -43,9 +43,6 @@
 // Disable hardware limits on configuration parameters
 //#define DISABLE_HW_LIMITS
 
-#define HW_SOURCE "hw_stm_disc_brain.c"
-#define HW_HEADER "hw_stm_disc_brain.h"
-
 #if !defined(HW_SOURCE) && !defined(HW_SOURCE_ALT)
 #error "No hardware source file set"
 #endif
@@ -133,8 +130,8 @@
 /*
  * Settings for the external LEDs (hardcoded for now)
  */
-#define LED_EXT_BATT_LOW			46.0
-#define LED_EXT_BATT_HIGH			52.0
+#define LED_EXT_BATT_LOW			28.0
+#define LED_EXT_BATT_HIGH			33.0
 
 /*
  * Servo output driver
