@@ -84,8 +84,8 @@ const matcher match_table[NUM_FIXED_SIZE_TOKENS] = {
   {"`", TOKBACKQUOTE, 1},
   {",@", TOKCOMMAAT, 2},
   {",", TOKCOMMA, 1},
-  {"?i", TOKMATCHI28, 4},
-  {"?u", TOKMATCHU28, 4},
+  {"?i", TOKMATCHI28, 2},
+  {"?u", TOKMATCHU28, 2},
   {"?u32", TOKMATCHU32, 4},
   {"?i32", TOKMATCHI32, 4},
   {"?float", TOKMATCHFLOAT, 6},
@@ -184,6 +184,7 @@ static char translate_escape_char(char c) {
   switch(c) {
   case '\\': return '\\';
   case 'n': return '\n';
+  case 'r': return '\r';
   case 't': return '\t';
   case '\"': return '\"';
   default: return '\\';

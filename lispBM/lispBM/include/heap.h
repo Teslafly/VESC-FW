@@ -203,12 +203,12 @@ Aux bits could be used for storing vector size. Up to 30bits should be available
 #define LBM_TYPE_U64                     0x50000000u
 #define LBM_TYPE_FLOAT                   0x60000000u
 #define LBM_TYPE_DOUBLE                  0x70000000u
-#define LBM_NON_CONS_POINTER_TYPE_LAST   0x70000000u
-#define LBM_POINTER_TYPE_LAST            0x70000000u
-
 #define LBM_TYPE_ARRAY                   0xD0000000u
 #define LBM_TYPE_REF                     0xE0000000u
 #define LBM_TYPE_STREAM                  0xF0000000u
+#define LBM_NON_CONS_POINTER_TYPE_LAST   0xF0000000u
+#define LBM_POINTER_TYPE_LAST            0xF0000000u
+
 
 #define LBM_GC_MASK                      0x00000002u
 #define LBM_GC_MARKED                    0x00000002u
@@ -786,6 +786,12 @@ static inline bool lbm_is_number(lbm_value x) {
           (t == LBM_TYPE_U64) ||
           (t == LBM_TYPE_FLOAT) ||
           (t == LBM_TYPE_DOUBLE));
+}
+
+static inline bool lbm_is_array(lbm_value x) {
+  return (lbm_type_of(x) == LBM_TYPE_ARRAY &&
+          lbm_type_of(lbm_cdr(x)) == LBM_TYPE_SYMBOL &&
+          lbm_dec_sym(lbm_cdr(x)) == SYM_ARRAY_TYPE);
 }
 
 static inline bool lbm_is_char(lbm_value x) {

@@ -1,112 +1,5 @@
 # LispBM language reference
 
-* [LispBM language reference](#lispbm-language-reference)
-   * [Arithmetic](#arithmetic)
-      * [-](#-)
-      * [*](#-1)
-      * [/](#-2)
-      * [mod](#mod)
-   * [Comparisons](#comparisons)
-      * [eq](#eq)
-      * [=](#-3)
-      * [&gt;](#-4)
-      * [&lt;](#-5)
-   * [Boolean operators](#boolean-operators)
-      * [and](#and)
-      * [or](#or)
-      * [not](#not)
-   * [Bit level operations](#bit-level-operations)
-      * [shl](#shl)
-      * [shr](#shr)
-      * [bitwise-and](#bitwise-and)
-      * [bitwise-or](#bitwise-or)
-      * [bitwise-xor](#bitwise-xor)
-      * [bitwise-not](#bitwise-not)
-   * [Low level operations](#low-level-operations)
-      * [encode-i32](#encode-i32)
-      * [encode-u32](#encode-u32)
-      * [encode-float](#encode-float)
-      * [decode](#decode)
-   * [nil and t](#nil-and-t)
-      * [nil](#nil)
-      * [t](#t)
-   * [Quotes and Quasiquotation](#quotes-and-quasiquotation)
-      * [quote](#quote)
-      * [`](#-6)
-      * [,](#-7)
-      * [,@](#-8)
-   * [Built-in operations](#built-in-operations)
-      * [eval](#eval)
-      * [eval-program](#eval-program)
-      * [type-of](#type-of)
-      * [sym-to-str](#sym-to-str)
-      * [str-to-sym](#str-to-sym)
-      * [sym-to-u](#sym-to-u)
-      * [u-to-sym](#u-to-sym)
-      * [is-fundamental](#is-fundamental)
-   * [Special forms](#special-forms)
-      * [if](#if)
-      * [lambda](#lambda)
-      * [closure](#closure)
-      * [let](#let)
-      * [define](#define)
-      * [progn](#progn)
-      * [read](#read)
-      * [read-program](#read-program)
-   * [Lists and cons cells](#lists-and-cons-cells)
-      * [car](#car)
-      * [cdr](#cdr)
-      * [cons](#cons)
-      * [.](#-9)
-      * [list](#list)
-      * [append](#append)
-      * [ix](#ix)
-      * [set-car](#set-car)
-      * [set-cdr](#set-cdr)
-   * [Arrays](#arrays)
-      * [array-read](#array-read)
-      * [array-write](#array-write)
-   * [Pattern-matching](#pattern-matching)
-      * [match](#match)
-      * [_](#_)
-      * [?](#-10)
-      * [?i28](#i28)
-      * [?u28](#u28)
-      * [?float](#float)
-   * [Concurrency](#concurrency)
-      * [spawn](#spawn)
-      * [wait](#wait)
-      * [yield](#yield)
-   * [Message-passing](#message-passing)
-      * [send](#send)
-      * [recv](#recv)
-   * [Macros](#macros)
-      * [macro](#macro)
-   * [Call With Current Continuation](#call-with-current-continuation)
-   * [Unparsable symbols](#unparsable-symbols)
-      * [no_match](#no_match)
-      * [read_error](#read_error)
-      * [type_error](#type_error)
-      * [eval_error](#eval_error)
-      * [out_of_memory](#out_of_memory)
-      * [fatal_error](#fatal_error)
-      * [out_of_stack](#out_of_stack)
-      * [division_by_zero](#division_by_zero)
-      * [variable_not_bound](#variable_not_bound)
-   * [Types](#types)
-      * [type-list](#type-list)
-      * [type-i28](#type-i28)
-      * [type-u28](#type-u28)
-      * [type-float](#type-float)
-      * [type-i32](#type-i32)
-      * [type-u32](#type-u32)
-      * [type-array](#type-array)
-      * [type-symbol](#type-symbol)
-      * [type-char](#type-char)
-      * [type-ref](#type-ref)
-      * [type-stream](#type-stream)
-
-
 ## Arithmetic
 
 ### +
@@ -120,7 +13,7 @@ Example adding up two numbers. The result is 3.
 ```
 When adding up values of different types values are converted.
  ```clj
-(+ 1i28 3.14)
+(+ 1i 3.14)
 ```
 The example above evaluates to float value 4.14.<br>
 You can add up multiple values.
@@ -266,6 +159,35 @@ Example
 ```clj
 (< 5 2)
 ```
+
+---
+
+### >= 
+
+Greater than or equal comparison. A less than comparison has the form `(>= expr1 ... exprN)`
+and evaluates to `t` if expr1 is greater than or equal to all of expr2 ... exprN.
+
+
+Example
+```clj
+(>= 5 2)
+```
+
+---
+
+### <=
+
+Less than or equal comparison. A less than or equal comparison has the form `(<= expr1 ... exprN)`
+and evaluates to `t` if expr1 is less than or equal to all of expr2 ... exprN.
+
+
+Example
+```clj
+(<= 5 2)
+```
+
+
+
 
 
 ---
@@ -705,6 +627,42 @@ Example
 ```clj
 (define apa 10)
 ```
+---
+
+### set!
+
+The `set!` form is used to change the value of some variable in an environment.
+You can use `set!` to change the value of a global definition, a local definition
+or a variable defintion (`#var`). An application of the `set!` form looks like
+`(set! var-expr val-expr)` where `var-expr` should evaluate to a symbol. The `val-expr` is evaluated before
+rebinding the variable.
+
+Examples:
+```clj
+(define a 10)
+```
+The variable `a` is now `10` in the global environment.
+```clj
+(set! 'a 20)
+```
+Now, the value of `a` will be 20. Note that `a` is quoted in the `set!` form application
+while it is not in the `define` form. This is because `define` requires the first
+argument to be a symbol while the `set!` form requires the first argument to evaluate
+into a symbol. 
+
+You can also set the value of a let bound variable.
+```clj
+(let ((a 10)) (set! 'a 20))
+```
+
+And you can change the value of a `#var`.
+
+```clj 
+(define #a 10)
+
+(set '#a 20)
+```
+`#a` is now 20. 
 
 ---
 
@@ -965,7 +923,7 @@ Pattern-matching is expressed using match. The form of a match expression is
 `(match expr (pat1 expr1) ... (patN exprN))`. Pattern-matching compares
 the shape of an expression to each of the `pat1` ... `patN`
 and evaluates the expression `exprM` of the pattern that matches.
-In a pattern you can use a number of match-binders or wildcards: `_`, `?`, `?i28`,`?u28`,`?float`.
+In a pattern you can use a number of match-binders or wildcards: `_`, `?`, `?i`,`?u`,`?float`.
 
 For example the match expression below evaluates to 2.
 ```clj
@@ -1008,32 +966,33 @@ An example that evaluates to 19.
 
 ---
 
-### ?i28
+### ?i
 
-The `?i28` pattern matches any i28 and binds that value to a variable.
-Using the ?i28 pattern is done as `(?i28 var)` and the part of the expression
-that matches is bound to the `var`.
+The `?i` pattern matches an integer (28bit integer on 32bit platforms
+and a 56bit integer on 64bit platforms) and binds that value to a
+variable.  Using the ?i pattern is done as `(?i var)` and the part
+of the expression that matches is bound to the `var`.
 
-The following example evaluates to `not-an-i28`.
+The following example evaluates to `not-an-i`.
 ```clj
 (match 3.14
-       ( (i28 n) (+ n 1))
-       ( _ 'not-an-i28))
+       ( (?i n) (+ n 1))
+       ( _ 'not-an-i))
 ```
 The example below evaluates to 5.
 ```clj
 (match 4
-       ( (i28 n) (+ n 1))
-       ( _ 'not-an-i28))
+       ( (?i n) (+ n 1))
+       ( _ 'not-an-i))
 ```
 
 
 ---
 
-### ?u28
+### ?u
 
-The `?u28` pattern matches any u28 and binds that value to a variable.
-Using the ?u28 pattern is done as `(?u28 var)` and the part of the expression
+The `?u` pattern matches any unsigned and binds that value to a variable.
+Using the ?u pattern is done as `(?u var)` and the part of the expression
 that matches is bound to the `var`.
 
 ---
@@ -1094,9 +1053,9 @@ will block on a `recv` until there is a matching message in
 the mailbox.
 The `recv` syntax is very similar to [match](./lbmref.md#match).
 
-Example where a process waits for an i28
+Example where a process waits for an integer `?i`.
 ```clj
-(recv ( (?i28 n) (+ n 1) ))
+(recv ( (?i n) (+ n 1) ))
 ```
 
 
@@ -1264,11 +1223,18 @@ variable (symbol) that is neighter bound nor special (built-in function).
 
 ---
 
-### type-i28
+### type-i
+
+A value with type `type-i` occupy 28bits on the 32 bit version of LBM and
+56bits on the 64bit version.
 
 ---
 
-### type-u28
+### type-u
+
+A value with type `type-u` occupy 28bits on the 32 bit version of LBM and
+56bits on the 64bit version.
+
 
 ---
 
@@ -1281,6 +1247,18 @@ variable (symbol) that is neighter bound nor special (built-in function).
 ---
 
 ### type-u32
+
+---
+
+### type-i64
+
+---
+
+### type-u64
+
+---
+
+### type-double
 
 ---
 

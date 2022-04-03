@@ -24,7 +24,7 @@
 
 #include "symrepr.h"
 
-#define NUM_SPECIAL_SYMBOLS 117
+#define NUM_SPECIAL_SYMBOLS (sizeof(special_symbols) / sizeof(special_sym))
 #define NAME   0
 #define ID     1
 #define NEXT   2
@@ -34,7 +34,7 @@ typedef struct {
   const lbm_uint id;
 } special_sym;
 
-special_sym const special_symbols[NUM_SPECIAL_SYMBOLS] =  {
+special_sym const special_symbols[] =  {
   {"nil"        , SYM_NIL},
   {"quote"      , SYM_QUOTE},
   {"t"          , SYM_TRUE},
@@ -176,7 +176,14 @@ special_sym const special_symbols[NUM_SPECIAL_SYMBOLS] =  {
   {"encode-float"   , SYM_ENCODE_FLOAT},
   {"decode"         , SYM_DECODE},
 
-  {"is-fundamental" , SYM_IS_FUNDAMENTAL}
+  {"is-fundamental" , SYM_IS_FUNDAMENTAL},
+
+  // aliases
+  {"first"          , SYM_CAR},
+  {"rest"           , SYM_CDR},
+  {"fn"             , SYM_LAMBDA},
+  {"def"            , SYM_DEFINE}
+
 };
 
 static lbm_uint *symlist = NULL;
@@ -216,7 +223,7 @@ const char *lookup_symrepr_name_memory(lbm_uint id) {
 // Lookup symbol name given a symbol id
 const char *lbm_get_name_by_symbol(lbm_uint id) {
   if (id < SPECIAL_SYMBOLS_END) {
-    for (int i = 0; i < NUM_SPECIAL_SYMBOLS; i ++) {
+    for (unsigned int i = 0; i < NUM_SPECIAL_SYMBOLS; i ++) {
       if (id == special_symbols[i].id) {
         return (special_symbols[i].name);
       }
@@ -229,7 +236,7 @@ const char *lbm_get_name_by_symbol(lbm_uint id) {
 int lbm_get_symbol_by_name(char *name, lbm_uint* id) {
 
   // loop through special symbols
-  for (int i = 0; i < NUM_SPECIAL_SYMBOLS; i ++) {
+  for (unsigned int i = 0; i < NUM_SPECIAL_SYMBOLS; i ++) {
     if (strcmp(name, special_symbols[i].name) == 0) {
       *id = special_symbols[i].id;
       return 1;

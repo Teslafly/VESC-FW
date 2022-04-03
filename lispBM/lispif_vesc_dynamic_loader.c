@@ -23,15 +23,15 @@
 static const char* functions[] = {
 "(defun uart-read-bytes (buffer n ofs)"
 "(let ((rd (uart-read buffer n ofs)))"
-"(if (num-eq rd n)"
-"(bufset-u8 buffer 0 (+ ofs rd))"
+"(if (= rd n)"
+"(bufset-u8 buffer (+ ofs rd) 0)"
 "(progn (yield 4000) (uart-read-bytes buffer (- n rd) (+ ofs rd)))"
 ")))",
 
 "(defun uart-read-until (buffer n ofs end)"
 "(let ((rd (uart-read buffer n ofs end)))"
-"(if (and (> rd 0) (or (num-eq rd n) (num-eq (bufget-u8 buffer (+ ofs (- rd 1))) end)))"
-"(bufset-u8 buffer 0 (+ ofs rd))"
+"(if (and (> rd 0) (or (= rd n) (= (bufget-u8 buffer (+ ofs (- rd 1))) end)))"
+"(bufset-u8 buffer (+ ofs rd) 0)"
 "(progn (yield 10000) (uart-read-until buffer (- n rd) (+ ofs rd) end))"
 ")))",
 
@@ -72,7 +72,7 @@ static const char* functions[] = {
 "(map-rec f (cons (f (car lst) (car ys)) res) (cdr lst) (cdr ys))))))"
 "(map-rec f nil x y)))",
 
-"(defun sleep (seconds) (yield (* seconds 1000000)))",
+"(defun sleep (seconds) (yield (* seconds 1000000.0)))",
 
 "(defun filter (f lst)"
 "(let ((filter-rec (lambda (f lst ys)"
@@ -95,22 +95,30 @@ static const char* functions[] = {
 
 "(defun str-cmp-asc (a b) (< (str-cmp a b) 0))",
 "(defun str-cmp-dsc (a b) (> (str-cmp a b) 0))",
+
+"(defun second (x) (car (cdr x)))",
+"(defun third (x) (car (cdr (cdr x))))",
 };
 
 static const char* macros[] = {
 "(define defun (macro (name args body) `(define ,name (lambda ,args ,body))))",
 
 "(define loopfor (macro (it start cond update body)"
-"`(let ((loop (lambda (,it res)(if ,cond (loop ,update ,body) res"
-"))))(loop ,start nil))))",
+"`(let ((loop (lambda (,it res break)(if ,cond (loop ,update ,body break) res"
+"))))(call-cc (lambda (brk) (loop ,start nil brk))))))",
 
 "(define loopwhile (macro (cond body)"
-"`(let ((loop (lambda (res)(if ,cond (loop ,body)res"
-"))))(loop nil))))",
+"`(let ((loop (lambda (res break)(if ,cond (loop ,body break) res"
+"))))(call-cc (lambda (brk) (loop nil brk))))))",
 
 "(define looprange (macro (it start end body)"
-"`(let ((loop (lambda (,it res)(if (< ,it ,end)(loop (+ ,it 1),body)res"
-"))))(loop ,start nil))))",
+"`(let ((loop (lambda (,it res break)(if (< ,it ,end)(loop (+ ,it 1),body break) res"
+"))))(call-cc (lambda (brk) (loop ,start nil brk))))))",
+
+"(define loopforeach (macro (it lst body)"
+"`(let ((loop (lambda (,it rst res break)"
+"(if (eq ,it nil) res (loop (car rst) (cdr rst) ,body break)"
+"))))(call-cc (lambda (brk) (loop (car ,lst) (cdr ,lst) nil brk))))))",
 };
 
 static bool strmatch(const char *str1, const char *str2) {
