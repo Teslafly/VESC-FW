@@ -2,6 +2,7 @@
 	Copyright 2016 - 2022 Benjamin Vedder	benjamin@vedder.se
 	Copyright 2022 Marcos Chaparro	mchaparro@powerdesigns.ca
 	Copyright 2022 Jakub Tomczak
+	Copyright 2022 Marshall Scholz
 
 	This file is part of the VESC firmware.
 
@@ -42,6 +43,8 @@ bool enc_tle5012_init(TLE5012_config_t *cfg) {
 
 	memset(&cfg->state, 0, sizeof(TLE5012_state));  // what does this do exactly?
 
+
+	// ssc mode uses mosi pin only. 
 	palSetPadMode(cfg->sck_gpio, cfg->sck_pin, PAL_MODE_ALTERNATE(6) | PAL_STM32_OSPEED_HIGHEST);
 	// palSetPadMode(cfg->miso_gpio, cfg->miso_pin, PAL_MODE_ALTERNATE(6) | PAL_STM32_OSPEED_HIGHEST); // not required for ssc
 	palSetPadMode(cfg->nss_gpio, cfg->nss_pin, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);

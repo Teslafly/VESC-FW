@@ -30,6 +30,6 @@ void enc_tle5012_deinit(TLE5012_config_t *cfg);
 void enc_tle5012_routine(TLE5012_config_t *cfg);
 
 // Macros
-#define tle5012_LAST_ANGLE(cfg)		((cfg)->state.last_enc_angle)
+#define TLE5012_LAST_ANGLE(cfg)		((cfg)->state.last_enc_angle)
 
 #endif /* ENC_tle5012_H_ */

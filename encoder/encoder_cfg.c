@@ -95,8 +95,7 @@ MT6816_config_t encoder_cfg_mt6816 = {
 };
 
 TLE5012_config_t encoder_cfg_tle5012 = {
-// #ifdef HW_SPI_ENCODER
-#if true
+// software ssc interface?
 		&HW_SPI_DEV, // spi_dev
 		{//HARDWARE SPI CONFIG
 				NULL, // CALLBACK
@@ -112,16 +111,37 @@ TLE5012_config_t encoder_cfg_tle5012 = {
 		// /*MISO*/HW_SPI_ENC_PORT_MISO, HW_SPI_ENC_PIN_MISO,
 				   0,					 0, // MISO NOT USED
 		{0, 0, 0, 0, 0, 0, 0},
-#else
-		0,
-		{0},
-		0, 0,
-		0, 0,
-		0, 0,
-		0, 0,
-		{0, 0, 0, 0, 0, 0, 0},
-#endif
 };
+
+// TLE5012_config_t encoder_cfg_tle5012_hwssc= {
+	////hardware ssc interface
+// // #ifdef HW_SPI_ENCODER
+// #if true
+// 		&HW_SPI_DEV, // spi_dev
+// 		{//HARDWARE SPI CONFIG
+// 				NULL, // CALLBACK
+// 				HW_SPI_ENC_PORT_CS,  //SS PORT
+// 				HW_SPI_ENC_PIN_CS,   // SS PAD
+// 				SPI_BaudRatePrescaler_8 | SPI_CR1_CPOL | SPI_CR1_CPHA | SPI_DATASIZE_16BIT | SPI_CR1_BIDIMODE // cr1 REGISTER
+// 				// CR1 = 5.25MBIT/S, CPOL-low?, CPHA = 1 EDGE?, 16 bit,  bidirectional mode
+// 		},
+
+// 		/*NSS/CS*/HW_SPI_ENC_PORT_CS, HW_SPI_ENC_PIN_CS,
+// 		/*SCK*/HW_SPI_ENC_PORT_SCK, HW_SPI_ENC_PIN_SCK,
+// 		/*MOSI*/HW_SPI_ENC_PORT_MOSI, HW_SPI_ENC_PIN_MOSI,
+// 		// /*MISO*/HW_SPI_ENC_PORT_MISO, HW_SPI_ENC_PIN_MISO,
+// 				   0,					 0, // MISO NOT USED
+// 		{0, 0, 0, 0, 0, 0, 0},
+// #else
+// 		0,
+// 		{0},
+// 		0, 0,
+// 		0, 0,
+// 		0, 0,
+// 		0, 0,
+// 		{0, 0, 0, 0, 0, 0, 0},
+// #endif
+// };
 
 ABI_config_t encoder_cfg_ABI = {
 		10000, // counts

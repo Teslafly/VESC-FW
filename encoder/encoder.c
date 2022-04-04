@@ -51,7 +51,8 @@ bool encoder_init(volatile mc_configuration *conf) {
 	nvicDisableVector(HW_ENC_TIM_ISR_CH);
 	TIM_DeInit(HW_ENC_TIM);
 
-	switch (conf->m_sensor_port_mode) {
+	// switch (conf->m_sensor_port_mode) {
+	switch (SENSOR_PORT_MODE_TLE5014_SW_SSC) {
 	case SENSOR_PORT_MODE_ABI: {
 		SENSOR_PORT_5V();
 
@@ -88,6 +89,27 @@ bool encoder_init(volatile mc_configuration *conf) {
 		}
 
 		encoder_type_now = ENCODER_TYPE_MT6816;
+		timer_start(10000);
+
+		res = true;
+	} break;
+
+	case SENSOR_PORT_MODE_TLE5014_SW_SSC: {
+		SENSOR_PORT_5V();
+
+		//must support 4 modes:
+		// ssc (3 wire) sw spi
+		// ssc (3 wire) hw spi w dma
+		// spi (4 wire) sw spi
+		// spi (4 wire) hw spi w dma
+		// can be just a change in the interface? all register access/etc is same.
+
+		if (!enc_tle5012_init(&encoder_cfg_tle5012)) {
+			encoder_type_now = ENCODER_TYPE_NONE;
+			return false;
+		}
+
+		encoder_type_now = ENCODER_TYPE_TLE5012;
 		timer_start(10000);
 
 		res = true;
@@ -185,6 +207,8 @@ void encoder_deinit(void) {
 		enc_as504x_deinit(&encoder_cfg_as504x);
 	} else if (encoder_type_now == ENCODER_TYPE_MT6816) {
 		enc_mt6816_deinit(&encoder_cfg_mt6816);
+	} else if (encoder_type_now == ENCODER_TYPE_TLE5012) {
+		enc_tle5012_deinit(&encoder_cfg_tle5012);
 	} else if (encoder_type_now == ENCODER_TYPE_AD2S1205_SPI) {
 		enc_ad2s1205_deinit(&encoder_cfg_ad2s1205);
 	} else if (encoder_type_now == ENCODER_TYPE_ABI) {
@@ -203,6 +227,8 @@ float encoder_read_deg(void) {
 		return AS504x_LAST_ANGLE(&encoder_cfg_as504x);
 	} else if (encoder_type_now == ENCODER_TYPE_MT6816) {
 		return MT6816_LAST_ANGLE(&encoder_cfg_mt6816);
+	} else if (encoder_type_now == ENCODER_TYPE_TLE5012) {
+		return TLE5012_LAST_ANGLE(&encoder_cfg_tle5012);
 	} else if (encoder_type_now == ENCODER_TYPE_AD2S1205_SPI) {
 		return AD2S1205_LAST_ANGLE(&encoder_cfg_ad2s1205);
 	} else if (encoder_type_now == ENCODER_TYPE_ABI) {
@@ -290,6 +316,12 @@ void encoder_check_faults(volatile mc_configuration *m_conf, bool is_second_moto
 				mc_interface_fault_stop(FAULT_CODE_ENCODER_NO_MAGNET, is_second_motor, false);
 			}
 			break;
+		
+		case SENSOR_PORT_MODE_TLE5014_SW_SSC:
+			// if (encoder_cfg_tle5012.state.encoder_no_magnet_error_rate > 0.05) {
+			// 	mc_interface_fault_stop(FAULT_CODE_ENCODER_NO_MAGNET, is_second_motor, false);
+			// }
+			break;
 
 		case SENSOR_PORT_MODE_SINCOS:
 			if (encoder_cfg_sincos.state.signal_low_error_rate > 0.05) {
@@ -330,6 +362,10 @@ void encoder_tim_isr(void) {
 
 		case ENCODER_TYPE_MT6816:
 			enc_mt6816_routine(&encoder_cfg_mt6816);
+			break;
+
+		case ENCODER_TYPE_TLE5012:
+			enc_tle5012_routine(&encoder_cfg_tle5012);
 			break;
 
 		case ENCODER_TYPE_AD2S1205_SPI:
