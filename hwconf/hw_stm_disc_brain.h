@@ -48,7 +48,7 @@
 #define LED_RED_OFF()			palClearPad(LED_RED_GPIO, LED_RED_PIN)
 
 #define GATE_ENABLE_GPIO		GPIOB
-#define GATE_ENABLE_PIN			5
+#define GATE_ENABLE_PIN			7
 #define ENABLE_GATE()			palClearPad(GATE_ENABLE_GPIO, GATE_ENABLE_PIN) // hw will explode (shootthrough) if you enable gate before configuring timer 1 pwm pins.
 #define DISABLE_GATE()			palSetPad(GATE_ENABLE_GPIO, GATE_ENABLE_PIN) // need to add hw pullup
 
@@ -250,12 +250,12 @@ n* 17 (3):  IN3		SENS3
 #define HW_I2C_SDA_PIN			7
 
 // Hall/encoder pins  (same on moxie drive)
-#define HW_HALL_ENC_GPIO1		GPIOC
-#define HW_HALL_ENC_PIN1		6
-#define HW_HALL_ENC_GPIO2		GPIOC
-#define HW_HALL_ENC_PIN2		7
-#define HW_HALL_ENC_GPIO3		GPIOC
-#define HW_HALL_ENC_PIN3		8
+#define HW_HALL_ENC_GPIO1		GPIOB
+#define HW_HALL_ENC_PIN1		3
+#define HW_HALL_ENC_GPIO2		GPIOB
+#define HW_HALL_ENC_PIN2		5
+#define HW_HALL_ENC_GPIO3		GPIOB
+#define HW_HALL_ENC_PIN3		4
 #define HW_ENC_TIM				TIM3
 #define HW_ENC_TIM_AF			GPIO_AF_TIM3
 #define HW_ENC_TIM_CLK_EN()		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE)
@@ -306,7 +306,7 @@ n* 17 (3):  IN3		SENS3
 #define MCCONF_FOC_F_SW					20000.0
 #endif
 #ifndef MCCONF_L_MAX_ABS_CURRENT
-#define MCCONF_L_MAX_ABS_CURRENT		200	// The maximum absolute current above which a fault is generated
+#define MCCONF_L_MAX_ABS_CURRENT		150	// The maximum absolute current above which a fault is generated
 #endif
 #ifndef MCCONF_FOC_SAMPLE_V0_V7
 #define MCCONF_FOC_SAMPLE_V0_V7			true	// Run control loop in both v0 and v7 (requires phase shunts)
@@ -326,7 +326,7 @@ n* 17 (3):  IN3		SENS3
 #define HW_LIM_ERPM				-100e3, 100e3
 #define HW_LIM_DUTY_MIN			0.0, 0.1
 #define HW_LIM_DUTY_MAX			0.0, 0.99
-#define HW_LIM_TEMP_FET			-40.0, 90.0
+// #define HW_LIM_TEMP_FET			-40.0, 80.0
 
 // HW-specific functions
 

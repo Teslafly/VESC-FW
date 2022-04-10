@@ -290,6 +290,10 @@ include $(RULESPATH)/rules.mk
 build/$(PROJECT).bin: build/$(PROJECT).elf 
 	$(BIN) build/$(PROJECT).elf build/$(PROJECT).bin --gap-fill 0xFF
 
+copy: build/$(PROJECT).bin
+  cp build/BLDC_4_ChibiOS.elf /mnt/c/wsl/OpenOCD-20210729-0.11.0/bin/BLDC_4_ChibiOS.elf
+  openocd.exe -f board/stm32f4discovery.cfg -c "reset_config trst_only combined" -c "program BLDC_4_ChibiOS.elf verify reset exit"
+
 # Program
 upload: build/$(PROJECT).bin
 	openocd -f board/stm32f4discovery.cfg -c "reset_config trst_only combined" -c "program build/$(PROJECT).elf verify reset exit"
