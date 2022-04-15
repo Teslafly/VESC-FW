@@ -1,0 +1,14 @@
+{
+    "makefile.launchConfigurations": [
+        {
+            "cwd": "${workspaceRoot}/build/60_mk4",
+            "binaryPath": "${workspaceRoot}\\build\\60_mk4\\60_mk4.elf",
+            "binaryArgs": []
+        },
+        {
+            "cwd": "${workspaceRoot}/build/100_250",
+            "binaryPath": "${workspaceRoot}build\\100_250\\100_250.elf",
+            "binaryArgs": []
+        },
+    ]
+}
