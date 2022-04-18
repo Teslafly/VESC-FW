@@ -1,7 +1,0 @@
-make.exe fw_Moxie_drive_24 --dry-run --keep-going --print-directory
-make: Entering directory 'c:/dev/teslafly_bldc_dev'
- 
-make: *** No rule to make target 'fw_Moxie_drive_24'.
- 
-make: Leaving directory 'c:/dev/teslafly_bldc_dev'
- 
