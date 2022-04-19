@@ -188,7 +188,7 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 
 
 	// new_data_avail= data & 0x8000 // dont care, get angle anyways?
-	pos = rx_data[0] & 0x7FFF;
+	pos = rx_data[1] & 0x7FFF;
 	cfg->state.last_enc_angle = (float) pos * (360.0 / 32768.0); 
 	// (360 / 32768.0) * ((double) rawAnglevalue);
 	

@@ -243,11 +243,19 @@ n* 17 (3):  IN3		SENS3
 #define HW_I2C_SDA_PIN			7
 
 // Hall/encoder pins  (same on moxie drive)
-#define HW_HALL_ENC_GPIO1		GPIOB
+// #define HW_HALL_ENC_GPIO1	GPIOB // sck-I// pinout for combined hw/sw spi
+// #define HW_HALL_ENC_PIN1		3
+// #define HW_HALL_ENC_GPIO2		GPIOB // mosi-B
+// #define HW_HALL_ENC_PIN2		5
+// #define HW_HALL_ENC_GPIO3		GPIOB // cs-A
+// #define HW_HALL_ENC_PIN3		4
+
+// from encoder config
+#define HW_HALL_ENC_GPIO1		GPIOB // sck
 #define HW_HALL_ENC_PIN1		3
-#define HW_HALL_ENC_GPIO2		GPIOB
+#define HW_HALL_ENC_GPIO2		GPIOB // mosi
 #define HW_HALL_ENC_PIN2		5
-#define HW_HALL_ENC_GPIO3		GPIOB
+#define HW_HALL_ENC_GPIO3		GPIOB // css
 #define HW_HALL_ENC_PIN3		4
 #define HW_ENC_TIM				TIM3
 #define HW_ENC_TIM_AF			GPIO_AF_TIM3
