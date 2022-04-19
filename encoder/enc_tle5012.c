@@ -156,7 +156,7 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	const uint16_t READ_SENSOR = 0x8000; // read mode, 1<<15?
 	const uint16_t command = 0x0020U; // REG_AVAL
 	const uint16_t upd = 0x0400; // UPD_high           
-	const uint16_t = 0x0001; // SAFE_high
+	const uint16_t safe = 0x0001; // SAFE_high
 
 	uint16_t command_word = READ_SENSOR | command | upd | safe;
 
