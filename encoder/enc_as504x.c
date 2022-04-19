@@ -89,7 +89,7 @@ void enc_as504x_routine(AS504x_config_t *cfg) {
 	// if MOSI is defined, use diagnostics
 	if (cfg->sw_spi.mosi_gpio != 0) {
 		spi_bb_begin(&(cfg->sw_spi));
-		spi_bb_transfer_16(&(cfg->sw_spi), 0, 0, 1);
+		spi_bb_transfer_16(&(cfg->sw_spi), 0, 0, 1, 0);
 		spi_bb_end(&(cfg->sw_spi));
 
 		long_delay();
@@ -120,7 +120,7 @@ void enc_as504x_routine(AS504x_config_t *cfg) {
 		}
 	} else {
 		spi_bb_begin(&(cfg->sw_spi));
-		spi_bb_transfer_16(&(cfg->sw_spi), &pos, 0, 1);
+		spi_bb_transfer_16(&(cfg->sw_spi), &pos, 0, 1, 0);
 		spi_bb_end(&(cfg->sw_spi));
 		cfg->state.spi_val = pos;
 
@@ -189,7 +189,7 @@ static uint8_t AS504x_fetch_diag(AS504x_config_t *cfg) {
 	uint8_t ret = 0;
 
 	spi_bb_begin(&(cfg->sw_spi));
-	spi_bb_transfer_16(&(cfg->sw_spi), 0, senf, 1);
+	spi_bb_transfer_16(&(cfg->sw_spi), 0, senf, 1, 0);
 	spi_bb_end(&(cfg->sw_spi));
 
 	long_delay();
@@ -232,13 +232,13 @@ static void AS504x_fetch_clear_err_diag(AS504x_config_t *cfg) {
 	uint16_t recf, senf = AS504x_SPI_READ_CLEAR_ERROR_MSG;
 
 	spi_bb_begin(&(cfg->sw_spi));
-	spi_bb_transfer_16(&(cfg->sw_spi), 0, &senf, 1);
+	spi_bb_transfer_16(&(cfg->sw_spi), 0, &senf, 1, 0);
 	spi_bb_end(&(cfg->sw_spi));
 
 	long_delay();
 
 	spi_bb_begin(&(cfg->sw_spi));
-	spi_bb_transfer_16(&(cfg->sw_spi), &recf, 0, 1);
+	spi_bb_transfer_16(&(cfg->sw_spi), &recf, 0, 1, 0);
 	spi_bb_end(&(cfg->sw_spi));
 
 	cfg->state.sensor_diag.serial_error_flags = recf;
@@ -246,7 +246,7 @@ static void AS504x_fetch_clear_err_diag(AS504x_config_t *cfg) {
 
 static uint8_t AS504x_spi_transfer_err_check(spi_bb_state *sw_spi,
 		uint16_t *in_buf, const uint16_t *out_buf, int length) {
-	spi_bb_transfer_16(sw_spi, in_buf, out_buf, length);
+	spi_bb_transfer_16(sw_spi, in_buf, out_buf, length, 0);
 
 	for (int len_count = 0; len_count < length; len_count++) {
 		if (((in_buf[len_count]) >> 14) & 0b01) {
