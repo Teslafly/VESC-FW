@@ -60,9 +60,9 @@ bool enc_tle5012_init(TLE5012_config_t *cfg) {
 }
 
 void enc_tle5012_deinit(TLE5012_config_t *cfg) {
-	if (cfg->spi_dev == NULL) {
-		return;
-	}
+	// if (cfg->spi_dev == NULL) {
+	// 	return;
+	// }
 
 	// palSetPadMode(cfg->miso_gpio, cfg->miso_pin, PAL_MODE_INPUT_PULLUP); check for spi vs ssc mode
 	// palSetPadMode(cfg->sck_gpio, cfg->sck_pin, PAL_MODE_INPUT_PULLUP);
@@ -84,8 +84,6 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 		timestep = 1.0;
 	}
 	cfg->state.last_update_time = timer_time_now();
-
-	uint16_t rx_data [2];
 
 
 // #define SPI_BEGIN()		spi_bb_delay(); palClearPad(cfg->nss_gpio, cfg->nss_pin); spi_bb_delay();
@@ -174,14 +172,14 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	// spiPolledExchange(cfg->spi_dev, reg_addr_03); // other way of doing this?
 
 
-
+	uint16_t rx_data [2];
 
 	// sw spi
 	spi_bb_delay();
 	spi_bb_begin(&(cfg->sw_spi));
 	spi_bb_delay();
-	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data, &command_word, 1, 1); // send command
-	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data, 0, 1, 0); // read. 1x 16 bit so no safy word?
+	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], &command_word, 1, 1); // send command
+	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], 0, 1, 0); // read. 1x 16 bit so no safy word?
 
 	spi_bb_end(&(cfg->sw_spi));
 
