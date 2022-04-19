@@ -25,11 +25,23 @@
 #include "stdint.h"
 #include "stdbool.h"
 
+enum spi_types{
+	sw_spi, // spi = seperate mosi and miso wires
+	hw_spi,
+	sw_ssc, // ssc = one data wire using mosi pin
+	hw_ssc,
+	};
+
 typedef struct {
-	stm32_gpio_t *nss_gpio; int nss_pin;
-	stm32_gpio_t *sck_gpio; int sck_pin;
-    stm32_gpio_t *mosi_gpio; int mosi_pin;
-    stm32_gpio_t *miso_gpio; int miso_pin;
+	stm32_gpio_t *nss_gpio;
+	int nss_pin;
+	stm32_gpio_t *sck_gpio;
+	int sck_pin;
+    stm32_gpio_t *mosi_gpio;
+	int mosi_pin;
+    stm32_gpio_t *miso_gpio;
+	int miso_pin;
+	enum spi_types spi_type;
 	bool has_started;
 	bool has_error;
 	mutex_t mutex;
@@ -43,7 +55,13 @@ void spi_bb_transfer_16(spi_bb_state *s, uint16_t *in_buf, const uint16_t *out_b
 void spi_bb_begin(spi_bb_state *s);
 void spi_bb_end(spi_bb_state *s);
 void spi_bb_delay(void);
-void spi_bb_delay_short(void);
+
+void ssc_bb_init(spi_bb_state *s);
+void ssc_bb_deinit(spi_bb_state *s);
+// void ssc_bb_begin(spi_bb_state *s);
+// void ssc_bb_end(spi_bb_state *s);
+// void ssc_bb_transfer_16(spi_bb_state *s, uint16_t *in_buf,
+// 		const uint16_t *out_buf, int length, bool write);
 
 bool spi_bb_check_parity(uint16_t x);
 
