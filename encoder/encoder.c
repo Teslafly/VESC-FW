@@ -110,7 +110,8 @@ bool encoder_init(volatile mc_configuration *conf) {
 		}
 
 		encoder_type_now = ENCODER_TYPE_TLE5012;
-		timer_start(10000);
+		// timer_start(10000);
+		timer_start(100);
 
 		res = true;
 	} break;

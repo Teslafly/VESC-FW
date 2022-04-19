@@ -19,17 +19,17 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ENC_tle5012_H_
-#define ENC_tle5012_H_
+#ifndef ENC_TLE5012_H_
+#define ENC_TLE5012_H_
 
 #include "datatypes.h"
 #include "encoder/encoder_datatype.h"
 
-bool enc_tle5012_init(TLE5012_config_t *tle5012_config);
+bool enc_tle5012_init(TLE5012_config_t *cfg);
 void enc_tle5012_deinit(TLE5012_config_t *cfg);
 void enc_tle5012_routine(TLE5012_config_t *cfg);
 
 // Macros
 #define TLE5012_LAST_ANGLE(cfg)		((cfg)->state.last_enc_angle)
 
-#endif /* ENC_tle5012_H_ */
+#endif /* ENC_TLE5012_H_ */

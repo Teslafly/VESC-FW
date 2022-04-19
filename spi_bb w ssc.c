@@ -58,15 +58,53 @@ uint8_t spi_bb_exchange_8(spi_bb_state *s, uint8_t x) {
 	return rx;
 }
 
-void spi_bb_transfer_8(spi_bb_state *s, uint8_t *in_buf, const uint8_t *out_buf,
-		int length, bool write) {
-	
-	// write ignored in spi mode. only used in ssc mode.
-	// only software comms supported at moment. hw spi not used.
-
+void spi_bb_transfer_8(spi_bb_state *s, uint8_t *in_buf, const uint8_t *out_buf, int length) {
 	for (int i = 0; i < length; i++) {
 		uint8_t send = out_buf ? out_buf[i] : 0xFF;
 		uint8_t receive = 0;
+
+		for (int bit = 0; bit < 8; bit++) {
+			if(s->mosi_gpio) {
+				palWritePad(s->mosi_gpio, s->mosi_pin, send >> 7);
+				send <<= 1;
+			}
+
+			palSetPad(s->sck_gpio, s->sck_pin);
+			spi_bb_delay();
+
+			int samples = 0;
+			samples += palReadPad(s->miso_gpio, s->miso_pin);
+			__NOP();
+			samples += palReadPad(s->miso_gpio, s->miso_pin);
+			__NOP();
+			samples += palReadPad(s->miso_gpio, s->miso_pin);
+			__NOP();
+			samples += palReadPad(s->miso_gpio, s->miso_pin);
+			__NOP();
+			samples += palReadPad(s->miso_gpio, s->miso_pin);
+
+			palClearPad(s->sck_gpio, s->sck_pin);
+
+			// does 5 samples of each pad read, to minimize noise
+			receive <<= 1;
+			if (samples > 2) {
+				receive |= 1;
+			}
+
+			spi_bb_delay();
+		}
+
+		if (in_buf) {
+			in_buf[i] = receive;
+		}
+	}
+}
+
+void spi_bb_transfer_16(spi_bb_state *s, uint16_t *in_buf, const uint16_t *out_buf, 
+		int length, bool write) {
+	for (int i = 0; i < length; i++) {
+		uint16_t send = out_buf ? out_buf[i] : 0xFFFF;
+		uint16_t receive = 0;
 
 		stm32_gpio_t read_gpio;
 		int read_pin;
@@ -81,18 +119,16 @@ void spi_bb_transfer_8(spi_bb_state *s, uint8_t *in_buf, const uint8_t *out_buf,
 			write = true;
 		}
 
-		for (int bit = 0; bit < 8; bit++) {
-			
+		for (int bit = 0; bit < 16; bit++) {
 			if(write && s->mosi_gpio){
 				palSetPadMode(s->mosi_gpio, s->mosi_pin,
 					PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
 
-				palWritePad(s->mosi_gpio, s->mosi_pin, send >> 15); // should this be 7?
+				palWritePad(s->mosi_gpio, s->mosi_pin, send >> 15); 
 				send <<= 1;
 			} else {
 				palSetPadMode(read_gpio, read_pin, PAL_MODE_INPUT_PULLUP); // set up in spi init for non ssc?
 			}
-		
 
 			palSetPad(s->sck_gpio, s->sck_pin);
 			spi_bb_delay();
@@ -107,8 +143,6 @@ void spi_bb_transfer_8(spi_bb_state *s, uint8_t *in_buf, const uint8_t *out_buf,
 			samples += palReadPad(read_gpio, read_pin);
 			__NOP();
 			samples += palReadPad(read_gpio, read_pin);
-
-			
 
 			// does 5 samples of each pad read, to minimize noise
 			receive <<= 1;
@@ -125,46 +159,6 @@ void spi_bb_transfer_8(spi_bb_state *s, uint8_t *in_buf, const uint8_t *out_buf,
 		}
 	}
 }
-
-// void spi_bb_transfer_16(spi_bb_state *s, uint16_t *in_buf, const uint16_t *out_buf, int length) {
-// 	for (int i = 0; i < length; i++) {
-// 		uint16_t send = out_buf ? out_buf[i] : 0xFFFF;
-// 		uint16_t receive = 0;
-
-// 		for (int bit = 0; bit < 16; bit++) {
-// 			if(s->mosi_gpio) {
-// 				palWritePad(s->mosi_gpio, s->mosi_pin, send >> 15);
-// 				send <<= 1;
-// 			}
-
-// 			palSetPad(s->sck_gpio, s->sck_pin);
-// 			spi_bb_delay();
-
-// 			int samples = 0;
-// 			samples += palReadPad(s->miso_gpio, s->miso_pin);
-// 			__NOP();
-// 			samples += palReadPad(s->miso_gpio, s->miso_pin);
-// 			__NOP();
-// 			samples += palReadPad(s->miso_gpio, s->miso_pin);
-// 			__NOP();
-// 			samples += palReadPad(s->miso_gpio, s->miso_pin);
-// 			__NOP();
-// 			samples += palReadPad(s->miso_gpio, s->miso_pin);
-
-// 			receive <<= 1;
-// 			if (samples > 2) {
-// 				receive |= 1;
-// 			}
-
-// 			palClearPad(s->sck_gpio, s->sck_pin);
-// 			spi_bb_delay();
-// 		}
-
-// 		if (in_buf) {
-// 			in_buf[i] = receive;
-// 		}
-// 	}
-// }
 
 void ssc_bb_init(spi_bb_state *s) {
 	chMtxObjectInit(&s->mutex);
