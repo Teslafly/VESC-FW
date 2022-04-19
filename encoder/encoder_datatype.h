@@ -92,20 +92,26 @@ typedef struct {
 	uint32_t last_update_time;
 } TLE5012_state;
 
-typedef struct {
-	SPIDriver *spi_dev;
-	SPIConfig hw_spi_cfg;
-	stm32_gpio_t *nss_gpio;
-	int nss_pin;
-	stm32_gpio_t *sck_gpio;
-	int sck_pin;
-	stm32_gpio_t *mosi_gpio;
-	int mosi_pin;
-	stm32_gpio_t *miso_gpio;
-	int miso_pin;
+// typedef struct {  // hw ssc
+// 	SPIDriver *spi_dev;
+// 	SPIConfig hw_spi_cfg;
+// 	stm32_gpio_t *nss_gpio;
+// 	int nss_pin;
+// 	stm32_gpio_t *sck_gpio;
+// 	int sck_pin;
+// 	stm32_gpio_t *mosi_gpio;
+// 	int mosi_pin;
+// 	stm32_gpio_t *miso_gpio;
+// 	int miso_pin;
 
+// 	TLE5012_state state;
+// } TLE5012_config_t;
+
+typedef struct { // sw ssc
+	spi_bb_state sw_spi;
 	TLE5012_state state;
 } TLE5012_config_t;
+
 
 typedef struct {
 	volatile bool index_found;

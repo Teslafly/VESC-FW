@@ -36,21 +36,22 @@
 
 
 bool enc_tle5012_init(TLE5012_config_t *cfg) {
-	if (cfg->spi_dev == NULL) {
-		return false;
-	}
-	bool ssc_mode = true; // get this from spi config?
+	// if (cfg->spi_dev == NULL) {
+	// 	return false;
+	// }
+	// bool ssc_mode = true; // get this from spi config?
 
-	memset(&cfg->state, 0, sizeof(TLE5012_state));  // what does this do exactly?
+	memset(&cfg->state, 0, sizeof(TLE5012_state)); 
+	spi_bb_init(&(cfg->sw_spi));
 
 
-	// ssc mode uses mosi pin only. 
-	palSetPadMode(cfg->sck_gpio, cfg->sck_pin, PAL_MODE_ALTERNATE(6) | PAL_STM32_OSPEED_HIGHEST);
-	// palSetPadMode(cfg->miso_gpio, cfg->miso_pin, PAL_MODE_ALTERNATE(6) | PAL_STM32_OSPEED_HIGHEST); // not required for ssc
-	palSetPadMode(cfg->nss_gpio, cfg->nss_pin, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
-	palSetPadMode(cfg->mosi_gpio, cfg->mosi_pin, PAL_MODE_ALTERNATE(6) | PAL_STM32_OSPEED_HIGHEST);
+	// // ssc mode uses mosi pin only. 
+	// palSetPadMode(cfg->sck_gpio, cfg->sck_pin, PAL_MODE_ALTERNATE(6) | PAL_STM32_OSPEED_HIGHEST);
+	// // palSetPadMode(cfg->miso_gpio, cfg->miso_pin, PAL_MODE_ALTERNATE(6) | PAL_STM32_OSPEED_HIGHEST); // not required for ssc
+	// palSetPadMode(cfg->nss_gpio, cfg->nss_pin, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
+	// palSetPadMode(cfg->mosi_gpio, cfg->mosi_pin, PAL_MODE_ALTERNATE(6) | PAL_STM32_OSPEED_HIGHEST);
 
-	spiStart(cfg->spi_dev, &(cfg->hw_spi_cfg));
+	// spiStart(cfg->spi_dev, &(cfg->hw_spi_cfg));
 
 	cfg->state.spi_error_rate = 0.0;
 	cfg->state.encoder_no_magnet_error_rate = 0.0;
@@ -64,17 +65,20 @@ void enc_tle5012_deinit(TLE5012_config_t *cfg) {
 	}
 
 	// palSetPadMode(cfg->miso_gpio, cfg->miso_pin, PAL_MODE_INPUT_PULLUP); check for spi vs ssc mode
-	palSetPadMode(cfg->sck_gpio, cfg->sck_pin, PAL_MODE_INPUT_PULLUP);
-	palSetPadMode(cfg->nss_gpio, cfg->nss_pin, PAL_MODE_INPUT_PULLUP);
-	palSetPadMode(cfg->mosi_gpio, cfg->mosi_pin, PAL_MODE_INPUT_PULLUP);
+	// palSetPadMode(cfg->sck_gpio, cfg->sck_pin, PAL_MODE_INPUT_PULLUP);
+	// palSetPadMode(cfg->nss_gpio, cfg->nss_pin, PAL_MODE_INPUT_PULLUP);
+	// palSetPadMode(cfg->mosi_gpio, cfg->mosi_pin, PAL_MODE_INPUT_PULLUP);
 
-	spiStop(cfg->spi_dev);
+	// spiStop(cfg->spi_dev);
+	spi_bb_deinit(&(cfg->sw_spi));
 
 	cfg->state.last_enc_angle = 0.0;
 	cfg->state.spi_error_rate = 0.0;
 }
 
 void enc_tle5012_routine(TLE5012_config_t *cfg) {
+	uint16_t pos;
+
 	float timestep = timer_seconds_elapsed_since(cfg->state.last_update_time);
 	if (timestep > 1.0) {
 		timestep = 1.0;
@@ -153,24 +157,40 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	*/
 
 	// REG_AVAL = 0x0020U;
-	const uint16_t READ_SENSOR = 0x8000; // read mode, 1<<15?
-	const uint16_t command = 0x0020U; // REG_AVAL
-	const uint16_t upd = 0x0400; // UPD_high           
-	const uint16_t safe = 0x0001; // SAFE_high
+	const uint16_t READ_SENSOR = 0b1 << 15; // read mode, 1<<15?
+	const uint16_t command = 0x02 << 4; // REG_AVAL
+	const uint16_t upd = 0b1 << 10; // UPD_high           
+	const uint16_t safe = 0b000 << 0; // SAFE_0, no safety word
 
 	uint16_t command_word = READ_SENSOR | command | upd | safe;
 
-	spiSelect(cfg->spi_dev); // should toggle cs pin?
-	// spiStartSend(SPIDriver *spip, size_t n, const void *txbuf) {} // nonblocking
-	spiSend(cfg->spi_dev, 1, &command_word);// is the size 1 or 2 for 16 bits?, does this set  SPI_CR1_BIDIOE =  1 for output
-	// do we need a delay here?
-	spiReceive(cfg->spi_dev, 2, &rx_data); // check size. does this set SPI_CR1_BIDIOE properly? 0 for input
-  	spiUnselect(cfg->spi_dev); 
-
+	// hw spi shenanigans
+	// spiSelect(cfg->spi_dev); // should toggle cs pin?
+	// // spiStartSend(SPIDriver *spip, size_t n, const void *txbuf) {} // nonblocking
+	// spiSend(cfg->spi_dev, 1, &command_word);// is the size 1 or 2 for 16 bits?, does this set  SPI_CR1_BIDIOE =  1 for output
+	// // do we need a delay here?
+	// spiReceive(cfg->spi_dev, 2, &rx_data); // check size. does this set SPI_CR1_BIDIOE properly? 0 for input
+  	// spiUnselect(cfg->spi_dev); 
 	// spiPolledExchange(cfg->spi_dev, reg_addr_03); // other way of doing this?
 
+
+
+
+	// sw spi
+	spi_bb_delay();
+	spi_bb_begin(&(cfg->sw_spi));
+	spi_bb_delay();
+	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data, &command_word, 1, 1); // send command
+	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data, 0, 1, 0); // read. 1x 16 bit so no safy word?
+
+	spi_bb_end(&(cfg->sw_spi));
+
+	// rx_data[1] = angle
+	// rx_data[0] = safety word?
+
+
 	// new_data_avail= data & 0x8000 // dont care, get angle anyways?
-	uint16_t pos = rx_data[0] & 0x7FFF;
+	pos = rx_data[0] & 0x7FFF;
 	cfg->state.last_enc_angle = (float) pos * (360.0 / 32768.0); 
 	// (360 / 32768.0) * ((double) rawAnglevalue);
 	

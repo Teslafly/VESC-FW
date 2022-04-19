@@ -45,6 +45,7 @@ AS504x_config_t encoder_cfg_as504x = {
 				0, 0,
 #endif
 				HW_HALL_ENC_GPIO2, HW_HALL_ENC_PIN2,
+				sw_spi,
 				0, // has_started
 				0, // has_error
 				{{NULL, NULL}, NULL, NULL} // Mutex
@@ -63,6 +64,7 @@ AD2S1205_config_t encoder_cfg_ad2s1205 = {
 				0, 0,
 #endif
 				HW_HALL_ENC_GPIO2, HW_HALL_ENC_PIN2,
+				sw_spi,
 				0, // has_started
 				0, // has_error
 				{{NULL, NULL}, NULL, NULL} // Mutex
@@ -95,23 +97,40 @@ MT6816_config_t encoder_cfg_mt6816 = {
 };
 
 TLE5012_config_t encoder_cfg_tle5012 = {
-// software ssc interface?
-		&HW_SPI_DEV, // spi_dev
-		{//HARDWARE SPI CONFIG
-				NULL, // CALLBACK
-				HW_SPI_ENC_PORT_CS,  //SS PORT
-				HW_SPI_ENC_PIN_CS,   // SS PAD
-				SPI_BaudRatePrescaler_8 | SPI_CR1_CPOL | SPI_CR1_CPHA | SPI_DATASIZE_16BIT | SPI_CR1_BIDIMODE // cr1 REGISTER
-				// CR1 = 5.25MBIT/S, CPOL-low?, CPHA = 1 EDGE?, 16 bit,  bidirectional mode
+		{
+				HW_HALL_ENC_GPIO3, HW_HALL_ENC_PIN3, // nss
+				HW_HALL_ENC_GPIO1, HW_HALL_ENC_PIN1, // sck
+				HW_HALL_ENC_GPIO2, HW_HALL_ENC_PIN2, // mosi
+				HW_HALL_ENC_GPIO2, HW_HALL_ENC_PIN2, // miso
+				sw_ssc,
+				0, // has_started
+				0, // has_error
+				{{NULL, NULL}, NULL, NULL} // Mutex
 		},
 
-		/*NSS/CS*/HW_SPI_ENC_PORT_CS, HW_SPI_ENC_PIN_CS,
-		/*SCK*/HW_SPI_ENC_PORT_SCK, HW_SPI_ENC_PIN_SCK,
-		/*MOSI*/HW_SPI_ENC_PORT_MOSI, HW_SPI_ENC_PIN_MOSI,
-		// /*MISO*/HW_SPI_ENC_PORT_MISO, HW_SPI_ENC_PIN_MISO,
-				   0,					 0, // MISO NOT USED
-		{0, 0, 0, 0, 0, 0, 0},
+		{0} // State
 };
+
+
+// hw ssc
+// TLE5012_config_t encoder_cfg_tle5012 = {
+// // software ssc interface?
+// 		&HW_SPI_DEV, // spi_dev
+// 		{//HARDWARE SPI CONFIG
+// 				NULL, // CALLBACK
+// 				HW_SPI_ENC_PORT_CS,  //SS PORT
+// 				HW_SPI_ENC_PIN_CS,   // SS PAD
+// 				SPI_BaudRatePrescaler_8 | SPI_CR1_CPOL | SPI_CR1_CPHA | SPI_DATASIZE_16BIT | SPI_CR1_BIDIMODE // cr1 REGISTER
+// 				// CR1 = 5.25MBIT/S, CPOL-low?, CPHA = 1 EDGE?, 16 bit,  bidirectional mode
+// 		},
+
+// 		/*NSS/CS*/HW_SPI_ENC_PORT_CS, HW_SPI_ENC_PIN_CS,
+// 		/*SCK*/HW_SPI_ENC_PORT_SCK, HW_SPI_ENC_PIN_SCK,
+// 		/*MOSI*/HW_SPI_ENC_PORT_MOSI, HW_SPI_ENC_PIN_MOSI,
+// 		// /*MISO*/HW_SPI_ENC_PORT_MISO, HW_SPI_ENC_PIN_MISO,
+// 				   0,					 0, // MISO NOT USED
+// 		{0, 0, 0, 0, 0, 0, 0},
+// };
 
 // TLE5012_config_t encoder_cfg_tle5012_hwssc= {
 	////hardware ssc interface
