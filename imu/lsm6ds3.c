@@ -53,6 +53,7 @@ void lsm6ds3_init(stm32_gpio_t *sda_gpio, int sda_pin,
 	m_i2c_bb.sda_pin = sda_pin;
 	m_i2c_bb.scl_gpio = scl_gpio;
 	m_i2c_bb.scl_pin = scl_pin;
+	m_i2c_bb.rate = I2C_BB_RATE_400K;
 	i2c_bb_init(&m_i2c_bb);
 
 	uint8_t txb[2];
@@ -160,6 +161,9 @@ static THD_FUNCTION(lsm6ds3_thread, arg) {
 	(void)arg;
 	chRegSetThreadName("LSM6SD3 Sampling");
 
+	systime_t iteration_timer = chVTGetSystemTime();
+	const systime_t desired_interval = US2ST(1000000 / rate_hz);
+
 	while (!chThdShouldTerminateX()) {
 
 		uint8_t txb[2];
@@ -188,7 +192,18 @@ static THD_FUNCTION(lsm6ds3_thread, arg) {
 		}
 
 		// Delay between loops
-		chThdSleepMilliseconds((int)((1000.0 / rate_hz)));
+		iteration_timer += desired_interval;
+		systime_t current_time = chVTGetSystemTime();
+		systime_t remainin_sleep_time = iteration_timer - current_time;
+		if (remainin_sleep_time > 0 && remainin_sleep_time < desired_interval) {
+			// Sleep the remaining time.
+			chThdSleep(remainin_sleep_time);
+		}
+		else {
+			// Read was too slow or CPU was too buzy, reset the schedule.
+			iteration_timer = current_time;
+			chThdSleep(desired_interval);
+		}
 	}
 }
 

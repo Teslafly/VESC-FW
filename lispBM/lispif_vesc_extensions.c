@@ -116,6 +116,12 @@ typedef struct {
 	lbm_uint has_phase_filters;
 	lbm_uint uuid;
 	lbm_uint runtime;
+
+	// Rates
+	lbm_uint rate_100k;
+	lbm_uint rate_200k;
+	lbm_uint rate_400k;
+	lbm_uint rate_700k;
 } vesc_syms;
 
 static vesc_syms syms_vesc = {0};
@@ -253,6 +259,16 @@ static bool compare_symbol(lbm_uint sym, lbm_uint *comp) {
 		} else if (comp == &syms_vesc.runtime) {
 			get_add_symbol("runtime", comp);
 		}
+
+		else if (comp == &syms_vesc.rate_100k) {
+			get_add_symbol("rate-100k", comp);
+		} else if (comp == &syms_vesc.rate_200k) {
+			get_add_symbol("rate-200k", comp);
+		} else if (comp == &syms_vesc.rate_400k) {
+			get_add_symbol("rate-400k", comp);
+		} else if (comp == &syms_vesc.rate_700k) {
+			get_add_symbol("rate-700k", comp);
+		}
 	}
 
 	return *comp == sym;
@@ -272,6 +288,28 @@ static bool is_number_all(lbm_value *args, lbm_uint argn) {
 #define CHECK_NUMBER_ALL()			if (!is_number_all(args, argn)) {return lbm_enc_sym(SYM_EERROR);}
 #define CHECK_ARGN(n)				if (argn != n) {return lbm_enc_sym(SYM_EERROR);}
 #define CHECK_ARGN_NUMBER(n)		if (argn != n || !is_number_all(args, argn)) {return lbm_enc_sym(SYM_EERROR);}
+
+static bool gpio_get_pin(lbm_uint sym, stm32_gpio_t **port, int *pin) {
+	if (compare_symbol(sym, &syms_vesc.pin_rx)) {
+#ifdef HW_UART_RX_PORT
+		*port = HW_UART_RX_PORT; *pin = HW_UART_RX_PIN;
+		return true;
+#endif
+	} else if (compare_symbol(sym, &syms_vesc.pin_tx)) {
+#ifdef HW_UART_TX_PORT
+		*port = HW_UART_TX_PORT; *pin = HW_UART_TX_PIN;
+		return true;
+#endif
+	} else if (compare_symbol(sym, &syms_vesc.pin_swdio)) {
+		*port = GPIOA; *pin = 13;
+		return true;
+	} else if (compare_symbol(sym, &syms_vesc.pin_swclk)) {
+		*port = GPIOA; *pin = 14;
+		return true;
+	}
+
+	return false;
+}
 
 // Various commands
 
@@ -1715,6 +1753,7 @@ static lbm_value ext_uart_read(lbm_value *args, lbm_uint argn) {
 static i2c_bb_state i2c_cfg = {
 		HW_UART_RX_PORT, HW_UART_RX_PIN,
 		HW_UART_TX_PORT, HW_UART_TX_PIN,
+		I2C_BB_RATE_400K,
 		0,
 		0,
 		{{NULL, NULL}, NULL, NULL}
@@ -1722,7 +1761,50 @@ static i2c_bb_state i2c_cfg = {
 static bool i2c_started = false;
 
 static lbm_value ext_i2c_start(lbm_value *args, lbm_uint argn) {
-	(void)args; (void)argn;
+	if (argn > 3) {
+		return lbm_enc_sym(SYM_EERROR);
+	}
+
+	i2c_cfg.rate = I2C_BB_RATE_200K;
+	if (argn >= 1) {
+		if (!lbm_is_symbol(args[0])) {
+			return lbm_enc_sym(SYM_EERROR);
+		}
+
+		if (compare_symbol(lbm_dec_sym(args[0]), &syms_vesc.rate_100k)) {
+			i2c_cfg.rate = I2C_BB_RATE_100K;
+		} else if (compare_symbol(lbm_dec_sym(args[0]), &syms_vesc.rate_200k)) {
+			i2c_cfg.rate = I2C_BB_RATE_200K;
+		} else if (compare_symbol(lbm_dec_sym(args[0]), &syms_vesc.rate_400k)) {
+			i2c_cfg.rate = I2C_BB_RATE_400K;
+		} else if (compare_symbol(lbm_dec_sym(args[0]), &syms_vesc.rate_700k)) {
+			i2c_cfg.rate = I2C_BB_RATE_700K;
+		} else {
+			return lbm_enc_sym(SYM_EERROR);
+		}
+	}
+
+	stm32_gpio_t *sda_gpio = HW_UART_RX_PORT;
+	int sda_pin = HW_UART_RX_PIN;
+	if (argn >= 2) {
+		if (!lbm_is_symbol(args[1]) ||
+				!gpio_get_pin(lbm_dec_sym(args[1]), &sda_gpio, &sda_pin)) {
+			return lbm_enc_sym(SYM_EERROR);
+		}
+	}
+	i2c_cfg.sda_gpio = sda_gpio;
+	i2c_cfg.sda_pin = sda_pin;
+
+	stm32_gpio_t *scl_gpio = HW_UART_TX_PORT;
+	int scl_pin = HW_UART_TX_PIN;
+	if (argn >= 3) {
+		if (!lbm_is_symbol(args[2]) ||
+				!gpio_get_pin(lbm_dec_sym(args[2]), &scl_gpio, &scl_pin)) {
+			return lbm_enc_sym(SYM_EERROR);
+		}
+	}
+	i2c_cfg.scl_gpio = scl_gpio;
+	i2c_cfg.scl_pin = scl_pin;
 
 	app_configuration *appconf = mempools_alloc_appconf();
 	conf_general_read_app_configuration(appconf);
@@ -1818,28 +1900,6 @@ static lbm_value ext_i2c_restore(lbm_value *args, lbm_uint argn) {
 	i2c_bb_restore_bus(&i2c_cfg);
 
 	return lbm_enc_i(1);
-}
-
-static bool gpio_get_pin(lbm_uint sym, stm32_gpio_t **port, int *pin) {
-	if (compare_symbol(sym, &syms_vesc.pin_rx)) {
-#ifdef HW_UART_RX_PORT
-		*port = HW_UART_RX_PORT; *pin = HW_UART_RX_PIN;
-		return true;
-#endif
-	} else if (compare_symbol(sym, &syms_vesc.pin_tx)) {
-#ifdef HW_UART_TX_PORT
-		*port = HW_UART_TX_PORT; *pin = HW_UART_TX_PIN;
-		return true;
-#endif
-	} else if (compare_symbol(sym, &syms_vesc.pin_swdio)) {
-		*port = GPIOA; *pin = 13;
-		return true;
-	} else if (compare_symbol(sym, &syms_vesc.pin_swclk)) {
-		*port = GPIOA; *pin = 14;
-		return true;
-	}
-
-	return false;
 }
 
 static lbm_value ext_gpio_configure(lbm_value *args, lbm_uint argn) {
