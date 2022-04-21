@@ -150,19 +150,27 @@ void spi_bb_transfer_16(spi_bb_state *s, uint16_t *in_buf, const uint16_t *out_b
 			write = true;
 		}
 
-		for (int bit = 0; bit < 16; bit++) {
-			if(write && s->mosi_gpio){
-				palSetPadMode(s->mosi_gpio, s->mosi_pin,
-					PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
+		if(write && s->mosi_gpio){
+			// need to set pin level before setting pin to output.
+			palWritePad(s->mosi_gpio, s->mosi_pin, send >> 15); 
 
+			palSetPadMode(s->mosi_gpio, s->mosi_pin,
+				PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
+		} else {
+			palSetPadMode(read_gpio, read_pin, PAL_MODE_INPUT_PULLUP); // set up in spi init for non ssc?
+			write = false;
+		}
+
+		for (int bit = 0; bit < 16; bit++) {
+			palSetPad(s->sck_gpio, s->sck_pin); // Data is put on the data line with the rising edge of SCK and read with the falling edge of SCK.
+			
+			if(write){
 				palWritePad(s->mosi_gpio, s->mosi_pin, send >> 15); 
 				send <<= 1;
-			} else {
-				palSetPadMode(read_gpio, read_pin, PAL_MODE_INPUT_PULLUP); // set up in spi init for non ssc?
 			}
 
-			palSetPad(s->sck_gpio, s->sck_pin);
-			spi_bb_delay_short();
+			// spi_bb_delay_short();
+			// spi_bb_delay();
 
 			int samples = 0;
 			samples += palReadPad(read_gpio, read_pin);
@@ -183,6 +191,7 @@ void spi_bb_transfer_16(spi_bb_state *s, uint16_t *in_buf, const uint16_t *out_b
 
 			palClearPad(s->sck_gpio, s->sck_pin);
 			spi_bb_delay_short();
+			// spi_bb_delay();
 		}
 
 		if (in_buf) {
