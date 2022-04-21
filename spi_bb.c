@@ -162,7 +162,7 @@ void spi_bb_transfer_16(spi_bb_state *s, uint16_t *in_buf, const uint16_t *out_b
 		}
 
 		for (int bit = 0; bit < 16; bit++) {
-			palSetPad(s->sck_gpio, s->sck_pin); // Data is put on the data line with the rising edge of SCK and read with the falling edge of SCK.
+			palSetPad(s->sck_gpio, s->sck_pin); // Data is put on the data line with the rising edge of SCK and read with the falling edge of SCK. (tle5012)
 			
 			if(write){
 				palWritePad(s->mosi_gpio, s->mosi_pin, send >> 15); 
