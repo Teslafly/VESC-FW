@@ -19,13 +19,6 @@
  */
 
 #include "lispif.h"
-#include "heap.h"
-#include "symrepr.h"
-#include "eval_cps.h"
-#include "print.h"
-#include "tokpar.h"
-#include "lbm_memory.h"
-#include "env.h"
 #include "lispbm.h"
 #include "extensions/array_extensions.h"
 
@@ -116,9 +109,16 @@ typedef struct {
 	lbm_uint has_phase_filters;
 	lbm_uint uuid;
 	lbm_uint runtime;
+
+	// Rates
+	lbm_uint rate_100k;
+	lbm_uint rate_200k;
+	lbm_uint rate_400k;
+	lbm_uint rate_700k;
 } vesc_syms;
 
 static vesc_syms syms_vesc = {0};
+static void(*ext_callback)(void) = 0;
 
 static bool get_add_symbol(char *name, lbm_uint* id) {
 	if (!lbm_get_symbol_by_name(name, id)) {
@@ -253,6 +253,16 @@ static bool compare_symbol(lbm_uint sym, lbm_uint *comp) {
 		} else if (comp == &syms_vesc.runtime) {
 			get_add_symbol("runtime", comp);
 		}
+
+		else if (comp == &syms_vesc.rate_100k) {
+			get_add_symbol("rate-100k", comp);
+		} else if (comp == &syms_vesc.rate_200k) {
+			get_add_symbol("rate-200k", comp);
+		} else if (comp == &syms_vesc.rate_400k) {
+			get_add_symbol("rate-400k", comp);
+		} else if (comp == &syms_vesc.rate_700k) {
+			get_add_symbol("rate-700k", comp);
+		}
 	}
 
 	return *comp == sym;
@@ -272,6 +282,28 @@ static bool is_number_all(lbm_value *args, lbm_uint argn) {
 #define CHECK_NUMBER_ALL()			if (!is_number_all(args, argn)) {return lbm_enc_sym(SYM_EERROR);}
 #define CHECK_ARGN(n)				if (argn != n) {return lbm_enc_sym(SYM_EERROR);}
 #define CHECK_ARGN_NUMBER(n)		if (argn != n || !is_number_all(args, argn)) {return lbm_enc_sym(SYM_EERROR);}
+
+static bool gpio_get_pin(lbm_uint sym, stm32_gpio_t **port, int *pin) {
+	if (compare_symbol(sym, &syms_vesc.pin_rx)) {
+#ifdef HW_UART_RX_PORT
+		*port = HW_UART_RX_PORT; *pin = HW_UART_RX_PIN;
+		return true;
+#endif
+	} else if (compare_symbol(sym, &syms_vesc.pin_tx)) {
+#ifdef HW_UART_TX_PORT
+		*port = HW_UART_TX_PORT; *pin = HW_UART_TX_PIN;
+		return true;
+#endif
+	} else if (compare_symbol(sym, &syms_vesc.pin_swdio)) {
+		*port = GPIOA; *pin = 13;
+		return true;
+	} else if (compare_symbol(sym, &syms_vesc.pin_swclk)) {
+		*port = GPIOA; *pin = 14;
+		return true;
+	}
+
+	return false;
+}
 
 // Various commands
 
@@ -1715,6 +1747,7 @@ static lbm_value ext_uart_read(lbm_value *args, lbm_uint argn) {
 static i2c_bb_state i2c_cfg = {
 		HW_UART_RX_PORT, HW_UART_RX_PIN,
 		HW_UART_TX_PORT, HW_UART_TX_PIN,
+		I2C_BB_RATE_400K,
 		0,
 		0,
 		{{NULL, NULL}, NULL, NULL}
@@ -1722,7 +1755,50 @@ static i2c_bb_state i2c_cfg = {
 static bool i2c_started = false;
 
 static lbm_value ext_i2c_start(lbm_value *args, lbm_uint argn) {
-	(void)args; (void)argn;
+	if (argn > 3) {
+		return lbm_enc_sym(SYM_EERROR);
+	}
+
+	i2c_cfg.rate = I2C_BB_RATE_200K;
+	if (argn >= 1) {
+		if (!lbm_is_symbol(args[0])) {
+			return lbm_enc_sym(SYM_EERROR);
+		}
+
+		if (compare_symbol(lbm_dec_sym(args[0]), &syms_vesc.rate_100k)) {
+			i2c_cfg.rate = I2C_BB_RATE_100K;
+		} else if (compare_symbol(lbm_dec_sym(args[0]), &syms_vesc.rate_200k)) {
+			i2c_cfg.rate = I2C_BB_RATE_200K;
+		} else if (compare_symbol(lbm_dec_sym(args[0]), &syms_vesc.rate_400k)) {
+			i2c_cfg.rate = I2C_BB_RATE_400K;
+		} else if (compare_symbol(lbm_dec_sym(args[0]), &syms_vesc.rate_700k)) {
+			i2c_cfg.rate = I2C_BB_RATE_700K;
+		} else {
+			return lbm_enc_sym(SYM_EERROR);
+		}
+	}
+
+	stm32_gpio_t *sda_gpio = HW_UART_RX_PORT;
+	int sda_pin = HW_UART_RX_PIN;
+	if (argn >= 2) {
+		if (!lbm_is_symbol(args[1]) ||
+				!gpio_get_pin(lbm_dec_sym(args[1]), &sda_gpio, &sda_pin)) {
+			return lbm_enc_sym(SYM_EERROR);
+		}
+	}
+	i2c_cfg.sda_gpio = sda_gpio;
+	i2c_cfg.sda_pin = sda_pin;
+
+	stm32_gpio_t *scl_gpio = HW_UART_TX_PORT;
+	int scl_pin = HW_UART_TX_PIN;
+	if (argn >= 3) {
+		if (!lbm_is_symbol(args[2]) ||
+				!gpio_get_pin(lbm_dec_sym(args[2]), &scl_gpio, &scl_pin)) {
+			return lbm_enc_sym(SYM_EERROR);
+		}
+	}
+	i2c_cfg.scl_gpio = scl_gpio;
+	i2c_cfg.scl_pin = scl_pin;
 
 	app_configuration *appconf = mempools_alloc_appconf();
 	conf_general_read_app_configuration(appconf);
@@ -1818,28 +1894,6 @@ static lbm_value ext_i2c_restore(lbm_value *args, lbm_uint argn) {
 	i2c_bb_restore_bus(&i2c_cfg);
 
 	return lbm_enc_i(1);
-}
-
-static bool gpio_get_pin(lbm_uint sym, stm32_gpio_t **port, int *pin) {
-	if (compare_symbol(sym, &syms_vesc.pin_rx)) {
-#ifdef HW_UART_RX_PORT
-		*port = HW_UART_RX_PORT; *pin = HW_UART_RX_PIN;
-		return true;
-#endif
-	} else if (compare_symbol(sym, &syms_vesc.pin_tx)) {
-#ifdef HW_UART_TX_PORT
-		*port = HW_UART_TX_PORT; *pin = HW_UART_TX_PIN;
-		return true;
-#endif
-	} else if (compare_symbol(sym, &syms_vesc.pin_swdio)) {
-		*port = GPIOA; *pin = 13;
-		return true;
-	} else if (compare_symbol(sym, &syms_vesc.pin_swclk)) {
-		*port = GPIOA; *pin = 14;
-		return true;
-	}
-
-	return false;
 }
 
 static lbm_value ext_gpio_configure(lbm_value *args, lbm_uint argn) {
@@ -2547,6 +2601,74 @@ static lbm_value ext_bufclear(lbm_value *args, lbm_uint argn) {
 	return res;
 }
 
+static lbm_value ext_bufcpy(lbm_value *args, lbm_uint argn) {
+	lbm_value res = lbm_enc_sym(SYM_EERROR);
+
+	if (argn != 5 || !lbm_is_array(args[0]) || !lbm_is_number(args[1])
+			|| !lbm_is_array(args[2]) || !lbm_is_number(args[3]) || !lbm_is_number(args[4])) {
+		return res;
+	}
+
+	lbm_array_header_t *array1 = (lbm_array_header_t *)lbm_car(args[0]);
+	if (array1->elt_type != LBM_TYPE_BYTE) {
+		return res;
+	}
+
+	unsigned int start1 = lbm_dec_as_u32(args[1]);
+
+	lbm_array_header_t *array2 = (lbm_array_header_t *)lbm_car(args[2]);
+	if (array2->elt_type != LBM_TYPE_BYTE) {
+		return res;
+	}
+
+	unsigned int start2 = lbm_dec_as_u32(args[3]);
+	unsigned int len = lbm_dec_as_u32(args[4]);
+
+	if (start1 < array1->size && start2 < array2->size) {
+		if (len > (array1->size - start1)) {
+			len = (array1->size - start1);
+		}
+		if (len > (array2->size - start2)) {
+			len = (array2->size - start2);
+		}
+
+		memcpy((char*)array1->data + start1, (char*)array2->data + start2, len);
+	}
+
+	res = lbm_enc_sym(SYM_TRUE);
+
+	return res;
+}
+
+static lbm_value ext_bufset_bit(lbm_value *args, lbm_uint argn) {
+	lbm_value res = lbm_enc_sym(SYM_EERROR);
+
+	if (argn != 3 || !lbm_is_array(args[0]) ||
+			!lbm_is_number(args[1]) || !lbm_is_number(args[2])) {
+		return res;
+	}
+
+	lbm_array_header_t *array = (lbm_array_header_t *)lbm_car(args[0]);
+	if (array->elt_type != LBM_TYPE_BYTE) {
+		return res;
+	}
+
+	unsigned int pos = lbm_dec_as_u32(args[1]);
+	unsigned int bit = lbm_dec_as_u32(args[2]) ? 1 : 0;
+
+	unsigned int bytepos = pos / 8;
+	unsigned int bitpos = pos % 8;
+
+	if (bytepos < array->size) {
+		((uint8_t*)array->data)[bytepos] &= ~(1 << bitpos);
+		((uint8_t*)array->data)[bytepos] |= (bit << bitpos);
+	}
+
+	res = lbm_enc_sym(SYM_TRUE);
+
+	return res;
+}
+
 void lispif_load_vesc_extensions(void) {
 	lbm_add_symbol_const("event-can-sid", &sym_event_can_sid);
 	lbm_add_symbol_const("event-can-eid", &sym_event_can_eid);
@@ -2704,6 +2826,12 @@ void lispif_load_vesc_extensions(void) {
 	// Array extensions
 	lbm_array_extensions_init();
 	lbm_add_extension("bufclear", ext_bufclear);
+	lbm_add_extension("bufcpy", ext_bufcpy);
+	lbm_add_extension("bufset-bit", ext_bufset_bit);
+
+	if (ext_callback) {
+		ext_callback();
+	}
 }
 
 void lispif_process_can(uint32_t can_id, uint8_t *data8, int len, bool is_ext) {
@@ -2787,6 +2915,10 @@ void lispif_process_custom_app_data(unsigned char *data, unsigned int len) {
 	}
 
 	lbm_continue_eval();
+}
+
+void lispif_set_ext_load_callback(void (*p_func)(void)) {
+	ext_callback = p_func;
 }
 
 void lispif_disable_all_events(void) {

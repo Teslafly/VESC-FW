@@ -16,5 +16,5 @@ workspace.code-workspace
 *.pro.shared
 
 #vscode
-.vscode/*
+.vscode
 *.log

@@ -555,7 +555,9 @@ typedef enum {
 	PPM_CTRL_TYPE_PID,
 	PPM_CTRL_TYPE_PID_NOREV,
 	PPM_CTRL_TYPE_CURRENT_BRAKE_REV_HYST,
-	PPM_CTRL_TYPE_CURRENT_SMART_REV
+	PPM_CTRL_TYPE_CURRENT_SMART_REV,
+	PPM_CTRL_TYPE_PID_POSITION_180,
+	PPM_CTRL_TYPE_PID_POSITION_360,
 } ppm_control_type;
 
 typedef struct {
@@ -830,10 +832,18 @@ typedef enum {
 	AHRS_MODE_MADGWICK_FUSION
 } AHRS_MODE;
 
+typedef enum {
+	IMU_FILTER_LOW = 0,
+	IMU_FILTER_MEDIUM,
+	IMU_FILTER_HIGH
+} IMU_FILTER;
+
 typedef struct {
 	IMU_TYPE type;
 	AHRS_MODE mode;
+	IMU_FILTER filter;
 	int sample_rate_hz;
+	bool use_magnetometer;
 	float accel_confidence_decay;
 	float mahony_kp;
 	float mahony_ki;
