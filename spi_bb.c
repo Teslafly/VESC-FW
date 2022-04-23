@@ -178,10 +178,10 @@ void spi_bb_transfer_16(spi_bb_state *s, uint16_t *in_buf, const uint16_t *out_b
 			samples += palReadPad(read_gpio, read_pin);
 			__NOP();
 			samples += palReadPad(read_gpio, read_pin);
-			// __NOP();
-			// samples += palReadPad(read_gpio, read_pin);
-			// __NOP();
-			// samples += palReadPad(read_gpio, read_pin);
+			__NOP();
+			samples += palReadPad(read_gpio, read_pin);
+			__NOP();
+			samples += palReadPad(read_gpio, read_pin);
 
 			// does 5 samples of each pad read, to minimize noise
 			receive <<= 1;

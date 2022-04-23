@@ -184,7 +184,9 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	// spi_bb_delay();
 	
 	spi_bb_dat_low(&(cfg->sw_spi)); // need to set data line low to trigger angle acquisition
-	spi_bb_delay();
+	// spi_bb_delay();
+	spi_bb_delay_short();
+	spi_bb_delay_short();
 	spi_bb_begin(&(cfg->sw_spi));
 	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], &command_word, 1, 1); // send command
 	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], 0, 1, false); // read.

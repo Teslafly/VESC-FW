@@ -51,8 +51,8 @@ bool encoder_init(volatile mc_configuration *conf) {
 	nvicDisableVector(HW_ENC_TIM_ISR_CH);
 	TIM_DeInit(HW_ENC_TIM);
 
-	// switch (conf->m_sensor_port_mode) {
-	switch (SENSOR_PORT_MODE_TLE5014_SW_SSC) {
+	switch (conf->m_sensor_port_mode) {
+	// switch (SENSOR_PORT_MODE_TLE5014_SW_SSC) {
 	case SENSOR_PORT_MODE_ABI: {
 		SENSOR_PORT_5V();
 
