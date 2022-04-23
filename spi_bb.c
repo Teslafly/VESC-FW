@@ -213,6 +213,10 @@ void spi_bb_end(spi_bb_state *s) {
 	spi_bb_delay();
 }
 
+void spi_bb_dat_low(spi_bb_state *s) {
+	palSetPad(s->mosi_gpio, s->mosi_pin);
+}
+
 void spi_bb_delay(void) {
 	for (volatile int i = 0; i < 6; i++) {
 		__NOP();

@@ -56,6 +56,7 @@ void spi_bb_transfer_8(spi_bb_state *s, uint8_t *in_buf, const uint8_t *out_buf,
 void spi_bb_transfer_16(spi_bb_state *s, uint16_t *in_buf, const uint16_t *out_buf, int length, bool write);
 void spi_bb_begin(spi_bb_state *s);
 void spi_bb_end(spi_bb_state *s);
+void spi_bb_dat_low(spi_bb_state *s);
 void spi_bb_delay(void);
 
 

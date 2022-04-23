@@ -164,7 +164,9 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	// const uint16_t safe = 0b000 << 0; // SAFE_0, no safety word
 	const uint16_t safe = 0b001 << 0; // SAFE_0, just safety word
 
-	uint16_t command_word = READ_SENSOR | command | upd | safe;
+	// uint16_t command_word = READ_SENSOR | command | upd | safe;
+	// uint16_t command_word = 0x8021;
+	uint16_t command_word = 0x8020;
 
 	// hw spi shenanigans
 	// spiSelect(cfg->spi_dev); // should toggle cs pin?
@@ -180,18 +182,19 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 
 	// sw spi
 	// spi_bb_delay();
+	
+	spi_bb_dat_low(&(cfg->sw_spi)); // need to set data line low to trigger angle acquisition
+	spi_bb_delay();
 	spi_bb_begin(&(cfg->sw_spi));
-	// spi_bb_delay();
 	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], &command_word, 1, 1); // send command
 	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], 0, 1, false); // read.
-	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[0], 0, 1, false);
-
+	// spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[0], 0, 1, false);
 	spi_bb_end(&(cfg->sw_spi));
 
 	// rx_data[1] = angle
 	// rx_data[0] = safety word?
 
-	enc_tle5012_read_register(&cfg, 0x02);
+	// enc_tle5012_read_register(&cfg, 0x02);
 
 
 	// new_data_avail= data & 0x8000 // dont care, get angle anyways?
@@ -206,32 +209,32 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 
 }
 
-uint16_t enc_tle5012_read_register(TLE5012_config_t *cfg, uint8_t address) {
-	uint16_t reg_data;
-	uint16_t safety_word;
+// uint16_t enc_tle5012_read_register(TLE5012_config_t *cfg, uint8_t address) {
+// 	uint16_t reg_data;
+// 	uint16_t safety_word;
 
-	// command word:
-	// bits
-	// [15] = rw, 1=read <- first bit transmitted
-	// [14..11] = lock, 0000 (don't need this if not writing)
-	// [10] = Update-Register Access, 0: Access to current values, 1: values in buffer
-	// [9..4] = address, status=0x00, angle=0x02, speed=0x03
-	// [3..0] = 4-bit Number of Data Words (if bits set to 0000B, no safety word is provided)
+// 	// command word:
+// 	// bits
+// 	// [15] = rw, 1=read <- first bit transmitted
+// 	// [14..11] = lock, 0000 (don't need this if not writing)
+// 	// [10] = Update-Register Access, 0: Access to current values, 1: values in buffer
+// 	// [9..4] = address, status=0x00, angle=0x02, speed=0x03
+// 	// [3..0] = 4-bit Number of Data Words (if bits set to 0000B, no safety word is provided)
 
-	const uint8_t READ_SENSOR = 0b1;
-	const uint8_t upd = 0b0;
-	// const uint8_t safe = 0b000 << 0; // SAFE_0, no safety word
-	const uint16_t safe = 0b001 << 0; // SAFE_0, just safety word
+// 	const uint8_t READ_SENSOR = 0b1;
+// 	const uint8_t upd = 0b0;
+// 	// const uint8_t safe = 0b000 << 0; // SAFE_0, no safety word
+// 	const uint16_t safe = 0b001 << 0; // SAFE_0, just safety word
 
-	uint16_t command = (READ_SENSOR << 15) | (upd << 10) | (address << 4)| (safe << 0);
-	spi_bb_begin(&(cfg->sw_spi));
-	spi_bb_transfer_16(&(cfg->sw_spi), &safety_word, &command, 1, 1); // send command
-	spi_bb_transfer_16(&(cfg->sw_spi), &reg_data, 0, 1, false); // read register
-	spi_bb_transfer_16(&(cfg->sw_spi), &safety_word, 0, 1, false); // read safety word
-	spi_bb_end(&(cfg->sw_spi));
+// 	uint16_t command = (READ_SENSOR << 15) | (upd << 10) | (address << 4)| (safe << 0);
+// 	spi_bb_begin(&(cfg->sw_spi));
+// 	spi_bb_transfer_16(&(cfg->sw_spi), &safety_word, &command, 1, 1); // send command
+// 	spi_bb_transfer_16(&(cfg->sw_spi), &reg_data, 0, 1, false); // read register
+// 	spi_bb_transfer_16(&(cfg->sw_spi), &safety_word, 0, 1, false); // read safety word
+// 	spi_bb_end(&(cfg->sw_spi));
 
-	return reg_data;
-}
+// 	return reg_data;
+// }
 
 
 

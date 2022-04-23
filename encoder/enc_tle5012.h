@@ -29,7 +29,7 @@
 bool enc_tle5012_init(TLE5012_config_t *cfg);
 void enc_tle5012_deinit(TLE5012_config_t *cfg);
 void enc_tle5012_routine(TLE5012_config_t *cfg);
-uint16_t enc_tle5012_read_register(TLE5012_config_t *cfg, uint8_t address);
+// uint16_t enc_tle5012_read_register(TLE5012_config_t *cfg, uint8_t address);
 
 // Macros
 #define TLE5012_LAST_ANGLE(cfg)		((cfg)->state.last_enc_angle)
