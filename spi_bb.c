@@ -169,29 +169,32 @@ void spi_bb_transfer_16(spi_bb_state *s, uint16_t *in_buf, const uint16_t *out_b
 				send <<= 1;
 			}
 
-			// spi_bb_delay_short();
+			// spi_bb_delay_short() ;
+			spi_bb_delay();
 			// spi_bb_delay();
-
-			int samples = 0;
-			samples += palReadPad(read_gpio, read_pin);
-			__NOP();
-			samples += palReadPad(read_gpio, read_pin);
-			__NOP();
-			samples += palReadPad(read_gpio, read_pin);
-			__NOP();
-			samples += palReadPad(read_gpio, read_pin);
-			__NOP();
-			samples += palReadPad(read_gpio, read_pin);
-
-			// does 5 samples of each pad read, to minimize noise
-			receive <<= 1;
-			if (samples > 2) {
-				receive |= 1;
-			}
-
 			palClearPad(s->sck_gpio, s->sck_pin);
-			spi_bb_delay_short();
-			// spi_bb_delay();
+			// spi_bb_delay_short();
+			spi_bb_delay();
+			// read when sck low
+
+
+			// int samples = 0;
+			// samples += palReadPad(read_gpio, read_pin);
+			// __NOP();
+			// samples += palReadPad(read_gpio, read_pin);
+			// __NOP();
+			// samples += palReadPad(read_gpio, read_pin);
+			// __NOP();
+			// samples += palReadPad(read_gpio, read_pin);
+			// __NOP();
+			// samples += palReadPad(read_gpio, read_pin);
+
+			// // does 5 samples of each pad read, to minimize noise
+			receive <<= 1;
+			receive |= palReadPad(read_gpio, read_pin);
+			// if (samples > 2) {
+			// 	receive |= 1;
+			// }	
 		}
 
 		if (in_buf) {
