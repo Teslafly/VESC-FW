@@ -78,6 +78,7 @@ void enc_tle5012_deinit(TLE5012_config_t *cfg) {
 
 void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	uint16_t pos;
+	float angle;
 
 	float timestep = timer_seconds_elapsed_since(cfg->state.last_update_time);
 	if (timestep > 1.0) {
@@ -184,10 +185,12 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	// spi_bb_delay();
 	
 	spi_bb_dat_low(&(cfg->sw_spi)); // need to set data line low to trigger angle acquisition
-	// spi_bb_delay();
-	spi_bb_delay_short();
-	spi_bb_delay_short();
+	spi_bb_delay();
+	spi_bb_delay();
+	// spi_bb_delay_short();
+	// spi_bb_delay_short();
 	spi_bb_begin(&(cfg->sw_spi));
+	// spi_bb_delay_short();
 	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], &command_word, 1, 1); // send command
 	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], 0, 1, false); // read.
 	// spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[0], 0, 1, false);
@@ -201,7 +204,15 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 
 	// new_data_avail= data & 0x8000 // dont care, get angle anyways?
 	pos = rx_data[1] & 0x7FFF;
-	cfg->state.last_enc_angle = (float) pos * (360.0 / 32768.0); 
+	angle = (float) pos * (360.0 / 32768.0); 
+	
+	if (fabs(angle - cfg->state.last_enc_angle) < 20 ){
+		palClearPad(GPIOB, 1);
+		cfg->state.last_enc_angle = (float) pos * (360.0 / 32768.0); 
+	}else{
+		palClearPad(GPIOB, 1);
+	}
+	
 	// (360 / 32768.0) * ((double) rawAnglevalue);
 	//
 	// angle = (360/2^15) * angle_val <- this looks correct. 2^15 = 32768.0
