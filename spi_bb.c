@@ -221,6 +221,7 @@ void spi_bb_dat_low(spi_bb_state *s) {
 }
 
 void spi_bb_delay(void) {
+	// ~1500 ns long
 	for (volatile int i = 0; i < 6; i++) {
 		__NOP();
 	}
