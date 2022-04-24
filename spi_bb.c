@@ -169,12 +169,12 @@ void spi_bb_transfer_16(spi_bb_state *s, uint16_t *in_buf, const uint16_t *out_b
 				send <<= 1;
 			}
 
-			// spi_bb_delay_short() ;
-			spi_bb_delay();
+			spi_bb_delay_short();
+			// spi_bb_delay();
 			// spi_bb_delay();
 			palClearPad(s->sck_gpio, s->sck_pin);
-			// spi_bb_delay_short();
-			spi_bb_delay();
+			spi_bb_delay_short();
+			// spi_bb_delay();
 			// read when sck low
 
 
