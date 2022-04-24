@@ -157,17 +157,17 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 
 	// REG_AVAL = 0x0020U;
 	const uint16_t READ_SENSOR = 0b1 << 15; // read mode, 1<<15?
-	// const uint16_t upd = 0b1 << 10; // UPD_high
-	const uint16_t upd = 0b0 << 10; // UPD_low
+	const uint16_t upd = 0b1 << 10; // UPD_high
+	// const uint16_t upd = 0b0 << 10; // UPD_low
 	const uint16_t command = 0x02 << 5; // REG_AVAL
 	// const uint16_t command = 0x00 << 4; 
 	           
-	// const uint16_t safe = 0b000 << 0; // SAFE_0, no safety word
-	const uint16_t safe = 0b001 << 0; // SAFE_0, just safety word
+	const uint16_t safe = 0b000 << 0; // SAFE_0, no safety word
+	// const uint16_t safe = 0b001 << 0; // SAFE_0, just safety word
 
-	// uint16_t command_word = READ_SENSOR | command | upd | safe;
+	uint16_t command_word = READ_SENSOR | command | upd | safe;
 	// uint16_t command_word = 0x8021;
-	uint16_t command_word = 0x8020;
+	// uint16_t command_word = 0x8020;
 
 	// hw spi shenanigans
 	// spiSelect(cfg->spi_dev); // should toggle cs pin?
@@ -205,12 +205,13 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	// new_data_avail= data & 0x8000 // dont care, get angle anyways?
 	pos = rx_data[1] & 0x7FFF;
 	angle = (float) pos * (360.0 / 32768.0); 
-	
+
 	if (fabs(angle - cfg->state.last_enc_angle) < 20 ){
-		palClearPad(GPIOB, 1);
+		palClearPad(GPIOD, 1);
 		cfg->state.last_enc_angle = (float) pos * (360.0 / 32768.0); 
 	}else{
-		palClearPad(GPIOB, 1);
+		palSetPadMode(GPIOD, 1, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
+		palSetPad(GPIOD, 1);
 	}
 	
 	// (360 / 32768.0) * ((double) rawAnglevalue);
