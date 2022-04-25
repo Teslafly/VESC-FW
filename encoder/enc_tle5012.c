@@ -35,6 +35,14 @@
 #include <string.h>
 
 
+// uint16_t enc_tle5012_read_register(TLE5012_config_t *cfg, uint8_t address);
+
+uint8_t getFirstByte(uint16_t twoByteWord);
+uint8_t getSecondByte(uint16_t twoByteWord);
+uint8_t crc8(uint8_t *data, uint8_t length);
+uint8_t checkSafety(uint16_t command, uint16_t safetyword, uint16_t* readreg, uint16_t length);
+
+
 bool enc_tle5012_init(TLE5012_config_t *cfg) {
 	// if (cfg->spi_dev == NULL) {
 	// 	return false;
@@ -77,32 +85,13 @@ void enc_tle5012_deinit(TLE5012_config_t *cfg) {
 }
 
 void enc_tle5012_routine(TLE5012_config_t *cfg) {
-	uint16_t pos;
-	float angle;
+	
 
 	float timestep = timer_seconds_elapsed_since(cfg->state.last_update_time);
 	if (timestep > 1.0) {
 		timestep = 1.0;
 	}
 	cfg->state.last_update_time = timer_time_now();
-
-
-// #define SPI_BEGIN()		spi_bb_delay(); palClearPad(cfg->nss_gpio, cfg->nss_pin); spi_bb_delay();
-// #define SPI_END()		spi_bb_delay(); palSetPad(cfg->nss_gpio, cfg->nss_pin); spi_bb_delay();
-
-	// TODO: The fact that the polled version is used means that it is
-	// more or less pointless to use the hardware SPI as the CPU sits
-	// and wastes cycles waiting for the hardware to finish.
-	//
-	// A better approach would be to use spiStartExchangeI and use a callback
-	// for when the operation finishes and process the data from there.
-	// SPI_BEGIN();
-	// reg_data_03 = spiPolledExchange(cfg->spi_dev, reg_addr_03);
-	// SPI_END();
-	// spi_bb_delay();
-	// SPI_BEGIN();
-	// reg_data_04 = spiPolledExchange(cfg->spi_dev, reg_addr_04);
-	// SPI_END();
 
 	// pos = (reg_data_03 << 8) | reg_data_04;
 	// cfg->state.spi_val = pos;
@@ -132,20 +121,6 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	[9..4] = address, status=0x00, angle=0x02, speed=0x03
 	[3..0] = 4-bit Number of Data Words (if bits set to 0000B, no safety word is provided)
 	
-	enum updTypes
-	{
-	UPD_low  = 0x0000,              //!< \brief read normal registers
-	UPD_high = 0x0400,              //!< \brief read update buffer registers
-	};
-
-	//!< \brief Switch on/off safety word generation
-	enum safetyTypes
-	{
-		SAFE_low  = 0x0000,             //!< \brief switch of safety word generation
-		SAFE_high = 0x0001,             //!< \brief switch on safety word generation
-	};
-
-	don't need to use safety word?
 	safety word:
 	[15]:Indication of chip reset or watchdog overflow (resets after readout) via SSC
 	[14]: System error
@@ -159,28 +134,13 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	// const uint16_t upd = 0b1; // UPD_high
 	const uint16_t upd = 0b0; // UPD_low
 	const uint16_t address = 0x02; // REG_AVAL
-	           
 	// const uint16_t safe = 0b000 << 0; // SAFE_0, no safety word
 	const uint16_t safe = 0b001; // SAFE_0, just safety word
 
 	uint16_t command_word = (READ_SENSOR << 15) | (upd << 10) | (address << 5)| (safe << 0);
-	// uint16_t command_word = 0x8021;
-
-	// hw spi shenanigans
-	// spiSelect(cfg->spi_dev); // should toggle cs pin?
-	// // spiStartSend(SPIDriver *spip, size_t n, const void *txbuf) {} // nonblocking
-	// spiSend(cfg->spi_dev, 1, &command_word);// is the size 1 or 2 for 16 bits?, does this set  SPI_CR1_BIDIOE =  1 for output
-	// // do we need a delay here?
-	// spiReceive(cfg->spi_dev, 2, &rx_data); // check size. does this set SPI_CR1_BIDIOE properly? 0 for input
-  	// spiUnselect(cfg->spi_dev); 
-	// spiPolledExchange(cfg->spi_dev, reg_addr_03); // other way of doing this?
-
-
 	uint16_t rx_data [2];
 
 	// sw spi
-
-
 	// trigger update to buffers:
 	// spi_bb_begin(&(cfg->sw_spi));
 	// spi_bb_delay(); 
@@ -197,7 +157,6 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	// spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], 0, 1, false); // read angle
 	// spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[0], 0, 1, false);
 
-
 	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], 0, 2, false); 
 
 	spi_bb_end(&(cfg->sw_spi));
@@ -206,19 +165,28 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	// rx_data[0] = safety word?
 
 	// enc_tle5012_read_register(&cfg, 0x02);
-
-
-	// new_data_avail= data & 0x8000 // dont care, get angle anyways?
-	pos = rx_data[1] & 0x7FFF;
-	angle = (float) pos * (360.0 / 32768.0); 
-
-	if (fabs(angle - cfg->state.last_enc_angle) < 20 ){
+	
+	uint8_t status = checkSafety(command_word, rx_data[1], &rx_data[0], 1);
+	if (status != 0){
 		palClearPad(GPIOD, 1);
+		uint16_t pos = rx_data[1] & 0x7FFF;
 		cfg->state.last_enc_angle = (float) pos * (360.0 / 32768.0); 
 	}else{
+		// if status != 1 (crc fail), raise encoder exception?
 		palSetPadMode(GPIOD, 1, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
 		palSetPad(GPIOD, 1);
 	}
+
+
+
+	// float angle = (float) pos * (360.0 / 32768.0); 
+	// if (fabs(angle - cfg->state.last_enc_angle) < 20 ){
+	// 	palClearPad(GPIOD, 1);
+	// 	cfg->state.last_enc_angle = (float) pos * (360.0 / 32768.0); 
+	// }else{
+	// 	palSetPadMode(GPIOD, 1, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
+	// 	palSetPad(GPIOD, 1);
+	// }
 	
 	// (360 / 32768.0) * ((double) rawAnglevalue);
 	// angle = (360/2^15) * angle_val // 2^15 = 32768.0
@@ -254,16 +222,36 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 // }
 
 // Bitmasks for several read and write functions
-#define SYSTEM_ERROR_MASK           0x4000    //!< \brief System error masks for safety words
-#define INTERFACE_ERROR_MASK        0x2000    //!< \brief Interface error masks for safety words
-#define INV_ANGLE_ERROR_MASK        0x1000    //!< \brief Angle error masks for safety words
+#define TLE5012_SYSTEM_ERROR_MASK           0x4000    //!< \brief System error masks for safety words
+#define TLE5012_INTERFACE_ERROR_MASK        0x2000    //!< \brief Interface error masks for safety words
+#define TLE5012_INV_ANGLE_ERROR_MASK        0x1000    //!< \brief Angle error masks for safety words
 
-#define CRC_POLYNOMIAL              0x1D      //!< \brief values used for calculating the CRC
-#define CRC_SEED                    0xFF
-#define CRC_NUM_REGISTERS           0x0008    //!< \brief number of CRC relevant registers
-#define MAX_REGISTER_MEM            0x0030    //!< \brief max readable register values buffer
-#define MAX_NUM_REG                 0x16      //!< \brief defines the value for temporary data to read all readable registers
+#define TLE5012_CRC_POLYNOMIAL              0x1D      //!< \brief values used for calculating the CRC
+#define TLE5012_CRC_SEED                    0xFF
+// #define TLE5012_CRC_NUM_REGISTERS           0x0008    //!< \brief number of CRC relevant registers
+// #define TLE5012_MAX_REGISTER_MEM            0x0030    //!< \brief max readable register values buffer
+// #define TLE5012_MAX_NUM_REG                 0x16      //!< \brief defines the value for temporary data to read all readable registers
 
+
+/*!
+ * Gets the first byte of a 2 byte word
+ * @param twoByteWord insert word of two bytes long
+ * @return returns the first byte
+ */
+uint8_t getFirstByte(uint16_t twoByteWord)
+{
+	return ((uint8_t) (twoByteWord >> 8));
+}
+
+/*!
+ * Gets the second byte of the 2 byte word
+ * @param twoByteWord insert word of two bytes long
+ * @return returns the second byte
+ */
+uint8_t getSecondByte(uint16_t twoByteWord)
+{
+	return ((uint8_t) twoByteWord);
+}
 
 /*!
  * Function for calculation the CRC.
@@ -276,7 +264,7 @@ uint8_t crc8(uint8_t *data, uint8_t length)
 	uint32_t crc;
 	int16_t i, bit;
 
-	crc = CRC_SEED;
+	crc = TLE5012_CRC_SEED;
 	for (i = 0; i < length; i++)
 	{
 		crc ^= data[i];
@@ -285,27 +273,30 @@ uint8_t crc8(uint8_t *data, uint8_t length)
 			if ((crc & 0x80) != 0)
 			{
 				crc <<= 1;
-				crc ^= CRC_POLYNOMIAL;
+				crc ^= TLE5012_CRC_POLYNOMIAL;
 			}else{
 				crc <<= 1;
 			}
 		}
 	}
 
-	return ((~crc) & CRC_SEED);
+	return ((~crc) & TLE5012_CRC_SEED);
 }
 
 
-bool checkSafety(uint16_t safetyword, uint16_t command, uint16_t* readreg, uint16_t length){
-	if (!((safetyword) & SYSTEM_ERROR_MASK)){
+uint8_t checkSafety(uint16_t command, uint16_t safetyword, uint16_t* readreg, uint16_t length){
+	if (!((safetyword) & TLE5012_SYSTEM_ERROR_MASK)){
 		//SYSTEM_ERROR;
 		// resetSafety();
-	} else if (!((safetyword) & INTERFACE_ERROR_MASK)) {
+		return 2;
+	} else if (!((safetyword) & TLE5012_INTERFACE_ERROR_MASK)) {
 		//INTERFACE_ACCESS_ERROR;
 		//resetSafety();
-	} else if (!((safetyword) & INV_ANGLE_ERROR_MASK)) {
+		return 3;
+	} else if (!((safetyword) & TLE5012_INV_ANGLE_ERROR_MASK)) {
 		// INVALID_ANGLE_ERROR;
 		//resetSafety();
+		return 4;
 	} else {
 		//resetSafety();
 		uint16_t lengthOfTemp = length * 2 + 2;
@@ -321,12 +312,14 @@ bool checkSafety(uint16_t safetyword, uint16_t command, uint16_t* readreg, uint1
 		}
 
 		uint8_t crcReceivedFinal = getSecondByte(safetyword);
-		uint8_t crc = crcCalc(temp, lengthOfTemp);
+		uint8_t crc = crc8(temp, lengthOfTemp);
 
 		if (crc == crcReceivedFinal){
 			// NO_ERROR;
+			return 0;
 		}else{
 			// CRC_ERROR;
+			return 1;
 		}
 	}
 	return false;
@@ -351,6 +344,56 @@ bool checkSafety(uint16_t safetyword, uint16_t command, uint16_t* readreg, uint1
 // 	}
 // 	return (checkError);
 // }
+
+
+// errorTypes Tle5012b::getAngleValue(double &angleValue)
+// {
+// 	int16_t rawAnglevalue = 0;
+// 	return (getAngleValue(angleValue, rawAnglevalue, UPD_low, SAFE_high));
+// }
+// errorTypes Tle5012b::getAngleValue(double &angleValue, int16_t &rawAnglevalue, updTypes upd, safetyTypes safe)
+// {
+// 	uint16_t rawData = 0;
+// 	errorTypes status = readFromSensor(reg.REG_AVAL, rawData, upd, safe);
+// 	if (status != NO_ERROR)
+// 	{
+// 		return (status);
+// 	}
+// 	rawData = (rawData & (DELETE_BIT_15));
+// 	//check if the value received is positive or negative
+// 	if (rawData & CHECK_BIT_14)
+// 	{
+// 		rawData = rawData - CHANGE_UINT_TO_INT_15;
+// 	}
+// 	rawAnglevalue = rawData;
+// 	angleValue = (ANGLE_360_VAL / POW_2_15) * ((double) rawAnglevalue);
+// 	return (status);
+// }
+
+// errorTypes Tle5012b::getTemperature(double &temperature)
+// {
+// 	int16_t rawTemp = 0;
+// 	return (getTemperature(temperature, rawTemp, UPD_low, SAFE_high));
+// }
+// errorTypes Tle5012b::getTemperature(double &temperature, int16_t &rawTemp, updTypes upd, safetyTypes safe)
+// {
+// 	uint16_t rawData = 0;
+// 	errorTypes status = readFromSensor(reg.REG_FSYNC, rawData, upd, safe);
+// 	if (status != NO_ERROR)
+// 	{
+// 		return (status);
+// 	}
+// 	rawData = (rawData & (DELETE_7BITS));
+// 	//check if the value received is positive or negative
+// 	if (rawData & CHECK_BIT_9)
+// 	{
+// 		rawData = rawData - CHANGE_UNIT_TO_INT_9;
+// 	}
+// 	rawTemp = rawData;
+// 	temperature = (rawTemp + TEMP_OFFSET) / (TEMP_DIV);
+// 	return (status);
+// }
+
 
 // const Reg::AddressField_t Reg::addrFields[] =
 // {
