@@ -100,8 +100,6 @@ bool encoder_init(volatile mc_configuration *conf) {
 		//must support 4 modes:
 		// ssc (3 wire) sw spi
 		// ssc (3 wire) hw spi w dma
-		// spi (4 wire) sw spi
-		// spi (4 wire) hw spi w dma
 		// can be just a change in the interface? all register access/etc is same.
 
 		if (!enc_tle5012_init(&encoder_cfg_tle5012)) {
@@ -111,7 +109,7 @@ bool encoder_init(volatile mc_configuration *conf) {
 
 		encoder_type_now = ENCODER_TYPE_TLE5012;
 		// timer_start(10000);
-		timer_start(1000);
+		timer_start(5000);
 
 		res = true;
 	} break;

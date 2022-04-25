@@ -155,19 +155,16 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	[7..0]: crc 
 	*/
 
-	// REG_AVAL = 0x0020U;
-	const uint16_t READ_SENSOR = 0b1 << 15; // read mode, 1<<15?
-	const uint16_t upd = 0b1 << 10; // UPD_high
-	// const uint16_t upd = 0b0 << 10; // UPD_low
-	const uint16_t command = 0x02 << 5; // REG_AVAL
-	// const uint16_t command = 0x00 << 4; 
+	const uint16_t READ_SENSOR = 0b1 ; // read mode
+	// const uint16_t upd = 0b1; // UPD_high
+	const uint16_t upd = 0b0; // UPD_low
+	const uint16_t address = 0x02; // REG_AVAL
 	           
-	const uint16_t safe = 0b000 << 0; // SAFE_0, no safety word
-	// const uint16_t safe = 0b001 << 0; // SAFE_0, just safety word
+	// const uint16_t safe = 0b000 << 0; // SAFE_0, no safety word
+	const uint16_t safe = 0b001; // SAFE_0, just safety word
 
-	uint16_t command_word = READ_SENSOR | command | upd | safe;
+	uint16_t command_word = (READ_SENSOR << 15) | (upd << 10) | (address << 5)| (safe << 0);
 	// uint16_t command_word = 0x8021;
-	// uint16_t command_word = 0x8020;
 
 	// hw spi shenanigans
 	// spiSelect(cfg->spi_dev); // should toggle cs pin?
@@ -179,21 +176,30 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	// spiPolledExchange(cfg->spi_dev, reg_addr_03); // other way of doing this?
 
 
-	uint16_t rx_data [5];
+	uint16_t rx_data [2];
 
 	// sw spi
-	// spi_bb_delay();
+
+
+	// trigger update to buffers:
+	// spi_bb_begin(&(cfg->sw_spi));
+	// spi_bb_delay(); 
+	// spi_bb_end(&(cfg->sw_spi));
 	
 	spi_bb_dat_low(&(cfg->sw_spi)); // need to set data line low to trigger angle acquisition
-	spi_bb_delay();
-	spi_bb_delay();
+	// spi_bb_delay();
+	// spi_bb_delay();
 	// spi_bb_delay_short();
-	// spi_bb_delay_short();
+	spi_bb_delay_short();
 	spi_bb_begin(&(cfg->sw_spi));
 	// spi_bb_delay_short();
 	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], &command_word, 1, 1); // send command
-	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], 0, 1, false); // read.
+	// spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], 0, 1, false); // read angle
 	// spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[0], 0, 1, false);
+
+
+	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], 0, 2, false); 
+
 	spi_bb_end(&(cfg->sw_spi));
 
 	// rx_data[1] = angle
@@ -215,11 +221,8 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	}
 	
 	// (360 / 32768.0) * ((double) rawAnglevalue);
-	//
-	// angle = (360/2^15) * angle_val <- this looks correct. 2^15 = 32768.0
+	// angle = (360/2^15) * angle_val // 2^15 = 32768.0
 	
-	
-	// ignore safety word for now
 
 }
 
@@ -250,8 +253,104 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 // 	return reg_data;
 // }
 
+// Bitmasks for several read and write functions
+#define SYSTEM_ERROR_MASK           0x4000    //!< \brief System error masks for safety words
+#define INTERFACE_ERROR_MASK        0x2000    //!< \brief Interface error masks for safety words
+#define INV_ANGLE_ERROR_MASK        0x1000    //!< \brief Angle error masks for safety words
+
+#define CRC_POLYNOMIAL              0x1D      //!< \brief values used for calculating the CRC
+#define CRC_SEED                    0xFF
+#define CRC_NUM_REGISTERS           0x0008    //!< \brief number of CRC relevant registers
+#define MAX_REGISTER_MEM            0x0030    //!< \brief max readable register values buffer
+#define MAX_NUM_REG                 0x16      //!< \brief defines the value for temporary data to read all readable registers
 
 
+/*!
+ * Function for calculation the CRC.
+ * @param data byte long data for CRC check
+ * @param length length of data
+ * @return returns 8bit CRC
+ */
+uint8_t crc8(uint8_t *data, uint8_t length)
+{
+	uint32_t crc;
+	int16_t i, bit;
+
+	crc = CRC_SEED;
+	for (i = 0; i < length; i++)
+	{
+		crc ^= data[i];
+		for (bit = 0; bit < 8; bit++)
+		{
+			if ((crc & 0x80) != 0)
+			{
+				crc <<= 1;
+				crc ^= CRC_POLYNOMIAL;
+			}else{
+				crc <<= 1;
+			}
+		}
+	}
+
+	return ((~crc) & CRC_SEED);
+}
+
+
+bool checkSafety(uint16_t safetyword, uint16_t command, uint16_t* readreg, uint16_t length){
+	if (!((safetyword) & SYSTEM_ERROR_MASK)){
+		//SYSTEM_ERROR;
+		// resetSafety();
+	} else if (!((safetyword) & INTERFACE_ERROR_MASK)) {
+		//INTERFACE_ACCESS_ERROR;
+		//resetSafety();
+	} else if (!((safetyword) & INV_ANGLE_ERROR_MASK)) {
+		// INVALID_ANGLE_ERROR;
+		//resetSafety();
+	} else {
+		//resetSafety();
+		uint16_t lengthOfTemp = length * 2 + 2;
+		uint8_t temp[lengthOfTemp];
+
+		temp[0] = getFirstByte(command);
+		temp[1] = getSecondByte(command);
+
+		for (uint16_t i = 0; i < length; i++)
+		{
+			temp[2 + 2 * i] = getFirstByte(readreg[i]);
+			temp[2 + 2 * i + 1] = getSecondByte(readreg[i]);
+		}
+
+		uint8_t crcReceivedFinal = getSecondByte(safetyword);
+		uint8_t crc = crcCalc(temp, lengthOfTemp);
+
+		if (crc == crcReceivedFinal){
+			// NO_ERROR;
+		}else{
+			// CRC_ERROR;
+		}
+	}
+	return false;
+}
+// //-----------------------------------------------------------------------------
+// // begin generic data transfer functions
+// errorTypes Tle5012b::readFromSensor(uint16_t command, uint16_t &data, updTypes upd, safetyTypes safe)
+// {
+// 	errorTypes checkError = NO_ERROR;
+
+// 	_command[0] = READ_SENSOR | command | upd | safe;
+// 	uint16_t _received[MAX_REGISTER_MEM] = {0};
+// 	sBus->sendReceive(_command, 1, _received, 2);
+// 	data = _received[0];
+// 	if (safe == SAFE_high)
+// 	{
+// 		checkError = checkSafety(_received[1], _command[0], &_received[0], 1);
+// 		if (checkError != NO_ERROR)
+// 		{
+// 			data = 0;
+// 		}
+// 	}
+// 	return (checkError);
+// }
 
 // const Reg::AddressField_t Reg::addrFields[] =
 // {
