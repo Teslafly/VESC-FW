@@ -270,38 +270,6 @@ Get button and joystick state of connected remote. Note that a remote app such a
 ; is-rev : Reverse active, 0 or 1
 ```
 
-#### eeprom-store-f
-
-```clj
-(eeprom-store-f addr number)
-```
-
-Store float number on emulated eeprom at address addr. Addr range: 0 to 63. Note that this will stop the motor briefly as writing to the flash memory cannot be done at the same time as the motor is running.
-
-#### eeprom-read-f
-
-```clj
-(eeprom-read-f addr)
-```
-
-Read float number on emulated eeprom at address addr. Addr range: 0 to 63. If nothing was stored on that address this function returns nil.
-
-#### eeprom-store-i
-
-```clj
-(eeprom-store-i addr number)
-```
-
-Same as eeprom-store-f, but store number as i32 instead of float.
-
-#### eeprom-read-i
-
-```clj
-(eeprom-read-i addr)
-```
-
-Same as eeprom-read-i, but read number as i32 instead of float.
-
 #### sysinfo
 
 ```clj
@@ -846,13 +814,14 @@ The function (ix list ind) can be used to get an element from the list. Example:
 #### uart-start
 
 ```clj
-(uart-start baudrate)
+(uart-start baudrate optHd)
 ```
 
-Start the UART driver at baudrate on the COMM-port on the VESC. If any app is using the UART pins it will be stopped first. Example:
+Start the UART driver at baudrate on the COMM-port on the VESC. optHd is an optional argument that can be set to 'half-duplex to use half-duplex mode. In half-duplex mode only the tx-pin is used. If any app is using the UART pins it will be stopped first. Example:
 
 ```clj
-(uart-start 115200)
+(uart-start 115200) ; Start UART at 115200 baud in full duplex mode
+(uart-start 115200 'half-duplex) ; Start UART at 115200 baud in half duplex mode
 ```
 
 #### uart-write
@@ -910,7 +879,7 @@ Start the I2C driver on the COMM-port on the VESC. If any app is using the I2C p
 
 ```clj
 (i2c-start 'rate-400k) ; 400 kbps and the default SDA and SDC pins
-(i2c-start 'rate-200k 'pin-swdio 'pin-swclk) ; 100 kbps and SWDIO and SWCLK as SDA and SCL
+(i2c-start 'rate-100k 'pin-swdio 'pin-swclk) ; 100 kbps and SWDIO and SWCLK as SDA and SCL
 
 ; Available bitrates
 'rate-100k
@@ -923,6 +892,9 @@ Start the I2C driver on the COMM-port on the VESC. If any app is using the I2C p
 'pin-tx
 'pin-swdio
 'pin-swclk
+'pin-hall1
+'pin-hall2
+'pin-hall3
 ```
 
 #### i2c-tx-rx
@@ -951,7 +923,7 @@ Sends a sequence of bits in an attempt to restore the i2c-bus. Can be used if an
 
 ### GPIO
 
-These functions allow using GPIO-pins from lispBM. The UART and SWD pins can currently be used. NOTE: If you are using the SWD-pins a SWD-programmer won't work after that until the next reset.
+These functions allow using GPIO-pins from lispBM. The UART and SWD pins can currently be used. NOTE: If you are using the SWD-pins a SWD-programmer won't work after that until the next reset. If you are using the hall sensor pins make sure that sensor port mode is not set to anything that will communicate with encoders using those pins. Leaving the sensor port in hall sensor mode should be fine.
 
 #### gpio-configure
 
@@ -969,6 +941,9 @@ Configure GPIO pin to mode. Example:
 'pin-tx     ; TX-pin on the COMM-port
 'pin-swdio  ; IO-pin on the SWD-port
 'pin-swclk  ; CLK-pin on the SWD-port
+'pin-hall1  ; Sensor port hall1
+'pin-hall2  ; Sensor port hall2
+'pin-hall3  ; Sensor port hall3
 
 ; Available modes
 'pin-mode-out    ; Output
@@ -1057,6 +1032,42 @@ Get the value of param. optDefault is an optional argument that can be set to 1 
 ```
 
 Store the current configuration to flash. This will stop the motor.
+
+### EEPROM (Nonvolatile Storage)
+
+Up to 64 variables (int32 or float) can be stored in a nonvolatile space reserved for LsipBM. These variables persist between power cycles and configuration changes, but not between firmware updates. Keep in mind that the motor will be stopped briefly when writing them and that they only can be written a limited number of times (about 100 000 writes) before wear on the flash memory starts to become an issue.
+
+#### eeprom-store-f
+
+```clj
+(eeprom-store-f addr number)
+```
+
+Store float number on emulated eeprom at address addr. Addr range: 0 to 63. Note that this will stop the motor briefly as writing to the flash memory cannot be done at the same time as the motor is running.
+
+#### eeprom-read-f
+
+```clj
+(eeprom-read-f addr)
+```
+
+Read float number on emulated eeprom at address addr. Addr range: 0 to 63. If nothing was stored on that address this function returns nil.
+
+#### eeprom-store-i
+
+```clj
+(eeprom-store-i addr number)
+```
+
+Same as eeprom-store-f, but store number as i32 instead of float.
+
+#### eeprom-read-i
+
+```clj
+(eeprom-read-i addr)
+```
+
+Same as eeprom-read-i, but read number as i32 instead of float.
 
 ### Loops
 
