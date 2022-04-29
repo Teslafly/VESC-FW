@@ -19,4 +19,4 @@ workspace.code-workspace
 .vscode/.cortex-debug.peripherals.state.json
 .vscode/.cortex-debug.registers.state.json
 *.log
-nul.d
+null.d
