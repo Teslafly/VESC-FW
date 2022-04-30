@@ -157,7 +157,8 @@ void spi_bb_transfer_16(spi_bb_state *s, uint16_t *in_buf, const uint16_t *out_b
 			palSetPadMode(s->mosi_gpio, s->mosi_pin,
 				PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
 		} else {
-			palSetPadMode(read_gpio, read_pin, PAL_MODE_INPUT_PULLUP); // set up in spi init for non ssc?
+			// palSetPadMode(read_gpio, read_pin, PAL_MODE_INPUT_PULLUP); // set up in spi init for non ssc?
+			palSetPadMode(read_gpio, read_pin, PAL_MODE_INPUT_PULLDOWN); // set up in spi init for non ssc?
 			write = false;
 		}
 
@@ -169,12 +170,13 @@ void spi_bb_transfer_16(spi_bb_state *s, uint16_t *in_buf, const uint16_t *out_b
 				send <<= 1;
 			}
 
-			spi_bb_delay_short();
-			// spi_bb_delay();
-			// spi_bb_delay();
+			// spi_bb_delay_short();
+			spi_bb_delay();
+			spi_bb_delay();
 			palClearPad(s->sck_gpio, s->sck_pin);
-			spi_bb_delay_short();
-			// spi_bb_delay();
+			// spi_bb_delay_short();
+			spi_bb_delay();
+			spi_bb_delay();
 			// read when sck low
 
 
@@ -217,7 +219,9 @@ void spi_bb_end(spi_bb_state *s) {
 }
 
 void spi_bb_dat_low(spi_bb_state *s) {
-	palSetPad(s->mosi_gpio, s->mosi_pin);
+	palSetPadMode(s->mosi_gpio, s->mosi_pin,
+		PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
+	palClearPad(s->mosi_gpio, s->mosi_pin);
 }
 
 void spi_bb_delay(void) {

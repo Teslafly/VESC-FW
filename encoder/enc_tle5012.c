@@ -93,9 +93,6 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	}
 	cfg->state.last_update_time = timer_time_now();
 
-	// pos = (reg_data_03 << 8) | reg_data_04;
-	// cfg->state.spi_val = pos;
-
 	// if (spi_bb_check_parity(pos)) {
 	// 	if (pos & MT6816_NO_MAGNET_ERROR_MASK) {
 	// 		++cfg->state.encoder_no_magnet_error_cnt;
@@ -130,15 +127,23 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	[7..0]: crc 
 	*/
 
+	// registers must set at atartup:
+	// FIR_MD 15:14 w Update Rate Setting (Filter Decimation) in 0x06
+	// really just go though 0x06 register.
+	//
+
+
+
 	const uint16_t READ_SENSOR = 0b1 ; // read mode
 	// const uint16_t upd = 0b1; // UPD_high
 	const uint16_t upd = 0b0; // UPD_low
-	const uint16_t address = 0x02; // REG_AVAL
+	const uint16_t address = 0x02; // REG_AVAL (angle)
+	// const uint16_t address = 0x00; // REG_AVAL
 	// const uint16_t safe = 0b000 << 0; // SAFE_0, no safety word
-	const uint16_t safe = 0b001; // SAFE_0, just safety word
+	const uint16_t safe = 0b010; // SAFE_0, just safety word
 
 	uint16_t command_word = (READ_SENSOR << 15) | (upd << 10) | (address << 5)| (safe << 0);
-	uint16_t rx_data [2];
+	uint16_t rx_data [5];
 
 	// sw spi
 	// trigger update to buffers:
@@ -146,18 +151,18 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	// spi_bb_delay(); 
 	// spi_bb_end(&(cfg->sw_spi));
 	
-	spi_bb_dat_low(&(cfg->sw_spi)); // need to set data line low to trigger angle acquisition
+	// spi_bb_dat_low(&(cfg->sw_spi)); // need to set data line low to trigger angle acquisition?
 	// spi_bb_delay();
 	// spi_bb_delay();
 	// spi_bb_delay_short();
-	spi_bb_delay_short();
+	// spi_bb_delay_short();
 	spi_bb_begin(&(cfg->sw_spi));
-	// spi_bb_delay_short();
+	spi_bb_delay_short();
 	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], &command_word, 1, 1); // send command
 	// spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], 0, 1, false); // read angle
-	// spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[0], 0, 1, false);
+	// spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[0], 0, 1, false); // read safety
 
-	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], 0, 2, false); 
+	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], 0, 3, false); 
 
 	spi_bb_end(&(cfg->sw_spi));
 
@@ -167,7 +172,7 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	// enc_tle5012_read_register(&cfg, 0x02);
 	
 	uint8_t status = checkSafety(command_word, rx_data[1], &rx_data[0], 1);
-	if (status != 0){
+	if (status == 0){
 		palClearPad(GPIOD, 1);
 		uint16_t pos = rx_data[1] & 0x7FFF;
 		cfg->state.last_enc_angle = (float) pos * (360.0 / 32768.0); 
@@ -175,6 +180,7 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 		// if status != 1 (crc fail), raise encoder exception?
 		palSetPadMode(GPIOD, 1, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
 		palSetPad(GPIOD, 1);
+		// angle error count ++
 	}
 
 
@@ -311,8 +317,8 @@ uint8_t checkSafety(uint16_t command, uint16_t safetyword, uint16_t* readreg, ui
 			temp[2 + 2 * i + 1] = getSecondByte(readreg[i]);
 		}
 
-		uint8_t crcReceivedFinal = getSecondByte(safetyword);
-		uint8_t crc = crc8(temp, lengthOfTemp);
+		volatile uint8_t crcReceivedFinal = getSecondByte(safetyword);
+		volatile uint8_t crc = crc8(temp, lengthOfTemp);
 
 		if (crc == crcReceivedFinal){
 			// NO_ERROR;
