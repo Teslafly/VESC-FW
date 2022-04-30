@@ -80,6 +80,9 @@ typedef struct {
 	lbm_uint pin_tx;
 	lbm_uint pin_swdio;
 	lbm_uint pin_swclk;
+	lbm_uint pin_hall1;
+	lbm_uint pin_hall2;
+	lbm_uint pin_hall3;
 
 	// Settings
 	lbm_uint l_current_min;
@@ -115,6 +118,9 @@ typedef struct {
 	lbm_uint rate_200k;
 	lbm_uint rate_400k;
 	lbm_uint rate_700k;
+
+	// Other
+	lbm_uint half_duplex;
 } vesc_syms;
 
 static vesc_syms syms_vesc = {0};
@@ -198,6 +204,12 @@ static bool compare_symbol(lbm_uint sym, lbm_uint *comp) {
 			get_add_symbol("pin-swdio", comp);
 		} else if (comp == &syms_vesc.pin_swclk) {
 			get_add_symbol("pin-swclk", comp);
+		} else if (comp == &syms_vesc.pin_hall1) {
+			get_add_symbol("pin-hall1", comp);
+		} else if (comp == &syms_vesc.pin_hall2) {
+			get_add_symbol("pin-hall2", comp);
+		} else if (comp == &syms_vesc.pin_hall3) {
+			get_add_symbol("pin-hall3", comp);
 		}
 
 		else if (comp == &syms_vesc.l_current_min) {
@@ -263,6 +275,10 @@ static bool compare_symbol(lbm_uint sym, lbm_uint *comp) {
 		} else if (comp == &syms_vesc.rate_700k) {
 			get_add_symbol("rate-700k", comp);
 		}
+
+		else if (comp == &syms_vesc.half_duplex) {
+			get_add_symbol("half-duplex", comp);
+		}
 	}
 
 	return *comp == sym;
@@ -299,6 +315,15 @@ static bool gpio_get_pin(lbm_uint sym, stm32_gpio_t **port, int *pin) {
 		return true;
 	} else if (compare_symbol(sym, &syms_vesc.pin_swclk)) {
 		*port = GPIOA; *pin = 14;
+		return true;
+	} else if (compare_symbol(sym, &syms_vesc.pin_hall1)) {
+		*port = HW_HALL_ENC_GPIO1; *pin = HW_HALL_ENC_PIN1;
+		return true;
+	} else if (compare_symbol(sym, &syms_vesc.pin_hall2)) {
+		*port = HW_HALL_ENC_GPIO2; *pin = HW_HALL_ENC_PIN2;
+		return true;
+	} else if (compare_symbol(sym, &syms_vesc.pin_hall3)) {
+		*port = HW_HALL_ENC_GPIO3; *pin = HW_HALL_ENC_PIN3;
 		return true;
 	}
 
@@ -779,7 +804,7 @@ static lbm_value ext_sysinfo(lbm_value *args, lbm_uint argn) {
 
 	if (compare_symbol(name, &syms_vesc.hw_name)) {
 		lbm_value lbm_res;
-		if (lbm_create_array(&lbm_res, LBM_TYPE_CHAR, strlen(HW_NAME))) {
+		if (lbm_create_array(&lbm_res, LBM_TYPE_CHAR, strlen(HW_NAME) + 1)) {
 			lbm_array_header_t *arr = (lbm_array_header_t*)lbm_car(lbm_res);
 			strcpy((char*)arr->data, HW_NAME);
 			res = lbm_res;
@@ -1609,20 +1634,33 @@ static lbm_value ext_raw_hall(lbm_value *args, lbm_uint argn) {
 
 // UART
 static SerialConfig uart_cfg = {
-		2500000,
-		0,
-		USART_CR2_LINEN,
-		0
+		2500000, 0, 0, 0
 };
+
 static bool uart_started = false;
 
 static lbm_value ext_uart_start(lbm_value *args, lbm_uint argn) {
-	CHECK_ARGN_NUMBER(1);
+	if ((argn != 1 && argn != 2) || !lbm_is_number(args[0])) {
+		return lbm_enc_sym(SYM_EERROR);
+	}
 
 	int baud = lbm_dec_as_i32(args[0]);
 
 	if (baud < 10 || baud > 10000000) {
 		return lbm_enc_sym(SYM_EERROR);
+	}
+
+	bool half_duplex = false;
+	if (argn == 2) {
+		if (lbm_is_symbol(args[1])) {
+			if (compare_symbol(lbm_dec_sym(args[1]), &syms_vesc.half_duplex)) {
+				half_duplex = true;
+			} else {
+				return lbm_enc_sym(SYM_EERROR);
+			}
+		} else {
+			return lbm_enc_sym(SYM_TERROR);
+		}
 	}
 
 	app_configuration *appconf = mempools_alloc_appconf();
@@ -1637,11 +1675,15 @@ static lbm_value ext_uart_start(lbm_value *args, lbm_uint argn) {
 	mempools_free_appconf(appconf);
 
 	uart_cfg.speed = baud;
+	uart_cfg.cr3 = half_duplex ? USART_CR3_HDSEL : 0;
 
 	sdStop(&HW_UART_DEV);
 	sdStart(&HW_UART_DEV, &uart_cfg);
-	palSetPadMode(HW_UART_RX_PORT, HW_UART_RX_PIN, PAL_MODE_ALTERNATE(HW_UART_GPIO_AF));
+
 	palSetPadMode(HW_UART_TX_PORT, HW_UART_TX_PIN, PAL_MODE_ALTERNATE(HW_UART_GPIO_AF));
+	if (!half_duplex) {
+		palSetPadMode(HW_UART_RX_PORT, HW_UART_RX_PIN, PAL_MODE_ALTERNATE(HW_UART_GPIO_AF));
+	}
 
 	uart_started = true;
 
@@ -1689,7 +1731,17 @@ static lbm_value ext_uart_write(lbm_value *args, lbm_uint argn) {
 		}
 	}
 
-	sdWrite(&HW_UART_DEV, to_send_ptr, ind);
+	if(uart_cfg.cr3 && USART_CR3_HDSEL){
+		HW_UART_DEV.usart->CR1 &= ~USART_CR1_RE;
+		sdWrite(&HW_UART_DEV, to_send_ptr, ind);
+		while(!chOQIsEmptyI(&HW_UART_DEV.oqueue)){
+			chThdSleepMilliseconds(1);
+		}
+		chThdSleepMilliseconds(1);
+		HW_UART_DEV.usart->CR1 |= USART_CR1_RE;
+	}else{
+		sdWrite(&HW_UART_DEV, to_send_ptr, ind);
+	}
 
 	return lbm_enc_sym(SYM_TRUE);
 }
@@ -1982,7 +2034,7 @@ static lbm_value ext_str_from_n(lbm_value *args, lbm_uint argn) {
 	switch (lbm_type_of(args[0])) {
 	case LBM_TYPE_FLOAT:
 		if (!format) {
-			format = "%f";
+			format = "%g";
 		}
 		len = snprintf(buffer, sizeof(buffer), format, (double)lbm_dec_as_float(args[0]));
 		break;

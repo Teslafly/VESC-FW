@@ -36,6 +36,8 @@
 
 
 // uint16_t enc_tle5012_read_register(TLE5012_config_t *cfg, uint8_t address);
+uint16_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t data, spi_direction read, bool safe);
+
 
 uint8_t getFirstByte(uint16_t twoByteWord);
 uint8_t getSecondByte(uint16_t twoByteWord);
@@ -133,6 +135,64 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	//
 
 
+/*
+	// TLE5012B E1000 (IIF) configuration:
+	IIF-type: E1000
+The TLE5012B E1000 is preconfigured for Incremental Interface and fast angle update rate (42.7 μs). It is most
+suitable for BLDC motor commutation.
+• Incremental Interface A/B mode.
+• 12bit mode, one count per 0.088° angle step.
+• Absolute count enabled.
+• Autocalibration mode 1 enabled.
+• Prediction disabled.
+• Hysteresis set to 0.703°.
+• IFA/IFB/IFC pins set to push-pull output.
+• SSC interface’s DATA pin set to push-pull output.
+• IFA/IFB/IFC pins set to strong driver, DATA pin set to strong driver, fast edge.
+• Voltage spike filter on input pads disabled.
+
+
+	- Interface Mode1 Register
+		fir_md = 0b01 // Update Rate Setting (Filter Decimation), 42.7 μs (minimum)
+					// should this be increased to 11 (170.6 μs) for noise reduction?
+		clk_sel = 0 // Clock Source Select, internal
+		dspu_hold = 0, DSPU in normal schedule operation, no watchdog reset
+		iif_mod = 0b01 // Incremental Interface Mode, A/B operation with Index on IFC pin
+		Offset = 0x06
+		mask = 0b11 00000000 1 0 1 11 // reserved unset only
+		word = 0b01 00000000 0 0 0 01
+	- Interface Mode2 Register
+		predict: 0 // prediction disabled
+		autocal = 0b01 //auto-cal. mode 1: update every angle update cycle
+			// change autocal to 0b00? (no auto-calibration)
+		Offset = 0x08
+		mask = 0b0 1111111111 1 1 11
+		word = 0b0 1111111111 0 0 01
+	- Interface Mode3 Register
+		spikef = 0 // Analog Spike Filter of Input Pads, disabled
+		ssc_od = 0 // SSC-Interface Data Pin Output Mode, Push-Pull
+		PAD_drv = 00 // Configuration of Pad-Driver, 
+					 // IFA/IFB/IFC: strong driver, DATA: strong driver, fast edge
+		Offset = 0x09
+		mask = 0b00000000000 1 1 11 // can overwrite ang base to 0?
+		word = 0b00000000000 0 0 00
+	- TCO_Y // nothing derivate-specific
+		sbist = 1// built in self test on startup
+		crc = crc of parameters if autocalibrate not set.
+	- IFAB Register
+		fir_udr = 1 // FIR Update Rate, FIR_MD = ‘01’ (42.7 μs)
+		ifab_od = 0 // IFA,IFB,IFC Output Mode, Push-Pull
+		ifab_hyst = 0b11 // HSM and IIF Mode: Hysteresis, 0.70° (max)
+		mask = 0b00000000000 1 1 11
+		word = 0b00000000000 1 0 11
+	- Interface Mode4 Register
+		hsm_plp = 0b0001 // Incremental Interface Mode: Absolute Count, absolute count enabled
+		ifab_res = 0b00 // Incremental Interface Mode: IIF resolution, 12bit, 0.088° step
+		if_md = 0b00 // Interface Mode on IFA,IFB,IFC, IIF
+		mask = 0b0000000 1111 11 11
+		word = 0b0000000 0001 00 00
+*/
+
 
 	const uint16_t READ_SENSOR = 0b1 ; // read mode
 	// const uint16_t upd = 0b1; // UPD_high
@@ -175,7 +235,7 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	if (status == 0){
 		palClearPad(GPIOD, 1);
 		uint16_t pos = rx_data[1] & 0x7FFF;
-		cfg->state.last_enc_angle = (float) pos * (360.0 / 32768.0); 
+		cfg->state.last_enc_angle = (float) pos * (360.0 / 32768.0); // 2^15 = 32768.0
 	}else{
 		// if status != 1 (crc fail), raise encoder exception?
 		palSetPadMode(GPIOD, 1, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
@@ -193,39 +253,66 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	// 	palSetPadMode(GPIOD, 1, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
 	// 	palSetPad(GPIOD, 1);
 	// }
-	
-	// (360 / 32768.0) * ((double) rawAnglevalue);
-	// angle = (360/2^15) * angle_val // 2^15 = 32768.0
-	
-
 }
 
+typedef enum spi_direction {
+	READ = true, 
+	WRITE = false
+} spi_direction; 
+
 // uint16_t enc_tle5012_read_register(TLE5012_config_t *cfg, uint8_t address) {
-// 	uint16_t reg_data;
-// 	uint16_t safety_word;
-
-// 	// command word:
-// 	// bits
-// 	// [15] = rw, 1=read <- first bit transmitted
-// 	// [14..11] = lock, 0000 (don't need this if not writing)
-// 	// [10] = Update-Register Access, 0: Access to current values, 1: values in buffer
-// 	// [9..4] = address, status=0x00, angle=0x02, speed=0x03
-// 	// [3..0] = 4-bit Number of Data Words (if bits set to 0000B, no safety word is provided)
-
-// 	const uint8_t READ_SENSOR = 0b1;
-// 	const uint8_t upd = 0b0;
-// 	// const uint8_t safe = 0b000 << 0; // SAFE_0, no safety word
-// 	const uint16_t safe = 0b001 << 0; // SAFE_0, just safety word
-
-// 	uint16_t command = (READ_SENSOR << 15) | (upd << 10) | (address << 4)| (safe << 0);
-// 	spi_bb_begin(&(cfg->sw_spi));
-// 	spi_bb_transfer_16(&(cfg->sw_spi), &safety_word, &command, 1, 1); // send command
-// 	spi_bb_transfer_16(&(cfg->sw_spi), &reg_data, 0, 1, false); // read register
-// 	spi_bb_transfer_16(&(cfg->sw_spi), &safety_word, 0, 1, false); // read safety word
-// 	spi_bb_end(&(cfg->sw_spi));
-
-// 	return reg_data;
+// 	return enc_tle5012_transfer(cfg,  address, data, READ, true);
 // }
+
+// uint16_t enc_tle5012_write_register(TLE5012_config_t *cfg, uint8_t address) {
+// 	return enc_tle5012_transfer(cfg,  address, data, WRITE, true);
+// }
+
+
+uint16_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t data, spi_direction read, bool safety) {
+	uint16_t reg_data;
+	uint16_t safety_word;
+
+	// command word:
+	// [15] = rw, 1=read <- first bit transmitted
+	// [14..11] = lock, 0000 (don't need this if not writing)
+	// [10] = Update-Register Access, 0: Access to current values, 1: values in buffer
+	// [9..4] = address, status=0x00, angle=0x02, speed=0x03
+	// [3..0] = 4-bit Number of Data Words (if bits set to 0000B, no safety word is provided)
+
+	// const uint8_t READ_SENSOR = 0b1;
+	const uint8_t upd = 0b0;
+
+	if (safety) {
+		const uint16_t safeword = 0b001 << 0; // SAFE_0, just safety word
+	} else {
+		const uint8_t safeword = 0b000 << 0; // SAFE_0, no safety word
+	}
+
+	uint16_t command_word = (read << 15) | (upd << 10) | (address << 4)| (safeword << 0);
+	spi_bb_begin(&(cfg->sw_spi));
+	spi_bb_transfer_16(&(cfg->sw_spi), &safety_word, &command_word, 1, 1); // send command
+	spi_bb_transfer_16(&(cfg->sw_spi), &reg_data, &data, 1, !read); // read register
+	if (safety) {
+		spi_bb_transfer_16(&(cfg->sw_spi), &safety_word, 0, 1, false); // read safety word
+	}
+	spi_bb_end(&(cfg->sw_spi));
+
+	uint8_t status = checkSafety(command_word, safety_word, &reg_data, 1);
+	if (status != 0){
+		palClearPad(GPIOD, 1);
+	}else{
+		// if status != 1 (crc fail), raise encoder exception?
+		palSetPadMode(GPIOD, 1, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
+		palSetPad(GPIOD, 1);
+
+		// recursively try again:
+		// how do we limit the # of tries?
+		// enc_tle5012_transfer(cfg, address, data, read, safe);
+	}
+
+	return reg_data;
+}
 
 // Bitmasks for several read and write functions
 #define TLE5012_SYSTEM_ERROR_MASK           0x4000    //!< \brief System error masks for safety words
