@@ -193,6 +193,47 @@ suitable for BLDC motor commutation.
 		word = 0b0000000 0001 00 00
 */
 
+	// uint16_t tleregister;
+	// // Interface Mode1
+	// tleregister = enc_tle5012_read_register(&cfg, 0x06);
+	// tleregister = tleregister & ~0b110000000010111; // mask (1 = cleared)
+	// tleregister = tleregister |  0b010000000000001; // set bits
+	// enc_tle5012_write_register(&cfg, 0x06, tleregister);
+
+	// // Interface Mode2
+	// tleregister = enc_tle5012_read_register(&cfg, 0x08);
+	// tleregister = tleregister & ~0b011111111111111;
+	// tleregister = tleregister |  0b011111111110001;
+	// enc_tle5012_write_register(&cfg, 0x08, tleregister);
+
+	// // Interface Mode3
+	// tleregister = enc_tle5012_read_register(&cfg, 0x09);
+	// tleregister = tleregister & ~0b000000000001111;
+	// tleregister = tleregister |  0b000000000000000;
+	// enc_tle5012_write_register(&cfg, 0x09, tleregister);
+
+	// // IFAB Register
+	// tleregister = enc_tle5012_read_register(&cfg, 0x0D);
+	// tleregister = tleregister & ~0b000000000001111;
+	// tleregister = tleregister |  0b000000000001011;
+	// enc_tle5012_write_register(&cfg, 0x0D, tleregister);
+
+	// // Interface Mode4
+	// tleregister = enc_tle5012_read_register(&cfg, 0x0E);
+	// tleregister = tleregister & ~0b000000011111111;
+	// tleregister = tleregister |  0b000000000010000;
+	// enc_tle5012_write_register(&cfg, 0x0E, tleregister);
+
+
+
+
+
+
+
+
+
+
+
 
 	const uint16_t READ_SENSOR = 0b1 ; // read mode
 	// const uint16_t upd = 0b1; // UPD_high
@@ -283,10 +324,11 @@ uint16_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t d
 	// const uint8_t READ_SENSOR = 0b1;
 	const uint8_t upd = 0b0;
 
+	uint16_t safeword;
 	if (safety) {
-		const uint16_t safeword = 0b001 << 0; // SAFE_0, just safety word
+		safeword = 0b001 << 0; // SAFE_0, just safety word
 	} else {
-		const uint8_t safeword = 0b000 << 0; // SAFE_0, no safety word
+		safeword = 0b000 << 0; // SAFE_0, no safety word
 	}
 
 	uint16_t command_word = (read << 15) | (upd << 10) | (address << 4)| (safeword << 0);
