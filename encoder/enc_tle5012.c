@@ -245,13 +245,13 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	// enum tle_status = enc_tle5012_read_register(&cfg, 0x02, rx_data_word);
 	uint8_t status = checkSafety(command_word, rx_data[1], &rx_data[0], 1);
 	if (status == 0){
-		palClearPad(GPIOD, 1);
+		// palClearPad(GPIOD, 1);
 		uint16_t pos = rx_data[0] & 0x7FFF;
 		cfg->state.last_enc_angle = (float) pos * (360.0 / 32768.0); // 2^15 = 32768.0
 	}else{
 		// if status != 1 (crc fail), raise encoder exception?
-		palSetPadMode(GPIOD, 1, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
-		palSetPad(GPIOD, 1);
+		// palSetPadMode(GPIOD, 1, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
+		// palSetPad(GPIOD, 1);
 		// angle error count ++
 	}
 }
@@ -297,11 +297,11 @@ uint16_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t d
 
 	uint8_t status = checkSafety(command_word, safety_word, &reg_data, 1);
 	if (status != 0){
-		palClearPad(GPIOD, 1);
+		// palClearPad(GPIOD, 1);
 	}else{
 		// if status != 1 (crc fail), raise encoder exception?
-		palSetPadMode(GPIOD, 1, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
-		palSetPad(GPIOD, 1);
+		// palSetPadMode(GPIOD, 1, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
+		// palSetPad(GPIOD, 1);
 	}
 	// we should return the status instead. data should be a pointer passed in.
 	// status an enum?
