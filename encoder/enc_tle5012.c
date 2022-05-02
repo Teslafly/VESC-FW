@@ -57,25 +57,62 @@ bool enc_tle5012_init(TLE5012_config_t *cfg) {
 		// 	return;
 		// }
 
-	} else {
-		// sw spi
-		// bool ssc_mode = true; // get this from spi config?
-
-		memset(&cfg->state, 0, sizeof(TLE5012_state)); 
-		spi_bb_init(&(cfg->sw_spi));
-
-		// // ssc mode uses mosi pin only. 
+		// ssc mode uses mosi pin only. 
 		// palSetPadMode(cfg->sck_gpio, cfg->sck_pin, PAL_MODE_ALTERNATE(6) | PAL_STM32_OSPEED_HIGHEST);
 		// // palSetPadMode(cfg->miso_gpio, cfg->miso_pin, PAL_MODE_ALTERNATE(6) | PAL_STM32_OSPEED_HIGHEST); // not required for ssc
 		// palSetPadMode(cfg->nss_gpio, cfg->nss_pin, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
 		// palSetPadMode(cfg->mosi_gpio, cfg->mosi_pin, PAL_MODE_ALTERNATE(6) | PAL_STM32_OSPEED_HIGHEST);
 
 		// spiStart(cfg->spi_dev, &(cfg->hw_spi_cfg));
+		return true;
+
+	} else {
+		// sw spi
+		memset(&cfg->state, 0, sizeof(TLE5012_state)); 
+
+		// ssc mode uses mosi pin only. (BOTH MISO/MOSI SET TO MOSI GPIO)
+		spi_bb_init(&(cfg->sw_spi));
+
+
+
+
 		cfg->state.spi_error_rate = 0.0;
 		cfg->state.encoder_no_magnet_error_rate = 0.0;
 
 		return true;
 	}
+
+	// set up control registers to be identical across variants
+	// uint16_t tleregister;
+	// // Interface Mode1
+	// tleregister = enc_tle5012_read_register(&cfg, 0x06);
+	// tleregister = tleregister & ~0b110000000010111; // mask (1 = cleared)
+	// tleregister = tleregister |  0b010000000000001; // set bits
+	// enc_tle5012_write_register(&cfg, 0x06, tleregister);
+
+	// // Interface Mode2
+	// tleregister = enc_tle5012_read_register(&cfg, 0x08);
+	// tleregister = tleregister & ~0b011111111111111;
+	// tleregister = tleregister |  0b011111111110001;
+	// enc_tle5012_write_register(&cfg, 0x08, tleregister);
+
+	// // Interface Mode3
+	// tleregister = enc_tle5012_read_register(&cfg, 0x09);
+	// tleregister = tleregister & ~0b000000000001111;
+	// tleregister = tleregister |  0b000000000000000;
+	// enc_tle5012_write_register(&cfg, 0x09, tleregister);
+
+	// // IFAB Register
+	// tleregister = enc_tle5012_read_register(&cfg, 0x0D);
+	// tleregister = tleregister & ~0b000000000001111;
+	// tleregister = tleregister |  0b000000000001011;
+	// enc_tle5012_write_register(&cfg, 0x0D, tleregister);
+
+	// // Interface Mode4
+	// tleregister = enc_tle5012_read_register(&cfg, 0x0E);
+	// tleregister = tleregister & ~0b000000011111111;
+	// tleregister = tleregister |  0b000000000010000;
+	// enc_tle5012_write_register(&cfg, 0x0E, tleregister);
 	return false;
 }
 
@@ -86,17 +123,16 @@ void enc_tle5012_deinit(TLE5012_config_t *cfg) {
 		// 	return;
 		// }
 
-	} else {
-		// sw spi
-
-
-		// palSetPadMode(cfg->miso_gpio, cfg->miso_pin, PAL_MODE_INPUT_PULLUP); check for spi vs ssc mode
+	    // palSetPadMode(cfg->miso_gpio, cfg->miso_pin, PAL_MODE_INPUT_PULLUP); check for spi vs ssc mode
 		// palSetPadMode(cfg->sck_gpio, cfg->sck_pin, PAL_MODE_INPUT_PULLUP);
 		// palSetPadMode(cfg->nss_gpio, cfg->nss_pin, PAL_MODE_INPUT_PULLUP);
 		// palSetPadMode(cfg->mosi_gpio, cfg->mosi_pin, PAL_MODE_INPUT_PULLUP);
 
 		// spiStop(cfg->spi_dev);
-		spi_bb_deinit(&(cfg->sw_spi));
+
+	} else {
+		// sw spi	
+		spi_bb_deinit(&(cfg->sw_spi)); 
 
 		cfg->state.last_enc_angle = 0.0;
 		cfg->state.spi_error_rate = 0.0;
@@ -131,7 +167,6 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	// registers must set at atartup:
 	// FIR_MD 15:14 w Update Rate Setting (Filter Decimation) in 0x06
 	// really just go though 0x06 register.
-	//
 
 
 /*
@@ -192,39 +227,6 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 		word = 0b0000000 0001 00 00
 */
 
-	// uint16_t tleregister;
-	// // Interface Mode1
-	// tleregister = enc_tle5012_read_register(&cfg, 0x06);
-	// tleregister = tleregister & ~0b110000000010111; // mask (1 = cleared)
-	// tleregister = tleregister |  0b010000000000001; // set bits
-	// enc_tle5012_write_register(&cfg, 0x06, tleregister);
-
-	// // Interface Mode2
-	// tleregister = enc_tle5012_read_register(&cfg, 0x08);
-	// tleregister = tleregister & ~0b011111111111111;
-	// tleregister = tleregister |  0b011111111110001;
-	// enc_tle5012_write_register(&cfg, 0x08, tleregister);
-
-	// // Interface Mode3
-	// tleregister = enc_tle5012_read_register(&cfg, 0x09);
-	// tleregister = tleregister & ~0b000000000001111;
-	// tleregister = tleregister |  0b000000000000000;
-	// enc_tle5012_write_register(&cfg, 0x09, tleregister);
-
-	// // IFAB Register
-	// tleregister = enc_tle5012_read_register(&cfg, 0x0D);
-	// tleregister = tleregister & ~0b000000000001111;
-	// tleregister = tleregister |  0b000000000001011;
-	// enc_tle5012_write_register(&cfg, 0x0D, tleregister);
-
-	// // Interface Mode4
-	// tleregister = enc_tle5012_read_register(&cfg, 0x0E);
-	// tleregister = tleregister & ~0b000000011111111;
-	// tleregister = tleregister |  0b000000000010000;
-	// enc_tle5012_write_register(&cfg, 0x0E, tleregister);
-
-
-
 	const uint16_t READ_SENSOR = 0b1 ; // read mode
 	const uint16_t upd = 0b0; // UPD_low
 	const uint16_t address = 0x02; // REG_AVAL (angle)
@@ -233,31 +235,15 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	uint16_t rx_data [2];
 
 	// sw spi
-	// trigger update to buffers:
-	// spi_bb_begin(&(cfg->sw_spi));
-	// spi_bb_delay(); 
-	// spi_bb_end(&(cfg->sw_spi));
-	
-	// spi_bb_delay_short();
-	// spi_bb_delay_short();
 	spi_bb_begin(&(cfg->sw_spi));
-	// spi_bb_delay_short();
 	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[0], &command_word, 1, 1); // send command
-	// spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[0], 0, 2, false); // read 2 words(16b)
-	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[0], 0, 1, false); // read angle
-	// spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], 0, 1, false); // read safety
-
-	// spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], 0, 3, false); 
-
+	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[0], 0, 2, false); // read 2 words(16b)
 	spi_bb_end(&(cfg->sw_spi));
-
-	// rx_data[1] = angle
-	// rx_data[0] = safety word?
-
-	// enc_tle5012_read_register(&cfg, 0x02);
+	// rx_data[0] = angle
+	// rx_data[1] = safety word
 	
-	uint8_t status = 0;
-	// uint8_t status = checkSafety(command_word, rx_data[1], &rx_data[0], 1);
+	// enum tle_status = enc_tle5012_read_register(&cfg, 0x02, rx_data_word);
+	uint8_t status = checkSafety(command_word, rx_data[1], &rx_data[0], 1);
 	if (status == 0){
 		palClearPad(GPIOD, 1);
 		uint16_t pos = rx_data[0] & 0x7FFF;
@@ -267,31 +253,17 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 		palSetPadMode(GPIOD, 1, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
 		palSetPad(GPIOD, 1);
 		// angle error count ++
-		// cfg->state.last_enc_angle = 0;
 	}
-
-
-
-	// float angle = (float) pos * (360.0 / 32768.0); 
-	// if (fabs(angle - cfg->state.last_enc_angle) < 20 ){
-	// 	palClearPad(GPIOD, 1);
-	// 	cfg->state.last_enc_angle = (float) pos * (360.0 / 32768.0); 
-	// }else{
-	// 	palSetPadMode(GPIOD, 1, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
-	// 	palSetPad(GPIOD, 1);
-	// }
 }
 
 
+uint16_t enc_tle5012_read_register(TLE5012_config_t *cfg, uint8_t address) {
+	return enc_tle5012_transfer(cfg, address, 0, READ, true);
+}
 
-// uint16_t enc_tle5012_read_register(TLE5012_config_t *cfg, uint8_t address) {
-// 	return enc_tle5012_transfer(cfg,  address, data, READ, true);
-// }
-
-// uint16_t enc_tle5012_write_register(TLE5012_config_t *cfg, uint8_t address) {
-// 	return enc_tle5012_transfer(cfg,  address, data, WRITE, true);
-// }
-
+void enc_tle5012_write_register(TLE5012_config_t *cfg, uint8_t address, uint16_t data) {
+	enc_tle5012_transfer(cfg, address, data, WRITE, true);
+}
 
 uint16_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t data, spi_direction read, bool safety) {
 	uint16_t reg_data;
@@ -330,11 +302,9 @@ uint16_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t d
 		// if status != 1 (crc fail), raise encoder exception?
 		palSetPadMode(GPIOD, 1, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
 		palSetPad(GPIOD, 1);
-
-		// recursively try again:
-		// how do we limit the # of tries?
-		// enc_tle5012_transfer(cfg, address, data, read, safe);
 	}
+	// we should return the status instead. data should be a pointer passed in.
+	// status an enum?
 
 	return reg_data;
 }
