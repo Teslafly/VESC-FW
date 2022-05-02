@@ -70,12 +70,10 @@ bool enc_tle5012_init(TLE5012_config_t *cfg) {
 		// sw spi
 		memset(&cfg->state, 0, sizeof(TLE5012_state)); 
 
-		// ssc mode uses mosi pin only. (BOTH MISO/MOSI SET TO MOSI GPIO)
+		// ssc mode uses mosi pin only. (both MISO/MOSI set to MOSI gpio)
 		spi_bb_init(&(cfg->sw_spi));
 
-
-
-
+		cfg->state.last_status_error = 0;
 		cfg->state.spi_error_rate = 0.0;
 		cfg->state.encoder_no_magnet_error_rate = 0.0;
 
@@ -248,11 +246,15 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 		// palClearPad(GPIOD, 1);
 		uint16_t pos = rx_data[0] & 0x7FFF;
 		cfg->state.last_enc_angle = (float) pos * (360.0 / 32768.0); // 2^15 = 32768.0
+		UTILS_LP_FAST(cfg->state.spi_error_rate, 0.0, timestep);
 	}else{
 		// if status != 1 (crc fail), raise encoder exception?
 		// palSetPadMode(GPIOD, 1, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
 		// palSetPad(GPIOD, 1);
-		// angle error count ++
+
+		cfg->state.last_status_error = status;
+		++cfg->state.spi_error_cnt;
+		UTILS_LP_FAST(cfg->state.spi_error_rate, 1.0, timestep);
 	}
 }
 

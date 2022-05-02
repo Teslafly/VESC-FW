@@ -178,7 +178,7 @@ bool encoder_init(volatile mc_configuration *conf) {
 
 	terminal_register_command_callback(
 			"encoder",
-			"Prints the status of the AS5047, AD2S1205, or TS5700N8501 encoder.",
+			"Prints the status of the AS5047, AD2S1205, TLE5012, MT6816, or TS5700N8501 encoder.",
 			0,
 			terminal_encoder);
 
@@ -384,7 +384,8 @@ static void terminal_encoder(int argc, const char **argv) {
 	switch (mcconf->m_sensor_port_mode) {
 	case SENSOR_PORT_MODE_AS5047_SPI:
 		commands_printf("SPI encoder value: %d, errors: %d, error rate: %.3f %%",
-				encoder_cfg_as504x.state.spi_val, encoder_cfg_as504x.state.spi_communication_error_count,
+				encoder_cfg_as504x.state.spi_val, 
+				encoder_cfg_as504x.state.spi_communication_error_count,
 				(double)(encoder_cfg_as504x.state.spi_error_rate * 100.0));
 
 		if (encoder_cfg_as504x.sw_spi.mosi_gpio != NULL) {
@@ -410,6 +411,15 @@ static void terminal_encoder(int argc, const char **argv) {
 		commands_printf("Low flux error (no magnet): errors: %d, error rate: %.3f %%",
 				encoder_cfg_mt6816.state.encoder_no_magnet_error_cnt,
 				(double)(encoder_cfg_mt6816.state.encoder_no_magnet_error_rate * 100.0));
+		break;
+
+	case SENSOR_PORT_MODE_TLE5014_SW_SSC:
+		commands_printf("Last Status Error: %d, magnet errors:  %d, ssc error rate: %.3f %%",
+				encoder_cfg_tle5012.state.last_status_error,
+				(double)(encoder_cfg_tle5012.state.encoder_no_magnet_error_rate),
+				(double)(encoder_cfg_tle5012.state.spi_error_rate * 100.0));
+
+		// todo, get status word (reg 0x00), temp, magnet strength, etc
 		break;
 
 	case SENSOR_PORT_MODE_TS5700N8501:

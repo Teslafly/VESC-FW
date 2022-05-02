@@ -88,6 +88,7 @@ typedef struct {
 	uint32_t encoder_no_magnet_error_cnt;
 	float last_enc_angle;
 	uint32_t spi_error_cnt;
+	uint8_t last_status_error;
 	uint32_t spi_val;
 	uint32_t last_update_time;
 } TLE5012_state;
