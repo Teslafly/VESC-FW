@@ -35,6 +35,11 @@
 #include <string.h>
 
 
+typedef enum spi_direction {
+	READ = true, 
+	WRITE = false
+} spi_direction; 
+
 // uint16_t enc_tle5012_read_register(TLE5012_config_t *cfg, uint8_t address);
 uint16_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t data, spi_direction read, bool safe);
 
@@ -46,70 +51,64 @@ uint8_t checkSafety(uint16_t command, uint16_t safetyword, uint16_t* readreg, ui
 
 
 bool enc_tle5012_init(TLE5012_config_t *cfg) {
-	// if (cfg->spi_dev == NULL) {
-	// 	return false;
-	// }
-	// bool ssc_mode = true; // get this from spi config?
+	bool hwspi = false;
+	if (hwspi){
+		// if (cfg->spi_dev == NULL) {
+		// 	return;
+		// }
 
-	memset(&cfg->state, 0, sizeof(TLE5012_state)); 
-	spi_bb_init(&(cfg->sw_spi));
+	} else {
+		// sw spi
+		// bool ssc_mode = true; // get this from spi config?
 
+		memset(&cfg->state, 0, sizeof(TLE5012_state)); 
+		spi_bb_init(&(cfg->sw_spi));
 
-	// // ssc mode uses mosi pin only. 
-	// palSetPadMode(cfg->sck_gpio, cfg->sck_pin, PAL_MODE_ALTERNATE(6) | PAL_STM32_OSPEED_HIGHEST);
-	// // palSetPadMode(cfg->miso_gpio, cfg->miso_pin, PAL_MODE_ALTERNATE(6) | PAL_STM32_OSPEED_HIGHEST); // not required for ssc
-	// palSetPadMode(cfg->nss_gpio, cfg->nss_pin, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
-	// palSetPadMode(cfg->mosi_gpio, cfg->mosi_pin, PAL_MODE_ALTERNATE(6) | PAL_STM32_OSPEED_HIGHEST);
+		// // ssc mode uses mosi pin only. 
+		// palSetPadMode(cfg->sck_gpio, cfg->sck_pin, PAL_MODE_ALTERNATE(6) | PAL_STM32_OSPEED_HIGHEST);
+		// // palSetPadMode(cfg->miso_gpio, cfg->miso_pin, PAL_MODE_ALTERNATE(6) | PAL_STM32_OSPEED_HIGHEST); // not required for ssc
+		// palSetPadMode(cfg->nss_gpio, cfg->nss_pin, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
+		// palSetPadMode(cfg->mosi_gpio, cfg->mosi_pin, PAL_MODE_ALTERNATE(6) | PAL_STM32_OSPEED_HIGHEST);
 
-	// spiStart(cfg->spi_dev, &(cfg->hw_spi_cfg));
+		// spiStart(cfg->spi_dev, &(cfg->hw_spi_cfg));
+		cfg->state.spi_error_rate = 0.0;
+		cfg->state.encoder_no_magnet_error_rate = 0.0;
 
-	cfg->state.spi_error_rate = 0.0;
-	cfg->state.encoder_no_magnet_error_rate = 0.0;
-
-	return true;
+		return true;
+	}
+	return false;
 }
 
 void enc_tle5012_deinit(TLE5012_config_t *cfg) {
-	// if (cfg->spi_dev == NULL) {
-	// 	return;
-	// }
+	bool hwspi = false;
+	if (hwspi){
+		// if (cfg->spi_dev == NULL) {
+		// 	return;
+		// }
 
-	// palSetPadMode(cfg->miso_gpio, cfg->miso_pin, PAL_MODE_INPUT_PULLUP); check for spi vs ssc mode
-	// palSetPadMode(cfg->sck_gpio, cfg->sck_pin, PAL_MODE_INPUT_PULLUP);
-	// palSetPadMode(cfg->nss_gpio, cfg->nss_pin, PAL_MODE_INPUT_PULLUP);
-	// palSetPadMode(cfg->mosi_gpio, cfg->mosi_pin, PAL_MODE_INPUT_PULLUP);
+	} else {
+		// sw spi
 
-	// spiStop(cfg->spi_dev);
-	spi_bb_deinit(&(cfg->sw_spi));
 
-	cfg->state.last_enc_angle = 0.0;
-	cfg->state.spi_error_rate = 0.0;
+		// palSetPadMode(cfg->miso_gpio, cfg->miso_pin, PAL_MODE_INPUT_PULLUP); check for spi vs ssc mode
+		// palSetPadMode(cfg->sck_gpio, cfg->sck_pin, PAL_MODE_INPUT_PULLUP);
+		// palSetPadMode(cfg->nss_gpio, cfg->nss_pin, PAL_MODE_INPUT_PULLUP);
+		// palSetPadMode(cfg->mosi_gpio, cfg->mosi_pin, PAL_MODE_INPUT_PULLUP);
+
+		// spiStop(cfg->spi_dev);
+		spi_bb_deinit(&(cfg->sw_spi));
+
+		cfg->state.last_enc_angle = 0.0;
+		cfg->state.spi_error_rate = 0.0;
+	}
 }
 
 void enc_tle5012_routine(TLE5012_config_t *cfg) {
-	
-
 	float timestep = timer_seconds_elapsed_since(cfg->state.last_update_time);
 	if (timestep > 1.0) {
 		timestep = 1.0;
 	}
 	cfg->state.last_update_time = timer_time_now();
-
-	// if (spi_bb_check_parity(pos)) {
-	// 	if (pos & MT6816_NO_MAGNET_ERROR_MASK) {
-	// 		++cfg->state.encoder_no_magnet_error_cnt;
-	// 		UTILS_LP_FAST(cfg->state.encoder_no_magnet_error_rate, 1.0, timestep);
-	// 	} else {
-	// 		pos = pos >> 2;
-	// 		cfg->state.last_enc_angle = ((float) pos * 360.0) / 16384.0;
-	// 		UTILS_LP_FAST(cfg->state.spi_error_rate, 0.0, timestep);
-	// 		UTILS_LP_FAST(cfg->state.encoder_no_magnet_error_rate, 0.0, timestep);
-	// 	}
-	// } else {
-	// 	++cfg->state.spi_error_cnt;
-	// 	UTILS_LP_FAST(cfg->state.spi_error_rate, 1.0, timestep);
-	// }
-
 
 	/*
 	command word:
@@ -138,18 +137,18 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 /*
 	// TLE5012B E1000 (IIF) configuration:
 	IIF-type: E1000
-The TLE5012B E1000 is preconfigured for Incremental Interface and fast angle update rate (42.7 μs). It is most
-suitable for BLDC motor commutation.
-• Incremental Interface A/B mode.
-• 12bit mode, one count per 0.088° angle step.
-• Absolute count enabled.
-• Autocalibration mode 1 enabled.
-• Prediction disabled.
-• Hysteresis set to 0.703°.
-• IFA/IFB/IFC pins set to push-pull output.
-• SSC interface’s DATA pin set to push-pull output.
-• IFA/IFB/IFC pins set to strong driver, DATA pin set to strong driver, fast edge.
-• Voltage spike filter on input pads disabled.
+	The TLE5012B E1000 is preconfigured for Incremental Interface and fast angle update rate (42.7 μs). It is most
+	suitable for BLDC motor commutation.
+	• Incremental Interface A/B mode.
+	• 12bit mode, one count per 0.088° angle step.
+	• Absolute count enabled.
+	• Autocalibration mode 1 enabled.
+	• Prediction disabled.
+	• Hysteresis set to 0.703°.
+	• IFA/IFB/IFC pins set to push-pull output.
+	• SSC interface’s DATA pin set to push-pull output.
+	• IFA/IFB/IFC pins set to strong driver, DATA pin set to strong driver, fast edge.
+	• Voltage spike filter on input pads disabled.
 
 
 	- Interface Mode1 Register
@@ -226,25 +225,12 @@ suitable for BLDC motor commutation.
 
 
 
-
-
-
-
-
-
-
-
-
 	const uint16_t READ_SENSOR = 0b1 ; // read mode
-	// const uint16_t upd = 0b1; // UPD_high
 	const uint16_t upd = 0b0; // UPD_low
 	const uint16_t address = 0x02; // REG_AVAL (angle)
-	// const uint16_t address = 0x00; // REG_AVAL
-	// const uint16_t safe = 0b000 << 0; // SAFE_0, no safety word
-	const uint16_t safe = 0b010; // SAFE_0, just safety word
-
-	uint16_t command_word = (READ_SENSOR << 15) | (upd << 10) | (address << 5)| (safe << 0);
-	uint16_t rx_data [5];
+	const uint16_t safe = 0b001; // SAFE_0, just safety word
+	uint16_t command_word = (READ_SENSOR << 15) | (upd << 10) | (address << 4)| (safe << 0);
+	uint16_t rx_data [2];
 
 	// sw spi
 	// trigger update to buffers:
@@ -252,18 +238,16 @@ suitable for BLDC motor commutation.
 	// spi_bb_delay(); 
 	// spi_bb_end(&(cfg->sw_spi));
 	
-	// spi_bb_dat_low(&(cfg->sw_spi)); // need to set data line low to trigger angle acquisition?
-	// spi_bb_delay();
-	// spi_bb_delay();
 	// spi_bb_delay_short();
 	// spi_bb_delay_short();
 	spi_bb_begin(&(cfg->sw_spi));
-	spi_bb_delay_short();
-	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], &command_word, 1, 1); // send command
-	// spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], 0, 1, false); // read angle
-	// spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[0], 0, 1, false); // read safety
+	// spi_bb_delay_short();
+	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[0], &command_word, 1, 1); // send command
+	// spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[0], 0, 2, false); // read 2 words(16b)
+	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[0], 0, 1, false); // read angle
+	// spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], 0, 1, false); // read safety
 
-	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], 0, 3, false); 
+	// spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[1], 0, 3, false); 
 
 	spi_bb_end(&(cfg->sw_spi));
 
@@ -272,16 +256,18 @@ suitable for BLDC motor commutation.
 
 	// enc_tle5012_read_register(&cfg, 0x02);
 	
-	uint8_t status = checkSafety(command_word, rx_data[1], &rx_data[0], 1);
+	uint8_t status = 0;
+	// uint8_t status = checkSafety(command_word, rx_data[1], &rx_data[0], 1);
 	if (status == 0){
 		palClearPad(GPIOD, 1);
-		uint16_t pos = rx_data[1] & 0x7FFF;
+		uint16_t pos = rx_data[0] & 0x7FFF;
 		cfg->state.last_enc_angle = (float) pos * (360.0 / 32768.0); // 2^15 = 32768.0
 	}else{
 		// if status != 1 (crc fail), raise encoder exception?
 		palSetPadMode(GPIOD, 1, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
 		palSetPad(GPIOD, 1);
 		// angle error count ++
+		// cfg->state.last_enc_angle = 0;
 	}
 
 
@@ -296,10 +282,7 @@ suitable for BLDC motor commutation.
 	// }
 }
 
-typedef enum spi_direction {
-	READ = true, 
-	WRITE = false
-} spi_direction; 
+
 
 // uint16_t enc_tle5012_read_register(TLE5012_config_t *cfg, uint8_t address) {
 // 	return enc_tle5012_transfer(cfg,  address, data, READ, true);
