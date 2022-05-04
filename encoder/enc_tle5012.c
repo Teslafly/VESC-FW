@@ -41,7 +41,7 @@ typedef enum spi_direction {
 } spi_direction; 
 
 // uint16_t enc_tle5012_read_register(TLE5012_config_t *cfg, uint8_t address);
-uint16_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t data, spi_direction read, bool safe);
+uint8_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t data, spi_direction read, bool safe);
 
 
 uint8_t getFirstByte(uint16_t twoByteWord);
@@ -259,16 +259,16 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 }
 
 
-uint16_t enc_tle5012_read_register(TLE5012_config_t *cfg, uint8_t address) {
-	return enc_tle5012_transfer(cfg, address, 0, READ, true);
+uint8_t enc_tle5012_read_register(TLE5012_config_t *cfg, uint8_t address, uint16_t *recieved) {
+	return enc_tle5012_transfer(cfg, address, &recieved, READ, true);
 }
 
-void enc_tle5012_write_register(TLE5012_config_t *cfg, uint8_t address, uint16_t data) {
-	enc_tle5012_transfer(cfg, address, data, WRITE, true);
+uint8_t  enc_tle5012_write_register(TLE5012_config_t *cfg, uint8_t address, uint16_t *data) {
+	return enc_tle5012_transfer(cfg, address, &data, WRITE, true);
 }
 
-uint16_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t data, spi_direction read, bool safety) {
-	uint16_t reg_data;
+uint8_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t *data, spi_direction read, bool safety) {
+	// uint16_t reg_data;
 	uint16_t safety_word;
 
 	// command word:
@@ -281,7 +281,7 @@ uint16_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t d
 	// const uint8_t READ_SENSOR = 0b1;
 	const uint8_t upd = 0b0;
 
-	uint16_t safeword;
+	uint16_t safeword; // this can probably be simplified. just pass safety?
 	if (safety) {
 		safeword = 0b001 << 0; // SAFE_0, just safety word
 	} else {
@@ -291,24 +291,21 @@ uint16_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t d
 	uint16_t command_word = (read << 15) | (upd << 10) | (address << 4)| (safeword << 0);
 	spi_bb_begin(&(cfg->sw_spi));
 	spi_bb_transfer_16(&(cfg->sw_spi), &safety_word, &command_word, 1, 1); // send command
-	spi_bb_transfer_16(&(cfg->sw_spi), &reg_data, &data, 1, !read); // read register
+	spi_bb_transfer_16(&(cfg->sw_spi), &data, &data, 1, !read); // read register
 	if (safety) {
 		spi_bb_transfer_16(&(cfg->sw_spi), &safety_word, 0, 1, false); // read safety word
 	}
 	spi_bb_end(&(cfg->sw_spi));
 
-	uint8_t status = checkSafety(command_word, safety_word, &reg_data, 1);
-	if (status != 0){
-		// palClearPad(GPIOD, 1);
-	}else{
-		// if status != 1 (crc fail), raise encoder exception?
-		// palSetPadMode(GPIOD, 1, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
-		// palSetPad(GPIOD, 1);
-	}
-	// we should return the status instead. data should be a pointer passed in.
-	// status an enum?
+	uint8_t status = checkSafety(command_word, safety_word, &data, 1);
+	// if (status != 0){
+	// 	palClearPad(GPIOD, 1);
+	// }else{
+	// 	palSetPadMode(GPIOD, 1, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
+	// 	palSetPad(GPIOD, 1);
+	// }
 
-	return reg_data;
+	return status;
 }
 
 // Bitmasks for several read and write functions
