@@ -41,13 +41,13 @@ typedef enum spi_direction {
 } spi_direction; 
 
 // uint16_t enc_tle5012_read_register(TLE5012_config_t *cfg, uint8_t address);
-uint8_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t data, spi_direction read, bool safe);
+uint8_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t *data, spi_direction read, bool safe);
 
 
 uint8_t getFirstByte(uint16_t twoByteWord);
 uint8_t getSecondByte(uint16_t twoByteWord);
 uint8_t crc8(uint8_t *data, uint8_t length);
-uint8_t checkSafety(uint16_t command, uint16_t safetyword, uint16_t* readreg, uint16_t length);
+uint8_t checkSafety(uint16_t command, uint16_t safetyword, const uint16_t *readreg, uint16_t length);
 
 
 bool enc_tle5012_init(TLE5012_config_t *cfg) {
@@ -225,51 +225,53 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 		word = 0b0000000 0001 00 00
 */
 
-	const uint16_t READ_SENSOR = 0b1 ; // read mode
-	const uint16_t upd = 0b0; // UPD_low
-	const uint16_t address = 0x02; // REG_AVAL (angle)
-	const uint16_t safe = 0b001; // SAFE_0, just safety word
-	uint16_t command_word = (READ_SENSOR << 15) | (upd << 10) | (address << 4)| (safe << 0);
-	uint16_t rx_data [2];
+	// const uint16_t READ_SENSOR = 0b1 ; // read mode
+	// const uint16_t upd = 0b0; // UPD_low
+	// const uint16_t address = 0x02; // REG_AVAL (angle)
+	// const uint16_t safe = 0b001; // SAFE_0, just safety word
+	// uint16_t command_word = (READ_SENSOR << 15) | (upd << 10) | (address << 4)| (safe << 0);
+	// uint16_t rx_data [2];
 
-	// sw spi
-	spi_bb_begin(&(cfg->sw_spi));
-	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[0], &command_word, 1, 1); // send command
-	spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[0], 0, 2, false); // read 2 words(16b)
-	spi_bb_end(&(cfg->sw_spi));
-	// rx_data[0] = angle
-	// rx_data[1] = safety word
-	
-	// enum tle_status = enc_tle5012_read_register(&cfg, 0x02, rx_data_word);
-	uint8_t status = checkSafety(command_word, rx_data[1], &rx_data[0], 1);
-	if (status == 0){
+	// // sw spi
+	// spi_bb_begin(&(cfg->sw_spi));
+	// spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[0], &command_word, 1, 1); // send command
+	// spi_bb_transfer_16(&(cfg->sw_spi), &rx_data[0], 0, 2, false); // read 2 words(16b)
+	// spi_bb_end(&(cfg->sw_spi));
+	// uint8_t status = checkSafety(command_word, rx_data[1], &rx_data[0], 1);
+
+	uint16_t rx_data;
+	uint8_t tle_status = enc_tle5012_transfer(cfg, 0x02, &rx_data, READ, true);  // define register names values?
+
+	if (tle_status == 0){
 		// palClearPad(GPIOD, 1);
-		uint16_t pos = rx_data[0] & 0x7FFF;
+		uint16_t pos = rx_data & 0x7FFF;
 		cfg->state.last_enc_angle = (float) pos * (360.0 / 32768.0); // 2^15 = 32768.0
 		UTILS_LP_FAST(cfg->state.spi_error_rate, 0.0, timestep);
 	}else{
-		// if status != 1 (crc fail), raise encoder exception?
+		// if status != 1 (crc fail), raise encoder exception? or reset encoder since it has an actual error?
 		// palSetPadMode(GPIOD, 1, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
 		// palSetPad(GPIOD, 1);
 
-		cfg->state.last_status_error = status;
+		cfg->state.last_status_error = tle_status;
 		++cfg->state.spi_error_cnt;
 		UTILS_LP_FAST(cfg->state.spi_error_rate, 1.0, timestep);
 	}
 }
 
+// not really needed. enum value gives meaning
+// uint8_t enc_tle5012_read_register(TLE5012_config_t *cfg, uint8_t address, uint16_t *recieved) {
+// 	return enc_tle5012_transfer(cfg, address, &recieved, READ, true);
+// }
 
-uint8_t enc_tle5012_read_register(TLE5012_config_t *cfg, uint8_t address, uint16_t *recieved) {
-	return enc_tle5012_transfer(cfg, address, &recieved, READ, true);
-}
-
-uint8_t  enc_tle5012_write_register(TLE5012_config_t *cfg, uint8_t address, uint16_t *data) {
-	return enc_tle5012_transfer(cfg, address, &data, WRITE, true);
-}
+// uint8_t  enc_tle5012_write_register(TLE5012_config_t *cfg, uint8_t address, uint16_t *data) {
+// 	return enc_tle5012_transfer(cfg, address, &data, WRITE, true);
+// }
 
 uint8_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t *data, spi_direction read, bool safety) {
 	// uint16_t reg_data;
 	uint16_t safety_word;
+
+	// todo, make result of this an enum with names errors?
 
 	// command word:
 	// [15] = rw, 1=read <- first bit transmitted
@@ -371,7 +373,7 @@ uint8_t crc8(uint8_t *data, uint8_t length)
 }
 
 
-uint8_t checkSafety(uint16_t command, uint16_t safetyword, uint16_t* readreg, uint16_t length){
+uint8_t checkSafety(uint16_t command, uint16_t safetyword, const uint16_t *readreg, uint16_t length){
 	if (!((safetyword) & TLE5012_SYSTEM_ERROR_MASK)){
 		//SYSTEM_ERROR;
 		// resetSafety();

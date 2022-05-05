@@ -88,14 +88,17 @@ uint8_t spi_bb_exchange_8(spi_bb_state *s, uint8_t x) {
 	return rx;
 }
 
-void spi_bb_transfer_8(spi_bb_state *s, uint8_t *in_buf, const uint8_t *out_buf, 
-		int length, bool write) {
+void spi_bb_transfer_8(spi_bb_state *s, 
+			uint8_t *in_buf,
+			const uint8_t *out_buf,
+			int length,
+			bool write) {
 	for (int i = 0; i < length; i++) {
 		uint8_t send = out_buf ? out_buf[i] : 0xFF;
 		uint8_t receive = 0;
 
 		for (int bit = 0; bit < 8; bit++) {
-			if(s->mosi_gpio) {
+			if((s->mosi_gpio) && write) {
 				palWritePad(s->mosi_gpio, s->mosi_pin, send >> 7);
 				send <<= 1;
 			}
@@ -131,8 +134,12 @@ void spi_bb_transfer_8(spi_bb_state *s, uint8_t *in_buf, const uint8_t *out_buf,
 	}
 }
 
-void spi_bb_transfer_16(spi_bb_state *s, uint16_t *in_buf, const uint16_t *out_buf, 
-		int length, bool write) {
+void spi_bb_transfer_16(spi_bb_state *s, 
+						uint16_t *in_buf, 
+						const uint16_t *out_buf, 
+						int length, 
+						bool write) {
+
 	for (int i = 0; i < length; i++) {
 		uint16_t send = out_buf ? out_buf[i] : 0xFFFF;
 		uint16_t receive = 0;
