@@ -293,13 +293,13 @@ uint8_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t *d
 	uint16_t command_word = (read << 15) | (upd << 10) | (address << 4)| (safeword << 0);
 	spi_bb_begin(&(cfg->sw_spi));
 	spi_bb_transfer_16(&(cfg->sw_spi), &safety_word, &command_word, 1, 1); // send command
-	spi_bb_transfer_16(&(cfg->sw_spi), &data, &data, 1, !read); // read register
+	spi_bb_transfer_16(&(cfg->sw_spi), data, data, 1, !read); // read register
 	if (safety) {
 		spi_bb_transfer_16(&(cfg->sw_spi), &safety_word, 0, 1, false); // read safety word
 	}
 	spi_bb_end(&(cfg->sw_spi));
 
-	uint8_t status = checkSafety(command_word, safety_word, &data, 1);
+	uint8_t status = checkSafety(command_word, safety_word, data, 1);
 	// if (status != 0){
 	// 	palClearPad(GPIOD, 1);
 	// }else{

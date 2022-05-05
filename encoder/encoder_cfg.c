@@ -106,9 +106,8 @@ TLE5012_config_t encoder_cfg_tle5012 = {
 				0, // has_started
 				0, // has_error
 				{{NULL, NULL}, NULL, NULL} // Mutex
-		},
-
-		{0} // State
+		}, //ssc
+		{0, 0, 0, 0, 0, 0, 0, 0} // State
 };
 
 
