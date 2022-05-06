@@ -92,7 +92,7 @@ bool enc_tle5012_init(TLE5012_config_t *cfg) {
 	enc_tle5012_transfer(cfg, 0x08, &tleregister, READ, true);
 	tleregister = tleregister & ~0b011111111111111;
 	tleregister = tleregister |  0b011111111110001;
-	enc_tle5012_transfer(&cfg, 0x08, &tleregister, WRITE, true);
+	enc_tle5012_transfer(cfg, 0x08, &tleregister, WRITE, true);
 
 	// Interface Mode3
 	enc_tle5012_transfer(cfg, 0x09, &tleregister, READ, true);
@@ -248,9 +248,17 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 		cfg->state.last_enc_angle = (float) pos * (360.0 / 32768.0); // 2^15 = 32768.0
 		UTILS_LP_FAST(cfg->state.spi_error_rate, 0.0, timestep);
 	}else{
-		// if status != 1 (crc fail), raise encoder exception? or reset encoder since it has an actual error?
 		// palSetPadMode(GPIOD, 1, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
 		// palSetPad(GPIOD, 1);
+
+		if (tle_status != 1 ) { // if not just a crc error
+
+			// read/clear error reg
+			uint16_t status_reg_dat;
+			uint8_t tle_status_err = enc_tle5012_transfer(cfg, 0x00, &status_reg_dat, READ, true);
+
+			// raise encoder exception?
+		}
 
 		cfg->state.last_status_error = tle_status;
 		++cfg->state.spi_error_cnt;
