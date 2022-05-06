@@ -81,36 +81,36 @@ bool enc_tle5012_init(TLE5012_config_t *cfg) {
 	}
 
 	// set up control registers to be identical across variants
-	// uint16_t tleregister;
-	// // Interface Mode1
-	// tleregister = enc_tle5012_read_register(&cfg, 0x06);
-	// tleregister = tleregister & ~0b110000000010111; // mask (1 = cleared)
-	// tleregister = tleregister |  0b010000000000001; // set bits
-	// enc_tle5012_write_register(&cfg, 0x06, tleregister);
+	uint16_t tleregister;
+	// Interface Mode1
+	enc_tle5012_transfer(cfg, 0x06, &tleregister, READ, true);
+	tleregister = tleregister & ~0b110000000010111; // mask (1 = cleared)
+	tleregister = tleregister |  0b010000000000001; // set bits
+	enc_tle5012_transfer(cfg, 0x06, &tleregister, WRITE, true);
 
-	// // Interface Mode2
-	// tleregister = enc_tle5012_read_register(&cfg, 0x08);
-	// tleregister = tleregister & ~0b011111111111111;
-	// tleregister = tleregister |  0b011111111110001;
-	// enc_tle5012_write_register(&cfg, 0x08, tleregister);
+	// Interface Mode2
+	enc_tle5012_transfer(cfg, 0x08, &tleregister, READ, true);
+	tleregister = tleregister & ~0b011111111111111;
+	tleregister = tleregister |  0b011111111110001;
+	enc_tle5012_transfer(&cfg, 0x08, &tleregister, WRITE, true);
 
-	// // Interface Mode3
-	// tleregister = enc_tle5012_read_register(&cfg, 0x09);
-	// tleregister = tleregister & ~0b000000000001111;
-	// tleregister = tleregister |  0b000000000000000;
-	// enc_tle5012_write_register(&cfg, 0x09, tleregister);
+	// Interface Mode3
+	enc_tle5012_transfer(cfg, 0x09, &tleregister, READ, true);
+	tleregister = tleregister & ~0b000000000001111;
+	tleregister = tleregister |  0b000000000000000;
+	enc_tle5012_transfer(cfg, 0x09, &tleregister, WRITE, true);
 
-	// // IFAB Register
-	// tleregister = enc_tle5012_read_register(&cfg, 0x0D);
-	// tleregister = tleregister & ~0b000000000001111;
-	// tleregister = tleregister |  0b000000000001011;
-	// enc_tle5012_write_register(&cfg, 0x0D, tleregister);
+	// IFAB Register
+	enc_tle5012_transfer(cfg, 0x0D, &tleregister, READ, true);
+	tleregister = tleregister & ~0b000000000001111;
+	tleregister = tleregister |  0b000000000001011;
+	enc_tle5012_transfer(cfg, 0x0D, &tleregister, WRITE, true);
 
-	// // Interface Mode4
-	// tleregister = enc_tle5012_read_register(&cfg, 0x0E);
-	// tleregister = tleregister & ~0b000000011111111;
-	// tleregister = tleregister |  0b000000000010000;
-	// enc_tle5012_write_register(&cfg, 0x0E, tleregister);
+	// Interface Mode4
+	enc_tle5012_transfer(cfg, 0x0E, &tleregister, READ, true);
+	tleregister = tleregister & ~0b000000011111111;
+	tleregister = tleregister |  0b000000000010000;
+	enc_tle5012_transfer(cfg, 0x0E, &tleregister, WRITE, true);
 	return false;
 }
 
