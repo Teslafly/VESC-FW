@@ -1172,6 +1172,9 @@ typedef struct {
 	int comm_step;
 	float temperature;
 	int drv8301_faults;
+	const char *info_str;
+	int info_argn;
+	float info_args[2];
 } fault_data;
 
 typedef struct {
@@ -1366,6 +1369,10 @@ typedef struct __attribute__((packed)) {
 
 	uint32_t runtime_init_flag;
 	uint64_t runtime; // Seconds
+
+	// HW-specific data
+	uint32_t hw_config_init_flag;
+	uint8_t hw_config[128];
 } backup_data;
 
 #endif /* DATATYPES_H_ */

@@ -1633,7 +1633,20 @@ float mcpwm_foc_measure_resistance(float current, int samples, bool stop_after) 
 
 	// Ramp up the current slowly
 	while (fabsf(motor->m_iq_set - current) > 0.001) {
-		utils_step_towards((float*)&motor->m_iq_set, current, fabsf(current) / 500.0);
+		utils_step_towards((float*)&motor->m_iq_set, current, fabsf(current) / 500.0);		
+		if (mc_interface_get_fault() != FAULT_CODE_NONE) {
+			motor->m_id_set = 0.0;
+			motor->m_iq_set = 0.0;
+			motor->m_phase_override = false;
+			motor->m_control_mode = CONTROL_MODE_NONE;
+			motor->m_state = MC_STATE_OFF;
+			stop_pwm_hw((motor_all_state_t*)motor);
+
+			timeout_configure(tout, tout_c, tout_ksw);
+			mc_interface_unlock();
+
+			return 0.0;
+		}
 		chThdSleepMilliseconds(1);
 	}
 
@@ -1863,7 +1876,9 @@ float mcpwm_foc_measure_inductance_current(float curr_goal, int samples, float *
 	float duty_last = 0.0;
 	for (float i = 0.02;i < 0.5;i *= 1.5) {
 		float i_tmp;
-		mcpwm_foc_measure_inductance(i, 10, &i_tmp, 0);
+		if (mcpwm_foc_measure_inductance(i, 10, &i_tmp, 0) == 0.0) {
+			return 0.0;
+		}
 
 		duty_last = i;
 		if (i_tmp >= curr_goal) {
@@ -1892,8 +1907,8 @@ float mcpwm_foc_measure_inductance_current(float curr_goal, int samples, float *
  */
 bool mcpwm_foc_measure_res_ind(float *res, float *ind, float *ld_lq_diff) {
 	volatile motor_all_state_t *motor = get_motor_now();
+	bool result = false;
 
-	const float f_zv_old = motor->m_conf->foc_f_zv;
 	const float kp_old = motor->m_conf->foc_current_kp;
 	const float ki_old = motor->m_conf->foc_current_ki;
 	const float res_old = motor->m_conf->foc_motor_r;
@@ -1903,7 +1918,13 @@ bool mcpwm_foc_measure_res_ind(float *res, float *ind, float *ld_lq_diff) {
 
 	float i_last = 0.0;
 	for (float i = 2.0;i < (motor->m_conf->l_current_max / 2.0);i *= 1.5) {
-		if (i > (1.0 / mcpwm_foc_measure_resistance(i, 20, false))) {
+		float r_tmp = mcpwm_foc_measure_resistance(i, 20, false);
+		if (r_tmp == 0.0) {
+			motor->m_conf->foc_current_kp = kp_old;
+			motor->m_conf->foc_current_ki = ki_old;
+			return false;
+		}
+		if (i > (1.0 / r_tmp)) {
 			i_last = i;
 			break;
 		}
@@ -1918,15 +1939,19 @@ bool mcpwm_foc_measure_res_ind(float *res, float *ind, float *ld_lq_diff) {
 #endif
 
 	*res = mcpwm_foc_measure_resistance(i_last, 200, true);
-	motor->m_conf->foc_motor_r = *res;
-	*ind = mcpwm_foc_measure_inductance_current(i_last, 200, 0, ld_lq_diff);
+	if (*res != 0.0) {
+		motor->m_conf->foc_motor_r = *res;
+		*ind = mcpwm_foc_measure_inductance_current(i_last, 200, 0, ld_lq_diff);
+		if (*ind != 0.0) {
+			result = true;
+		}
+	}
 
-	motor->m_conf->foc_f_zv = f_zv_old;
 	motor->m_conf->foc_current_kp = kp_old;
 	motor->m_conf->foc_current_ki = ki_old;
 	motor->m_conf->foc_motor_r = res_old;
 
-	return true;
+	return result;
 }
 
 /**
@@ -4150,6 +4175,7 @@ static void update_valpha_vbeta(motor_all_state_t *motor, float mod_alpha, float
 			float v_mag_mod = mod_mag * (2.0 / 3.0) * state_m->v_bus;
 
 			if (fabsf(v_mag_mod - state_m->v_mag_filter) > (conf_now->l_max_vin * 0.05)) {
+				mc_interface_set_fault_info("v_mag_mod: %.2f, v_mag_filter: %.2f", 2, v_mag_mod, state_m->v_mag_filter);
 				mc_interface_fault_stop(FAULT_CODE_PHASE_FILTER, &m_motor_1 != motor, true);
 			}
 

@@ -944,6 +944,8 @@ Configure GPIO pin to mode. Example:
 'pin-hall1  ; Sensor port hall1
 'pin-hall2  ; Sensor port hall2
 'pin-hall3  ; Sensor port hall3
+'pin-adc1   ; ADC1-pin on COMM-port
+'pin-adc2   ; ADC2-pin on COMM-port
 
 ; Available modes
 'pin-mode-out    ; Output
@@ -986,6 +988,10 @@ The following selection of app and motor parameters can be read and set from Lis
 'l-in-current-max       ; Maximum input current in A
 'l-min-erpm             ; Minimum ERPM (a negative value)
 'l-max-erpm             ; Maximum ERPM
+'l-min-vin              ; Minimum input voltage
+'l-max-vin              ; Maximum input voltage
+'l-min-duty             ; Minimum duty cycle
+'l-max-duty             ; Maximum duty cycle
 'l-watt-min             ; Minimum power regen in W (a negative value)
 'l-watt-max             ; Maximum power regen in W
 'foc-current-kp         ; FOC current controller KP
