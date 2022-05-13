@@ -986,6 +986,7 @@ The following selection of app and motor parameters can be read and set from Lis
 'l-current-max-scale    ; Scaled maximum current, 0.0 to 1.0
 'l-in-current-min       ; Minimum input current in A (a negative value)
 'l-in-current-max       ; Maximum input current in A
+'l-abs-current-max      ; Abs max current in A
 'l-min-erpm             ; Minimum ERPM (a negative value)
 'l-max-erpm             ; Maximum ERPM
 'l-min-vin              ; Minimum input voltage
@@ -994,6 +995,31 @@ The following selection of app and motor parameters can be read and set from Lis
 'l-max-duty             ; Maximum duty cycle
 'l-watt-min             ; Minimum power regen in W (a negative value)
 'l-watt-max             ; Maximum power regen in W
+'m-invert-direction     ; Invert motor direction, 0 or 1
+'m-out-aux-mode         ; AUX-pin output mode. Options:
+                        ;    0:  OUT_AUX_MODE_OFF
+                        ;    1:  OUT_AUX_MODE_ON_AFTER_2S
+                        ;    2:  OUT_AUX_MODE_ON_AFTER_5S
+                        ;    3:  OUT_AUX_MODE_ON_AFTER_10S
+                        ;    4:  OUT_AUX_MODE_UNUSED
+                        ;    5:  OUT_AUX_MODE_ON_WHEN_RUNNING
+                        ;    6:  OUT_AUX_MODE_ON_WHEN_NOT_RUNNING
+                        ;    7:  OUT_AUX_MODE_MOTOR_50
+                        ;    8:  OUT_AUX_MODE_MOSFET_50
+                        ;    9:  OUT_AUX_MODE_MOTOR_70
+                        ;    10: OUT_AUX_MODE_MOSFET_70
+                        ;    11: OUT_AUX_MODE_MOTOR_MOSFET_50
+                        ;    12: OUT_AUX_MODE_MOTOR_MOSFET_70
+'foc-sensor-mode        ; FOC sensor mode
+                        ;    0: FOC_SENSOR_MODE_SENSORLESS
+                        ;    1: FOC_SENSOR_MODE_ENCODER
+                        ;    2: FOC_SENSOR_MODE_HALL
+                        ;    3: FOC_SENSOR_MODE_HFI
+                        ;    4: FOC_SENSOR_MODE_HFI_START
+                        ;    5: FOC_SENSOR_MODE_HFI_V2
+                        ;    6: FOC_SENSOR_MODE_HFI_V3
+                        ;    7: FOC_SENSOR_MODE_HFI_V4
+                        ;    8: FOC_SENSOR_MODE_HFI_V5
 'foc-current-kp         ; FOC current controller KP
 'foc-current-ki         ; FOC current controller KI
 'foc-motor-l            ; Motor inductance in microHenry
@@ -1001,9 +1027,31 @@ The following selection of app and motor parameters can be read and set from Lis
 'foc-motor-r            ; Motor resistance in milliOhm
 'foc-motor-flux-linkage ; Motor flux linkage in milliWeber
 'foc-observer-gain      ; Observer gain x1M
+'foc-hfi-voltage-start  ; HFI start voltage (V) (for resolving ambiguity)
+'foc-hfi-voltage-run    ; HFI voltage (V) HFI voltage at min current
+'foc-hfi-voltage-max    ; HFI voltage (V) at max current
+'foc-sl-erpm-hfi        ; ERPM where to move to sensorless in HFI mode
 'min-speed              ; Minimum speed in meters per second (a negative value)
 'max-speed              ; Maximum speed in meters per second
 'controller-id          ; VESC CAN ID
+'ppm-ctrl-type          ; PPM Control Type
+                        ;    0:  PPM_CTRL_TYPE_NONE
+                        ;    1:  PPM_CTRL_TYPE_CURRENT
+                        ;    2:  PPM_CTRL_TYPE_CURRENT_NOREV
+                        ;    3:  PPM_CTRL_TYPE_CURRENT_NOREV_BRAKE
+                        ;    4:  PPM_CTRL_TYPE_DUTY
+                        ;    5:  PPM_CTRL_TYPE_DUTY_NOREV
+                        ;    6:  PPM_CTRL_TYPE_PID
+                        ;    7:  PPM_CTRL_TYPE_PID_NOREV
+                        ;    8:  PPM_CTRL_TYPE_CURRENT_BRAKE_REV_HYST
+                        ;    9:  PPM_CTRL_TYPE_CURRENT_SMART_REV
+                        ;    10: PPM_CTRL_TYPE_PID_POSITION_180
+                        ;    11: PPM_CTRL_TYPE_PID_POSITION_360
+'ppm-pulse-start        ; Shortest PPM pulse in ms
+'ppm-pulse-end          ; Longest PPM pulse in ms
+'ppm-pulse-center       ; Pulse corresponding to center throttle in ms
+'ppm-ramp-time-pos      ; Positive ramping time in seconds
+'ppm-ramp-time-neg      ; Negative ramping time in seconds
 ```
 
 #### conf-set
@@ -1021,14 +1069,15 @@ Set param to value. This can be done while the motor is running and it will be a
 #### conf-get
 
 ```clj
-(conf-get param optDefault)
+(conf-get param optDefLim)
 ```
 
-Get the value of param. optDefault is an optional argument that can be set to 1 to get the default value of param instead of the current value. Example:
+Get the value of param. optDefLim is an optional argument that can be set to 1 or 2; 1 means get the default value and 2 means get the limit value. Example:
 
 ```clj
 (conf-get 'foc-motor-r) ; Get the motor resistance in milliOhm
 (conf-get 'controller-id 1) ; Get the default CAN ID of this VESC
+(conf-get 'l-current-max 2) ; Get the maximum allowed current on this hardware
 ```
 
 #### conf-store
@@ -1039,9 +1088,46 @@ Get the value of param. optDefault is an optional argument that can be set to 1 
 
 Store the current configuration to flash. This will stop the motor.
 
+#### conf-detect-foc
+
+```clj
+(conf-detect-foc canFwd maxLoss minCurrIn maxCurrIn openloopErpm slErpm)
+```
+
+Run the same autodetection as the wizard in VESC Tool does. This function will block the current lispBM-thread until in finishes (other threads will continue running). Arguments:
+
+```clj
+canFwd       ; Scan CAN-bus and detect on all VESCs found on CAN-bus
+maxLoss      ; Maximum power loss in W to derive current limit from
+minCurrIn    ; Minimum input current in A (negative value)
+maxCurrIn    ; Maximum input current in A
+openLoopErpm ; Openlopp ERPM setting
+slErpm       ; Sensorless ERPM setting
+```
+
+Result:
+
+```clj
+  0 ; OK and no sensors found
+  1 ; OK and hall sensors found
+  2 ; OK and AS5047 found
+ -1 ; Fault code during sensor detection
+-10 ; Flux linkage detection failed
+-50 ; CAN-detection failed
+-51 ; CAN-detection timed out
+```
+
+Example:
+
+```clj
+; No can detection, 50w losses max, -20 A to 50 A input current, 800 ERPM openloop and 2500 erpm for sensorless in case sensors are found
+(print (conf-detect-foc 0 50 -20 50 800 2500))
+; Print the result when done
+```
+
 ### EEPROM (Nonvolatile Storage)
 
-Up to 64 variables (int32 or float) can be stored in a nonvolatile space reserved for LsipBM. These variables persist between power cycles and configuration changes, but not between firmware updates. Keep in mind that the motor will be stopped briefly when writing them and that they only can be written a limited number of times (about 100 000 writes) before wear on the flash memory starts to become an issue.
+Up to 64 variables (int32 or float) can be stored in a nonvolatile memory reserved for LispBM. These variables persist between power cycles and configuration changes, but not between firmware updates. Keep in mind that the motor will be stopped briefly when writing them and that they only can be written a limited number of times (about 100 000 writes) before wear on the flash memory starts to become an issue.
 
 #### eeprom-store-f
 
