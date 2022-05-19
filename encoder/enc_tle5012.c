@@ -266,15 +266,6 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	}
 }
 
-// not really needed. enum value gives meaning
-// uint8_t enc_tle5012_read_register(TLE5012_config_t *cfg, uint8_t address, uint16_t *recieved) {
-// 	return enc_tle5012_transfer(cfg, address, &recieved, READ, true);
-// }
-
-// uint8_t  enc_tle5012_write_register(TLE5012_config_t *cfg, uint8_t address, uint16_t *data) {
-// 	return enc_tle5012_transfer(cfg, address, &data, WRITE, true);
-// }
-
 uint8_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t *data, spi_direction read, bool safety) {
 	// uint16_t reg_data;
 	uint16_t safety_word;

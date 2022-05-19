@@ -134,7 +134,7 @@ void spi_bb_transfer_8(spi_bb_state *s,
 	}
 }
 
-void spi_bb_transfer_16(spi_bb_state *s, 
+void ssc_bb_transfer_16(spi_bb_state *s, 
 						uint16_t *in_buf, 
 						const uint16_t *out_buf, 
 						int length, 

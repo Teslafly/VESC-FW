@@ -80,7 +80,7 @@ bool encoder_init(volatile mc_configuration *conf) {
 		res = true;
 	} break;
 
-	case SENSOR_PORT_MODE_MT6816_SPI: {
+	case SENSOR_PORT_MODE_MT6816_SPI_HW: {
 		SENSOR_PORT_5V();
 
 		if (!enc_mt6816_init(&encoder_cfg_mt6816)) {
@@ -94,7 +94,7 @@ bool encoder_init(volatile mc_configuration *conf) {
 		res = true;
 	} break;
 
-	case SENSOR_PORT_MODE_TLE5014_SW_SSC: {
+	case SENSOR_PORT_MODE_TLE5014_SSC_SW: {
 		SENSOR_PORT_5V();
 
 		//must support 4 modes:
@@ -310,13 +310,13 @@ void encoder_check_faults(volatile mc_configuration *m_conf, bool is_second_moto
 			}
 			break;
 
-		case SENSOR_PORT_MODE_MT6816_SPI:
+		case SENSOR_PORT_MODE_MT6816_SPI_HW:
 			if (encoder_cfg_mt6816.state.encoder_no_magnet_error_rate > 0.05) {
 				mc_interface_fault_stop(FAULT_CODE_ENCODER_NO_MAGNET, is_second_motor, false);
 			}
 			break;
 		
-		case SENSOR_PORT_MODE_TLE5014_SW_SSC:
+		case SENSOR_PORT_MODE_TLE5014_SSC_SW:
 			// if (encoder_cfg_tle5012.state.encoder_no_magnet_error_rate > 0.05) {
 			// 	mc_interface_fault_stop(FAULT_CODE_ENCODER_NO_MAGNET, is_second_motor, false);
 			// }
@@ -407,13 +407,13 @@ static void terminal_encoder(int argc, const char **argv) {
 		}
 		break;
 
-	case SENSOR_PORT_MODE_MT6816_SPI:
+	case SENSOR_PORT_MODE_MT6816_SPI_HW:
 		commands_printf("Low flux error (no magnet): errors: %d, error rate: %.3f %%",
 				encoder_cfg_mt6816.state.encoder_no_magnet_error_cnt,
 				(double)(encoder_cfg_mt6816.state.encoder_no_magnet_error_rate * 100.0));
 		break;
 
-	case SENSOR_PORT_MODE_TLE5014_SW_SSC:
+	case SENSOR_PORT_MODE_TLE5014_SSC_SW:
 		commands_printf("Last Status Error: %d, magnet errors:  %d, ssc error rate: %.3f %%",
 				encoder_cfg_tle5012.state.last_status_error,
 				(double)(encoder_cfg_tle5012.state.encoder_no_magnet_error_rate),
