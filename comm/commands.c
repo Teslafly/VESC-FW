@@ -503,10 +503,9 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 				mc_interface_release_motor();
 			} else if (display_position_mode == DISP_POS_MODE_INDUCTANCE) {
 				mcpwm_set_detect();
+				timeout_reset();
 			}
 		}
-
-		timeout_reset();
 	} break;
 
 	case COMM_SET_SERVO_POS: {
@@ -648,9 +647,7 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 
 	case COMM_REBOOT:
 		conf_general_store_backup_data();
-		// Lock the system and enter an infinite loop. The watchdog will reboot.
-		__disable_irq();
-		for(;;){};
+		NVIC_SystemReset();
 		break;
 
 	case COMM_ALIVE:

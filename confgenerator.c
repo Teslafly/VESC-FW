@@ -128,6 +128,7 @@ int32_t confgenerator_serialize_mcconf(uint8_t *buffer, const mc_configuration *
 	buffer_append_float16(buffer, conf->foc_offsets_voltage_undriven[1], 10000, &ind);
 	buffer_append_float16(buffer, conf->foc_offsets_voltage_undriven[2], 10000, &ind);
 	buffer[ind++] = conf->foc_phase_filter_enable;
+	buffer[ind++] = conf->foc_phase_filter_disable_fault;
 	buffer_append_float32_auto(buffer, conf->foc_phase_filter_max_erpm, &ind);
 	buffer[ind++] = conf->foc_mtpa_mode;
 	buffer_append_float32_auto(buffer, conf->foc_fw_current_max, &ind);
@@ -286,9 +287,13 @@ int32_t confgenerator_serialize_appconf(uint8_t *buffer, const app_configuration
 	buffer[ind++] = (uint8_t)conf->app_nrf_conf.address[1];
 	buffer[ind++] = (uint8_t)conf->app_nrf_conf.address[2];
 	buffer[ind++] = conf->app_nrf_conf.send_crc_ack;
+	buffer[ind++] = conf->app_balance_conf.pid_mode;
 	buffer_append_float32_auto(buffer, conf->app_balance_conf.kp, &ind);
 	buffer_append_float32_auto(buffer, conf->app_balance_conf.ki, &ind);
 	buffer_append_float32_auto(buffer, conf->app_balance_conf.kd, &ind);
+	buffer_append_float32_auto(buffer, conf->app_balance_conf.kp2, &ind);
+	buffer_append_float32_auto(buffer, conf->app_balance_conf.ki2, &ind);
+	buffer_append_float32_auto(buffer, conf->app_balance_conf.kd2, &ind);
 	buffer_append_uint16(buffer, conf->app_balance_conf.hertz, &ind);
 	buffer_append_uint16(buffer, conf->app_balance_conf.loop_time_filter, &ind);
 	buffer_append_float32_auto(buffer, conf->app_balance_conf.fault_pitch, &ind);
@@ -510,6 +515,7 @@ bool confgenerator_deserialize_mcconf(const uint8_t *buffer, mc_configuration *c
 	conf->foc_offsets_voltage_undriven[1] = buffer_get_float16(buffer, 10000, &ind);
 	conf->foc_offsets_voltage_undriven[2] = buffer_get_float16(buffer, 10000, &ind);
 	conf->foc_phase_filter_enable = buffer[ind++];
+	conf->foc_phase_filter_disable_fault = buffer[ind++];
 	conf->foc_phase_filter_max_erpm = buffer_get_float32_auto(buffer, &ind);
 	conf->foc_mtpa_mode = buffer[ind++];
 	conf->foc_fw_current_max = buffer_get_float32_auto(buffer, &ind);
@@ -671,9 +677,13 @@ bool confgenerator_deserialize_appconf(const uint8_t *buffer, app_configuration 
 	conf->app_nrf_conf.address[1] = buffer[ind++];
 	conf->app_nrf_conf.address[2] = buffer[ind++];
 	conf->app_nrf_conf.send_crc_ack = buffer[ind++];
+	conf->app_balance_conf.pid_mode = buffer[ind++];
 	conf->app_balance_conf.kp = buffer_get_float32_auto(buffer, &ind);
 	conf->app_balance_conf.ki = buffer_get_float32_auto(buffer, &ind);
 	conf->app_balance_conf.kd = buffer_get_float32_auto(buffer, &ind);
+	conf->app_balance_conf.kp2 = buffer_get_float32_auto(buffer, &ind);
+	conf->app_balance_conf.ki2 = buffer_get_float32_auto(buffer, &ind);
+	conf->app_balance_conf.kd2 = buffer_get_float32_auto(buffer, &ind);
 	conf->app_balance_conf.hertz = buffer_get_uint16(buffer, &ind);
 	conf->app_balance_conf.loop_time_filter = buffer_get_uint16(buffer, &ind);
 	conf->app_balance_conf.fault_pitch = buffer_get_float32_auto(buffer, &ind);
@@ -888,6 +898,7 @@ void confgenerator_set_defaults_mcconf(mc_configuration *conf) {
 	conf->foc_offsets_voltage_undriven[1] = MCCONF_FOC_OFFSETS_VOLTAGE_UNDRIVEN_1;
 	conf->foc_offsets_voltage_undriven[2] = MCCONF_FOC_OFFSETS_VOLTAGE_UNDRIVEN_2;
 	conf->foc_phase_filter_enable = MCCONF_FOC_PHASE_FILTER_ENABLE;
+	conf->foc_phase_filter_disable_fault = MCCONF_FOC_PHASE_FILTER_DISABLE_FAULT;
 	conf->foc_phase_filter_max_erpm = MCCONF_FOC_PHASE_FILTER_MAX_ERPM;
 	conf->foc_mtpa_mode = MCCONF_FOC_MTPA_MODE;
 	conf->foc_fw_current_max = MCCONF_FOC_FW_CURRENT_MAX;
@@ -1040,9 +1051,13 @@ void confgenerator_set_defaults_appconf(app_configuration *conf) {
 	conf->app_nrf_conf.address[1] = APPCONF_NRF_ADDR_B1;
 	conf->app_nrf_conf.address[2] = APPCONF_NRF_ADDR_B2;
 	conf->app_nrf_conf.send_crc_ack = APPCONF_NRF_SEND_CRC_ACK;
+	conf->app_balance_conf.pid_mode = APPCONF_BALANCE_PID_MODE;
 	conf->app_balance_conf.kp = APPCONF_BALANCE_KP;
 	conf->app_balance_conf.ki = APPCONF_BALANCE_KI;
 	conf->app_balance_conf.kd = APPCONF_BALANCE_KD;
+	conf->app_balance_conf.kp2 = APPCONF_BALANCE_KP2;
+	conf->app_balance_conf.ki2 = APPCONF_BALANCE_KI2;
+	conf->app_balance_conf.kd2 = APPCONF_BALANCE_KD2;
 	conf->app_balance_conf.hertz = APPCONF_BALANCE_HERTZ;
 	conf->app_balance_conf.loop_time_filter = APPCONF_BALANCE_LOOP_TIME_FILTER;
 	conf->app_balance_conf.fault_pitch = APPCONF_BALANCE_FAULT_PITCH;

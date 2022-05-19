@@ -441,6 +441,7 @@ typedef struct {
 	float foc_offsets_voltage[3];
 	float foc_offsets_voltage_undriven[3];
 	bool foc_phase_filter_enable;
+	bool foc_phase_filter_disable_fault;
 	float foc_phase_filter_max_erpm;
 	MTPA_MODE foc_mtpa_mode;
 	// Field Weakening
@@ -741,10 +742,19 @@ typedef struct {
 	bool send_crc_ack;
 } nrf_config;
 
+typedef enum {
+	BALANCE_PID_MODE_ANGLE = 0,
+	BALANCE_PID_MODE_ANGLE_RATE_CASCADE
+} BALANCE_PID_MODE;
+
 typedef struct {
+	BALANCE_PID_MODE pid_mode;
 	float kp;
 	float ki;
 	float kd;
+	float kp2;
+	float ki2;
+	float kd2;
 	uint16_t hertz;
 	uint16_t loop_time_filter;
 	float fault_pitch;
