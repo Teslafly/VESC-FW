@@ -195,7 +195,7 @@ void ssc_bb_transfer_16(
 		stm32_gpio_t *read_gpio;
 		int read_pin;
 
-		if(s->spi_type == sw_ssc)
+		if(s->spi_type == ssc_type_hw)
 		{
 			read_gpio = s->mosi_gpio; //ssc usses mosi for all comms
 			read_pin = s->mosi_pin; // what if just set the mosi and miso to the same pin in the ssc init?

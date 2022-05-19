@@ -45,7 +45,7 @@ AS504x_config_t encoder_cfg_as504x = {
 				0, 0,
 #endif
 				HW_HALL_ENC_GPIO2, HW_HALL_ENC_PIN2,
-				sw_spi,
+				spi_type_sw,
 				0, // has_started
 				0, // has_error
 				{{NULL, NULL}, NULL, NULL} // Mutex
@@ -64,7 +64,7 @@ AD2S1205_config_t encoder_cfg_ad2s1205 = {
 				0, 0,
 #endif
 				HW_HALL_ENC_GPIO2, HW_HALL_ENC_PIN2,
-				sw_spi,
+				spi_type_sw,
 				0, // has_started
 				0, // has_error
 				{{NULL, NULL}, NULL, NULL} // Mutex
@@ -102,7 +102,7 @@ TLE5012_config_t encoder_cfg_tle5012 = {
 				HW_HALL_ENC_GPIO1, HW_HALL_ENC_PIN1, // sck
 				HW_HALL_ENC_GPIO2, HW_HALL_ENC_PIN2, // mosi
 				HW_HALL_ENC_GPIO2, HW_HALL_ENC_PIN2, // miso
-				sw_ssc,
+				ssc_type_sw,
 				0, // has_started
 				0, // has_error
 				{{NULL, NULL}, NULL, NULL} // Mutex
