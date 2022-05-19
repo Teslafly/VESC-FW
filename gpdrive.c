@@ -96,8 +96,6 @@ void gpdrive_init(volatile mc_configuration *configuration) {
 	TIM1->CNT = 0;
 
 	// Disable channel 2 pins
-	// todo, move this to modifying timer settings like bldc. also do a define for pwm pins
-	
 	palSetPadMode(GPIOA, 9, PAL_MODE_OUTPUT_PUSHPULL);
 	palClearPad(GPIOA, 9);
 	palSetPadMode(GPIOB, 14, PAL_MODE_OUTPUT_PUSHPULL);

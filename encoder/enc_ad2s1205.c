@@ -83,7 +83,7 @@ void enc_ad2s1205_routine(AD2S1205_config_t *cfg) {
 	spi_bb_begin(&(cfg->sw_spi));
 	spi_bb_delay();
 
-	spi_bb_transfer_16(&(cfg->sw_spi), &pos, 0, 1, 1);
+	spi_bb_transfer_16(&(cfg->sw_spi), &pos, 0, 1);
 	spi_bb_end(&(cfg->sw_spi));
 
 	cfg->state.spi_val = pos;
