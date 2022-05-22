@@ -144,29 +144,6 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	}
 	cfg->state.last_update_time = timer_time_now();
 
-	/*
-	command word:
-	bits
-	[15] = rw, 1=read <- first bit transmitted
-	[14..11] = lock, 0000
-	[10] = Update-Register Access, 0: Access to current values, 1: values in buffer
-	[9..4] = address, status=0x00, angle=0x02, speed=0x03
-	[3..0] = 4-bit Number of Data Words (if bits set to 0000B, no safety word is provided)
-	
-	safety word:
-	[15]:Indication of chip reset or watchdog overflow (resets after readout) via SSC
-	[14]: System error
-	[13]: Interface access error
-	[12]: Invalid angle value (produce vesc fault if 1)
-	[11..8]: Sensor number response indicator
-	[7..0]: crc 
-	*/
-
-	// registers must set at atartup:
-	// FIR_MD 15:14 w Update Rate Setting (Filter Decimation) in 0x06
-	// really just go though 0x06 register.
-
-
 /*
 	// TLE5012B E1000 (IIF) configuration:
 	IIF-type: E1000
@@ -225,13 +202,6 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 		word = 0b0000000 0001 00 00
 */
 
-	// const uint16_t READ_SENSOR = 0b1 ; // read mode
-	// const uint16_t upd = 0b0; // UPD_low
-	// const uint16_t address = 0x02; // REG_AVAL (angle)
-	// const uint16_t safe = 0b001; // SAFE_0, just safety word
-	// uint16_t command_word = (READ_SENSOR << 15) | (upd << 10) | (address << 4)| (safe << 0);
-	// uint16_t rx_data [2];
-
 	// // sw spi
 	// spi_bb_begin(&(cfg->sw_spi));
 	// ssc_bb_transfer_16(&(cfg->sw_spi), &rx_data[0], &command_word, 1, 1); // send command
@@ -267,10 +237,10 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 }
 
 uint8_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t *data, spi_direction read, bool safety) {
-	// uint16_t reg_data;
+	const uint8_t upd = 0b0;
 	uint16_t safety_word;
 
-	// todo, make result of this an enum with names errors?
+	// todo, make return value of this an enum with named errors?
 
 	// command word:
 	// [15] = rw, 1=read <- first bit transmitted
@@ -279,8 +249,7 @@ uint8_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t *d
 	// [9..4] = address, status=0x00, angle=0x02, speed=0x03
 	// [3..0] = 4-bit Number of Data Words (if bits set to 0000B, no safety word is provided)
 
-	// const uint8_t READ_SENSOR = 0b1;
-	const uint8_t upd = 0b0;
+	
 
 	uint16_t safeword; // this can probably be simplified. just pass safety?
 	if (safety) {
@@ -372,7 +341,17 @@ uint8_t crc8(uint8_t *data, uint8_t length)
 }
 
 
-uint8_t checkSafety(uint16_t command, uint16_t safetyword, const uint16_t *readreg, uint16_t length){
+uint8_t checkSafety(uint16_t command, uint16_t safetyword, const uint16_t *readreg, uint16_t length){	
+	/*
+	safety word:
+	[15]:Indication of chip reset or watchdog overflow (resets after readout) via SSC
+	[14]: System error
+	[13]: Interface access error
+	[12]: Invalid angle value (produce vesc fault if 1)
+	[11..8]: Sensor number response indicator
+	[7..0]: crc 
+	*/
+
 	if (!((safetyword) & TLE5012_SYSTEM_ERROR_MASK)){
 		//SYSTEM_ERROR;
 		// resetSafety();
@@ -431,31 +410,6 @@ uint8_t checkSafety(uint16_t command, uint16_t safetyword, const uint16_t *readr
 // 		}
 // 	}
 // 	return (checkError);
-// }
-
-
-// errorTypes Tle5012b::getAngleValue(double &angleValue)
-// {
-// 	int16_t rawAnglevalue = 0;
-// 	return (getAngleValue(angleValue, rawAnglevalue, UPD_low, SAFE_high));
-// }
-// errorTypes Tle5012b::getAngleValue(double &angleValue, int16_t &rawAnglevalue, updTypes upd, safetyTypes safe)
-// {
-// 	uint16_t rawData = 0;
-// 	errorTypes status = readFromSensor(reg.REG_AVAL, rawData, upd, safe);
-// 	if (status != NO_ERROR)
-// 	{
-// 		return (status);
-// 	}
-// 	rawData = (rawData & (DELETE_BIT_15));
-// 	//check if the value received is positive or negative
-// 	if (rawData & CHECK_BIT_14)
-// 	{
-// 		rawData = rawData - CHANGE_UINT_TO_INT_15;
-// 	}
-// 	rawAnglevalue = rawData;
-// 	angleValue = (ANGLE_360_VAL / POW_2_15) * ((double) rawAnglevalue);
-// 	return (status);
 // }
 
 // errorTypes Tle5012b::getTemperature(double &temperature)
