@@ -32,9 +32,32 @@ void foc_observer_update(float v_alpha, float v_beta, float i_alpha, float i_bet
 	float lambda = conf_now->foc_motor_flux_linkage;
 
 	// Saturation compensation
-	const float comp_fact = conf_now->foc_sat_comp * (motor->m_motor_state.i_abs_filter / conf_now->l_current_max);
-	L -= L * comp_fact;
-	lambda -= lambda * comp_fact;
+	switch(conf_now->foc_sat_comp_mode) {
+	case SAT_COMP_LAMBDA:
+		// Here we assume that the inductance drops by the same amount as the flux linkage. I have
+		// no idea if this is a valid or even a reasonable assumption.
+		if (conf_now->foc_observer_type >= FOC_OBSERVER_ORTEGA_LAMBDA_COMP) {
+			L = L * (state->lambda_est / lambda);
+		}
+		break;
+
+	case SAT_COMP_FACTOR: {
+		const float comp_fact = conf_now->foc_sat_comp * (motor->m_motor_state.i_abs_filter / conf_now->l_current_max);
+		L -= L * comp_fact;
+		lambda -= lambda * comp_fact;
+	} break;
+
+	case SAT_COMP_LAMBDA_AND_FACTOR: {
+		if (conf_now->foc_observer_type >= FOC_OBSERVER_ORTEGA_LAMBDA_COMP) {
+			L = L * (state->lambda_est / lambda);
+		}
+		const float comp_fact = conf_now->foc_sat_comp * (motor->m_motor_state.i_abs_filter / conf_now->l_current_max);
+		L -= L * comp_fact;
+	} break;
+
+	default:
+		break;
+	}
 
 	// Temperature compensation
 	if (conf_now->foc_temp_comp) {
@@ -460,15 +483,13 @@ void foc_run_pid_control_speed(float dt, motor_all_state_t *motor) {
 	motor->m_speed_prev_error = error;
 
 	// Calculate output
-	utils_truncate_number_abs(&p_term, 1.0);
-	utils_truncate_number_abs(&d_term, 1.0);
 	float output = p_term + motor->m_speed_i_term + d_term;
-	float pre_output = output;
 	utils_truncate_number_abs(&output, 1.0);
 
-	float output_saturation = output - pre_output;
+	// Integrator windup protection
+	motor->m_speed_i_term += error * conf_now->s_pid_ki * dt * (1.0 / 20.0);
+	utils_truncate_number_abs(&motor->m_speed_i_term, 1.0);
 
-	motor->m_speed_i_term += error * (conf_now->s_pid_ki * dt) * (1.0 / 20.0) + output_saturation;
 	if (conf_now->s_pid_ki < 1e-9) {
 		motor->m_speed_i_term = 0.0;
 	}
@@ -484,7 +505,7 @@ void foc_run_pid_control_speed(float dt, motor_all_state_t *motor) {
 		}
 	}
 
-	motor->m_iq_set = output * conf_now->l_current_max * conf_now->l_current_max_scale;
+	motor->m_iq_set = output * conf_now->lo_current_max * conf_now->l_current_max_scale;
 }
 
 float foc_correct_encoder(float obs_angle, float enc_angle, float speed,

@@ -329,6 +329,13 @@ typedef enum {
 	SPEED_SRC_OBSERVER,
 } SPEED_SRC;
 
+typedef enum {
+	SAT_COMP_DISABLED = 0,
+	SAT_COMP_FACTOR,
+	SAT_COMP_LAMBDA,
+	SAT_COMP_LAMBDA_AND_FACTOR
+} SAT_COMP_MODE;
+
 typedef struct {
 	// Limits
 	float l_current_max;
@@ -408,6 +415,8 @@ typedef struct {
 	float foc_pll_ki;
 	float foc_duty_dowmramp_kp;
 	float foc_duty_dowmramp_ki;
+	float foc_start_curr_dec;
+	float foc_start_curr_dec_rpm;
 	float foc_openloop_rpm;
 	float foc_openloop_rpm_low;
 	float foc_d_gain_scale_start;
@@ -424,6 +433,7 @@ typedef struct {
 	float foc_sl_erpm;
 	bool foc_sample_v0_v7;
 	bool foc_sample_high_current;
+	SAT_COMP_MODE foc_sat_comp_mode;
 	float foc_sat_comp;
 	bool foc_temp_comp;
 	float foc_temp_comp_base_temp;
