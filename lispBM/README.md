@@ -286,6 +286,34 @@ Read system info parameter param. Example:
 (sysinfo 'runtime) ; Total runtime in seconds
 ```
 
+### App Override Commands
+
+```clj
+(app-adc-detach mode state)
+; Where
+; mode : Select periperial to detach from APP
+;        - 0 All peripherial attached (no second argument)
+;        - 1 ADC1/2
+;        - 2 Buttons
+;        - 3 ADC1/2 + Buttons
+; state : Only when mode 1/2/3/4 - 1 detaches periperial from APP, 0 attaches peripherial to APP 
+```
+
+Detaches a peripherial from the APP ADC
+
+```clj
+(app-adc-override mode value)
+; Where
+; mode : Select periperial to override
+;        - 0 ADC1
+;        - 1 ADC2
+;        - 2 Reverse button
+;        - 3 Cruise control button
+; val : 0.0 to 1.0 (button pressed is > 0.0)
+```
+
+Sets the override value
+
 ### Motor Set Commands
 
 #### set-current
@@ -359,6 +387,13 @@ Position control. Set motor position in degrees, range 0.0 to 360.0.
 ```
 
 Run FOC in open loop. Useful to test thermal properties of motors and power stages.
+
+#### foc-beep
+```clj
+(foc-beep freq time voltage)
+```
+
+Use the motor to play a beep sound at frequency freq for time seconds using voltage excitation voltage. The frequency can be set between 100 Hz and 7500 Hz.
 
 ### Motor Get Commands
 
