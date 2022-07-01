@@ -202,7 +202,7 @@ void ssc_bb_transfer_16(
 		}else{
 			read_gpio = s->miso_gpio;
 			read_pin = s->miso_pin;
-			write = true;
+			// write = true; // why was this ever here? it breaks things. look at git.
 		}
 
 		if(write && s->mosi_gpio){
