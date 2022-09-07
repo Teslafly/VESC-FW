@@ -29,6 +29,7 @@
 #include "enc_tle5012.h"
 #include "enc_sincos.h"
 #include "enc_as504x.h"
+#include "enc_as5x47u.h"
 #include "enc_abi.h"
 
 // Functions

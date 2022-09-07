@@ -357,13 +357,15 @@ static bool check_faults(bool ignoreTimers){
 	}
 
 	// Switch partially open and stopped
-	if((switch_state == HALF || switch_state == OFF) && abs_erpm < balance_conf.fault_adc_half_erpm){
-		if(ST2MS(current_time - fault_switch_half_timer) > balance_conf.fault_delay_switch_half || ignoreTimers){
-			state = FAULT_SWITCH_HALF;
-			return true;
+	if(!balance_conf.fault_is_dual_switch) {
+		if((switch_state == HALF || switch_state == OFF) && abs_erpm < balance_conf.fault_adc_half_erpm){
+			if(ST2MS(current_time - fault_switch_half_timer) > balance_conf.fault_delay_switch_half || ignoreTimers){
+				state = FAULT_SWITCH_HALF;
+				return true;
+			}
+		} else {
+			fault_switch_half_timer = current_time;
 		}
-	} else {
-		fault_switch_half_timer = current_time;
 	}
 
 	// Check pitch angle
@@ -528,7 +530,11 @@ static void apply_turntilt(void){
 	}
 
 	// Limit angle to max angle
-	turntilt_target = fminf(turntilt_target, balance_conf.turntilt_angle_limit);
+	if(turntilt_target > 0){
+		turntilt_target = fminf(turntilt_target, balance_conf.turntilt_angle_limit);
+	}else{
+		turntilt_target = fmaxf(turntilt_target, -balance_conf.turntilt_angle_limit);
+	}
 
 	// Move towards target limited by max speed
 	if(fabsf(turntilt_target - turntilt_interpolated) < turntilt_step_size){
@@ -580,6 +586,12 @@ static void brake(void){
 }
 
 static void set_current(float current, float yaw_current){
+	// Limit current output to configured max output (does not account for yaw_current)
+	if(current > 0 && current > mc_interface_get_configuration()->l_current_max){
+		current = mc_interface_get_configuration()->l_current_max;
+	}else if(current < 0 && current < mc_interface_get_configuration()->l_current_min){
+		current = mc_interface_get_configuration()->l_current_min;
+	}
 	// Reset the timeout
 	timeout_reset();
 	// Set current
@@ -675,7 +687,10 @@ static THD_FUNCTION(balance_thread, arg) {
 			if(adc1 > balance_conf.fault_adc1 && adc2 > balance_conf.fault_adc2){
 				switch_state = ON;
 			}else if(adc1 > balance_conf.fault_adc1 || adc2 > balance_conf.fault_adc2){
-				switch_state = HALF;
+				if (balance_conf.fault_is_dual_switch)
+					switch_state = ON;
+				else
+					switch_state = HALF;
 			}else{
 				switch_state = OFF;
 			}
@@ -754,7 +769,6 @@ static THD_FUNCTION(balance_thread, arg) {
 						pid_value += balance_conf.booster_current * SIGN(proportional);
 					}
 				}
-
 
 				if(balance_conf.multi_esc){
 					// Calculate setpoint

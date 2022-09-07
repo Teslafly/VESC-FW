@@ -1,5 +1,49 @@
 # LispBM language reference
 
+## About Symbols 
+
+Symbols are very important and fundamental to LispBM and also perhaps 
+a bit different from identifiers/names used in languages such as C, so 
+a short intro could be good here. 
+
+A symbol can be thought of as a name and can be used to give names 
+to functions or values (variables). A symbol can also be treated and 
+used as a value in and of itself a value (or data). So it can be used 
+to name data and functions and is itself also data. 
+
+--- 
+**NOTE** 
+
+Symbols are expressed as strings in your program such as `a`, `let`,
+`define`, `+` or `orange`. The "reader", the part of LBM that parses
+code, translates each symbol into a 28bit value. The string `orange`
+for example is only of interest if you print a symbol and then the
+runtime system will look up what string corresponds to the 28bit
+identifier you want to print. So the runtime system is never wasting
+time comparing strings to see if a symbol is this or that symbol, it's
+all integer comparisons.
+
+--- 
+
+You associate values with symbols using, <a href="#define">define</a>,
+<a href="#let">let</a> and you can change the value bound to a "variable" 
+using <a href="#setvar">setvar</a>
+
+Not all symbols are treated the same in LBM. Some symbols are treated as 
+special because of their very fundamental nature. Among these special symbols
+you find `define`, `let` and `lambda` for example. These are things that you 
+should not be able to redefine and trying to redefine them leads to an error. 
+There are two classes of symbols that are special by naming convention and 
+these either start with a `#`, for fast-lookup variables, and `ext-` for 
+extensions that will be bound at runtime.
+
+Examples of symbols used as data are `nil` and `t`. `nil` is used the
+represent nothing, the empty list or other similar things and `t`
+represents true.  But any symbol can be used as data by quoting it
+`'`, see <a href="#quotes-and-quasiquotation"> Quotes and
+Quasiquotation </a>.
+
+
 ## Arithmetic
 
 ### +
@@ -638,7 +682,7 @@ The `setvar` form is used to change the value of some variable in an environment
 You can use `setvar` to change the value of a global definition, a local definition
 or a variable defintion (`#var`). An application of the `setvar` form looks like
 `(setvar var-expr val-expr)` where `var-expr` should evaluate to a symbol. The `val-expr` is evaluated before
-rebinding the variable.
+rebinding the variable. `setvar` returns the value that `val-expr` evaluates to.
 
 Examples:
 ```clj
@@ -663,7 +707,7 @@ And you can change the value of a `#var`.
 ```clj
 (define #a 10)
 
-(set '#a 20)
+(setvar '#a 20)
 ```
 `#a` is now 20.
 
@@ -740,13 +784,121 @@ has been extended with the binding `(apa 1)`.
 
 ---
 
+
+### namespace
+
+Creates a new namespace to reduce the effect and likelyhood of colliding
+names for things. Use a namespace to hold definitions that are related
+to eachother. 
+
+Namespaces in LBM form a multiply branching tree of subnamespaces. There is
+a root namespace that is unnamed. Definitions in a namespaces can only be reached from a parent
+namespace, not by siblings or children of that namespace. 
+
+The example below creates a namespace as a child to the current namespace
+and defines a to be 1000 within the `myspace`.
+```lisp
+(namespace myspace
+	   (define a 1000))
+```
+
+To access `a` from the parent namespace you use a namespace "path" expressed
+as symbols separated by `:`
+
+```
+# myspace:a
+> 1000
+```
+
+Multiple definitions can be added to a namespace in one go by using `progn`
+
+```lisp
+(namespace loads-a-stuff
+	   (progn
+		(define a 1)
+		(define b 2)
+		(define c 3)
+		(define f (lambda (x) (+ x 10)))))
+```
+
+Namespaces can be nested as:
+```lisp
+(namespace n1
+	   (namespace n2
+	   	      (define a 42)))
+
+```
+
+and to access `a` under n1 and n2 is done by:
+
+```
+# n1:n2:a
+> 42
+```
+
+The last thing to occur in an `n1:n2: ...` sequence does not have to
+be a symbols. It can be an arbitrary expression that will be evaluated in
+the namespace identified by the path.
+
+```
+# n1:n2:(+ a 1000)
+> 1042
+```
+
+The syntax using symbols separated by `:` (as `n1:n2:a`) expands
+into applications of the `namespace` form. For example `n1:n2:a`
+expands into `(namespace n1 (namespace n2 a))` upon parsing.
+So the following two programs do the same thing:
+
+```lisp
+(namespace space (define stars 1000))
+```
+
+and
+
+```lisp
+space:(define stars 1000)
+```
+
+Both of the programs above defines `stars` to 1000 in the namespace `space`.
+Both of the programs above also create the `space` namespace if it does not
+already exist.
+
+
+---
+**NOTE**
+Namespaces has no influence on #variables which all remain accessible from
+any space.
+
+The same is true for extensions. Extensions and #variables can be considered to
+be part of some other globally available namespace.
+
+---
+
+---
+
 ## Lists and cons cells
 
-Lists are build using cons cells. A cons cell is represented by the \ref lbm_cons_t struct in the
+Lists are build using cons cells. A cons cell is represented by the lbm_cons_t struct in the
 implementation and consists of two fields named the `car` and the `cdr`.
 There is no special meaning associated with the `car` and the `cdr` each can hold
-a \ref lbm_value. See <a href="#cons">cons</a> and <a href="#list">list</a> for two ways to create structures of
+a lbm_value. See <a href="#cons">cons</a> and <a href="#list">list</a> for two ways to create structures of
 cons cells on the heap.
+
+![cons cell](images/cons_cell.png?raw=true "cons cell")
+
+A cons cell can be used to store a pair of values. You create a pair by
+sticking a value in both the car and cdr field of a cons cell using either `'(1 . 2)` or
+`(cons 1 2)`. 
+
+![pair](images/pair.png?raw=true "pair")
+
+A list is a number of cons cells linked together where the car fields hold values
+and the cdr fields hold pointers (the last cdr field is nil). The list below
+can be created either as `'(1 2 3)` or as `(list 1 2 3)`.
+
+![list](images/list.png?raw=true "pair")
+
 
 ### car
 
@@ -770,6 +922,19 @@ The `car` operation accesses the head element of a list. The following program e
 
 ---
 
+### first
+
+`first` is an alternative (and one that makes some sense) name for the `car` operation.
+
+Use `first` to access the first element of a list or pair. A `first` expression  has the form `(first expr)`.
+
+```lisp
+# (first (list 1 2 3 4))
+> 1
+```
+
+---
+
 ### cdr
 
 Use `cdr` to access the `cdr` field of a cons cell. A
@@ -782,6 +947,19 @@ The example below evaluates to 2.
 The `cdr` operation gives you the rest of a list. The example below evaluates to the list (8 7).
 ```clj
 (cdr (list 9 8 7))
+```
+
+---
+
+### rest
+
+`rest` is an alternative name for the `cdr` operation.
+
+Use `rest` to access all elements except the first one of a list, or to access the second element in a pair. A `rest` expression has the form `(rest expr)`.
+
+```lisp
+# (rest (list 1 2 3 4))
+> (2 3 4)
 ```
 
 ---
@@ -927,22 +1105,36 @@ an existing alist.
 
 ---
 
-### assoc 
+### assoc
 
-The `assoc` function looks up a value in an alist given a key. 
+The `assoc` function looks up the first value in an alist matching a given a key. 
 The form of an `assoc` expression is `(assoc alist-expr key-expr)`
 
 Example that looks up the value of key `2` in an alist.
-``` 
+```
 # (assoc (list '(1 . horse) '(2 . donkey) '(3 . shark)) 2)
 > donkey
-``` 
+```
+
+---
+
+
+### cossa
+
+The `cossa` function looks up the first key in an alist that matches a given value. 
+The form of an `cossa` expression is `(cossa alist-expr value-expr)`
+
+Example that looks up the key for the value `donkey` in an alist.
+```
+# (cossa (list '(1 . horse) '(2 . donkey) '(3 . shark)) 'donkey)
+> 2
+```
 
 ---
 
 ### setassoc
 
-The `setassoc` function destructively updates a key-value mapping in an 
+The `setassoc` function destructively updates a key-value mapping in an
 alist. The form of a `setassoc` expression is `(setassoc alist-expr key-expr value-expr)`. 
 
 
@@ -1008,6 +1200,19 @@ Example that turns array "hello" into "heflo"
 ```
 
 ---
+
+### array-clear
+
+Clears an array by writing zeroes to all locations.
+
+Example:
+
+```lisp
+(array-clear arr)
+```
+
+---
+
 
 ### Array literal syntax
 
@@ -1271,7 +1476,6 @@ Below is an example that conditionally returns.
 
 ---
 
-
 ## Unparsable symbols
 
 Unparsable symbols cannot be written into a program. The unparsable symbols
@@ -1504,3 +1708,10 @@ Convert any numerical value to a double precision floating point value.
 If the input is not a number the output of this function will be 0.
 
 ---
+
+
+## Extensions reference
+
+
+
+

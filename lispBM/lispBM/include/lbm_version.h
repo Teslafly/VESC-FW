@@ -20,16 +20,63 @@
 #ifndef LBM_VERSION_H_
 #define LBM_VERSION_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** LBM major version */
 #define LBM_MAJOR_VERSION 0
 /** LBM minor version */
-#define LBM_MINOR_VERSION 5
+#define LBM_MINOR_VERSION 6
 /** LBM patch revision */
-#define LBM_PATCH_VERSION 3
+#define LBM_PATCH_VERSION 0
 
 /*! \page changelog Changelog
-May 10 2022: Version 0.5.3 
- - symbols starting with "ext-" will be allocated into the extensions-list 
+
+Set 5 2022: Version 0.6.0
+  - Refactoring of array-reader. Array reading is nolonger done monolithically
+    inside of the tokpar framework, but rather as a cooperation between the
+    evaluator and the tokenizer.
+
+Sep 3 2022: Version 0.6.0
+  - Round-robin scheduling + Addition of an Atomic construct to use with care.
+
+Aug 1 2022: Version 0.5.4
+  - Easing use of the LBM library from C++ code.
+
+Jul 25 2022: Version 0.5.4
+  - lbm_define can now create variables (#var) in variable memory from
+    the C side of things.
+  - Simple namespaces.
+
+Jul 18 2022: Version 0.5.4
+  - Added pattern matching support for i64, u64 and double.
+  - Fixed issue with pattern matching on i32, u32.
+
+Jul 17 2022: Version 0.5.4
+  - Refactoring with readability in focus.
+  - Computing encodings of commonly used symbol constants (for eval_cps) at compile time
+    rather then repeatedly at runtime.
+
+Jul 13 2022: Version 0.5.4
+  - Added function that lookups based on the second field in assoc structures.
+    Called it "cossa" as it is like assoc but backwards.
+
+Jul 4 2022: Version 0.5.4
+  - Added possibility to partially apply closures. A partially applied closure
+    is again a closure.
+
+May 24 2022: Version 0.5.3
+  - Fixed bug related to float-array literals not accepting whole numbers unless containing a decimal (0).
+
+May 22 2022: Version 0.5.3
+  - Fixed bug that could cause problems with call-cc on 64bit platforms.
+  - bind_to_key_rest continuation refactoring to use indexing into stack.
+  - Fix evaluator bug in progn that made tail-call not fire properly when there
+    is only one expr in the progn sequence.
+
+May 10 2022: Version 0.5.3
+ - symbols starting with "ext-" will be allocated into the extensions-list
    and can on the VESC version of lispbm be dynamically bound to newly loaded
    extensions at runtime.
 
@@ -40,7 +87,7 @@ May 5 2022: Version 0.5.2
  - Line and column numbers associated with read errors.
  - More explanatory descriptions in error messages related to read errors.
 
-May 2 2022: Version 0.5.2 
+May 2 2022: Version 0.5.2
  - Performance tweaks to the evaluator. Small but positive effect.
 
 May 1 2022: Version 0.5.2
@@ -111,5 +158,7 @@ Feb 11 2022: version 0.1.0
 */
 
 
-
+#ifdef __cplusplus
+}
+#endif
 #endif

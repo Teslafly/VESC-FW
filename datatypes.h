@@ -154,6 +154,7 @@ typedef enum {
 	FAULT_CODE_ENCODER_NO_MAGNET,
 	FAULT_CODE_ENCODER_MAGNET_TOO_STRONG,
 	FAULT_CODE_PHASE_FILTER,
+	FAULT_CODE_ENCODER_FAULT,
 } mc_fault_code;
 
 typedef enum {
@@ -189,6 +190,7 @@ typedef enum {
 	SENSOR_PORT_MODE_TS5700N8501,
 	SENSOR_PORT_MODE_TS5700N8501_MULTITURN,
 	SENSOR_PORT_MODE_MT6816_SPI_HW,
+	SENSOR_PORT_MODE_AS5x47U_SPI,
 	SENSOR_PORT_MODE_MT6816_SSC_HW,
 	SENSOR_PORT_MODE_MT6816_SSC_SW,
 	SENSOR_PORT_MODE_TLE5014_SSC_HW,
@@ -278,7 +280,7 @@ typedef struct {
 	float v_cell[32];
 	bool bal_state[32];
 	int temp_adc_num;
-	float temps_adc[10];
+	float temps_adc[50];
 	float temp_ic;
 	float temp_hum;
 	float hum;
@@ -781,6 +783,7 @@ typedef struct {
 	uint16_t fault_delay_switch_half;
 	uint16_t fault_delay_switch_full;
 	uint16_t fault_adc_half_erpm;
+	bool fault_is_dual_switch;
 	float tiltback_duty_angle;
 	float tiltback_duty_speed;
 	float tiltback_duty;
@@ -896,6 +899,11 @@ typedef enum {
 } UAVCAN_RAW_MODE;
 
 typedef enum {
+	UAVCAN_STATUS_CURRENT_MODE_MOTOR = 0,
+	UAVCAN_STATUS_CURRENT_MODE_INPUT
+} UAVCAN_STATUS_CURRENT_MODE;
+
+typedef enum {
 	KILL_SW_MODE_DISABLED = 0,
 	KILL_SW_MODE_PPM_LOW,
 	KILL_SW_MODE_PPM_HIGH,
@@ -924,6 +932,7 @@ typedef struct {
 	uint8_t uavcan_esc_index;
 	UAVCAN_RAW_MODE uavcan_raw_mode;
 	float uavcan_raw_rpm_max;
+	UAVCAN_STATUS_CURRENT_MODE uavcan_status_current_mode;
 
 	// Application to use
 	app_use app_to_use;

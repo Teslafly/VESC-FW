@@ -63,9 +63,10 @@ void imu_init(imu_config *set) {
 	mpu9150_set_rate_hz(MIN(set->sample_rate_hz, 1000));
 	m_icm20948_state.rate_hz = MIN(set->sample_rate_hz, 1000);
 	m_bmi_state.rate_hz = set->sample_rate_hz;
-	lsm6ds3_set_rate_hz(MIN(set->sample_rate_hz, 1000));
+	lsm6ds3_set_rate_hz(set->sample_rate_hz);
 
 	m_bmi_state.filter = set->filter;
+	lsm6ds3_set_filter(set->filter);
 
 	if (set->type == IMU_TYPE_INTERNAL) {
 #ifdef MPU9X50_SDA_GPIO
@@ -86,6 +87,16 @@ void imu_init(imu_config *set) {
 #ifdef LSM6DS3_SDA_GPIO
 		imu_init_lsm6ds3(LSM6DS3_SDA_GPIO, LSM6DS3_SDA_PIN,
 				LSM6DS3_SCL_GPIO, LSM6DS3_SCL_PIN);
+#endif
+
+		// SPI not implemented yet, use as I2C
+#ifdef LSM6DS3_NSS_GPIO
+		palSetPadMode(LSM6DS3_NSS_GPIO, LSM6DS3_NSS_PIN, PAL_MODE_OUTPUT_PUSHPULL);
+		palSetPad(LSM6DS3_NSS_GPIO, LSM6DS3_NSS_PIN);
+		palSetPadMode(LSM6DS3_MISO_GPIO, LSM6DS3_MISO_PIN, PAL_MODE_OUTPUT_PUSHPULL);
+		palClearPad(LSM6DS3_MISO_GPIO, LSM6DS3_MISO_PIN);
+		imu_init_lsm6ds3(LSM6DS3_MOSI_GPIO, LSM6DS3_MOSI_PIN,
+				LSM6DS3_SCK_GPIO, LSM6DS3_SCK_PIN);
 #endif
 
 #ifdef BMI160_SPI_PORT_NSS
