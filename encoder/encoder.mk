@@ -8,5 +8,6 @@ ENCSRC =	encoder/encoder.c \
 			encoder/enc_ts5700n8501.c \
 			encoder/enc_as5x47u.c \
 			encoder/enc_tle5012.c \
+			encoder/enc_bissc.c
 
 ENCINC =	encoder

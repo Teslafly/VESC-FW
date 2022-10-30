@@ -109,7 +109,9 @@
 #define SYM_SEND          0x19
 #define SYM_EXIT_OK       0x1A
 #define SYM_EXIT_ERROR    0x1B
-#define APPLY_FUNS_END    0x1B
+#define SYM_MAP           0x1C
+#define SYM_REVERSE       0x1D
+#define APPLY_FUNS_END    0x1D
 
 
 
@@ -141,15 +143,6 @@
 
 #define SYM_NO_MATCH       0x40
 #define SYM_MATCH_ANY      0x41
-#define SYM_MATCH_I        0x42
-#define SYM_MATCH_U        0x43
-#define SYM_MATCH_U32      0x44
-#define SYM_MATCH_I32      0x45
-#define SYM_MATCH_FLOAT    0x46
-#define SYM_MATCH_CONS     0x47
-#define SYM_MATCH_U64      0x48
-#define SYM_MATCH_I64      0x49
-#define SYM_MATCH_DOUBLE   0x4A
 
 // Type identifying symbols
 #define SYM_TYPE_LIST      0x50
@@ -243,30 +236,27 @@
 #define SYM_ACONS               0x222
 #define SYM_SET_ASSOC           0x223
 #define SYM_COSSA               0x224
-#define SYM_IS_FUNDAMENTAL      0x225
-#define SYM_IX                  0x226
-#define SYM_ENCODE_I32          0x227
-#define SYM_ENCODE_U32          0x228
-#define SYM_ENCODE_FLOAT        0x229
-#define SYM_DECODE              0x22A
-#define SYM_TO_I                0x22B
-#define SYM_TO_I32              0x22C
-#define SYM_TO_U                0x22D
-#define SYM_TO_U32              0x22E
-#define SYM_TO_FLOAT            0x22F
-#define SYM_TO_I64              0x230
-#define SYM_TO_U64              0x231
-#define SYM_TO_DOUBLE           0x232
-#define SYM_TO_BYTE             0x233
-#define SYM_SHL                 0x234
-#define SYM_SHR                 0x235
-#define SYM_BITWISE_AND         0x236
-#define SYM_BITWISE_OR          0x237
-#define SYM_BITWISE_XOR         0x238
-#define SYM_BITWISE_NOT         0x239
-#define SYM_CUSTOM_DESTRUCT     0x23A /* run the destructor of a custom type */
-#define SYM_TYPE_OF             0x23B
-#define FUNDAMENTALS_END        0x23B
+#define SYM_IX                  0x225
+#define SYM_TO_I                0x226
+#define SYM_TO_I32              0x227
+#define SYM_TO_U                0x228
+#define SYM_TO_U32              0x229
+#define SYM_TO_FLOAT            0x22A
+#define SYM_TO_I64              0x22B
+#define SYM_TO_U64              0x22C
+#define SYM_TO_DOUBLE           0x22D
+#define SYM_TO_BYTE             0x22E
+#define SYM_SHL                 0x22F
+#define SYM_SHR                 0x230
+#define SYM_BITWISE_AND         0x231
+#define SYM_BITWISE_OR          0x232
+#define SYM_BITWISE_XOR         0x233
+#define SYM_BITWISE_NOT         0x234
+#define SYM_CUSTOM_DESTRUCT     0x235 /* run the destructor of a custom type */
+#define SYM_TYPE_OF             0x236
+#define SYM_LIST_LENGTH         0x237
+#define SYM_RANGE               0x238
+#define FUNDAMENTALS_END        0x238
 
 #define SPECIAL_SYMBOLS_START    0
 #define SPECIAL_SYMBOLS_END      0xFFFF

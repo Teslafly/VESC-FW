@@ -32,7 +32,7 @@
 #define LISP_MEM_BITMAP_SIZE	LBM_MEMORY_BITMAP_SIZE_14K
 #define GC_STACK_SIZE			160
 #define PRINT_STACK_SIZE		128
-#define EXTENSION_STORAGE_SIZE	200
+#define EXTENSION_STORAGE_SIZE	220
 #define VARIABLE_STORAGE_SIZE	64
 
 __attribute__((section(".ram4"))) static lbm_cons_t heap[HEAP_SIZE] __attribute__ ((aligned (8)));
@@ -246,9 +246,6 @@ void lispif_process_cmd(unsigned char *data, unsigned int len,
 						":continue\n"
 						"  Continue running LBM");
 				commands_printf_lisp(
-						":step <num_steps>\n"
-						"  Run num_steps LBM steps");
-				commands_printf_lisp(
 						":undef <symbol_name>\n"
 						"  Undefine symbol");
 				commands_printf_lisp(
@@ -308,9 +305,6 @@ void lispif_process_cmd(unsigned char *data, unsigned int len,
 				commands_printf_lisp("Evaluator paused\n");
 			} else if (strncmp(str, ":continue", 9) == 0) {
 				lbm_continue_eval();
-			} else if (strncmp(str, ":step", 5) == 0) {
-				int num = atoi(str + 5);
-				lbm_step_n_eval((uint32_t)num);
 			} else if (strncmp(str, ":undef", 6) == 0) {
 				lbm_pause_eval();
 				while(lbm_get_eval_state() != EVAL_CPS_STATE_PAUSED) {

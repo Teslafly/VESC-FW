@@ -59,19 +59,12 @@ special_sym const special_symbols[] =  {
   {"setvar"       , SYM_SETVAR},
   {"exit-ok"      , SYM_EXIT_OK},
   {"exit-error"   , SYM_EXIT_ERROR},
+  {"map"          , SYM_MAP},
+  {"reverse"      , SYM_REVERSE},
   {"gc"           , SYM_PERFORM_GC},
 
   // pattern matching
   {"?"          , SYM_MATCH_ANY},
-  {"?i"         , SYM_MATCH_I},
-  {"?u"         , SYM_MATCH_U},
-  {"?u32"       , SYM_MATCH_U32},
-  {"?i32"       , SYM_MATCH_I32},
-  {"?float"     , SYM_MATCH_FLOAT},
-  {"?cons"      , SYM_MATCH_CONS},
-  {"?u64"       , SYM_MATCH_U64},
-  {"?i64"       , SYM_MATCH_I64},
-  {"?double"    , SYM_MATCH_DOUBLE},
 
   // Error symbols with parsable names
   {"no_match"           , SYM_NO_MATCH},
@@ -172,6 +165,8 @@ special_sym const special_symbols[] =  {
   {"setcar"           , SYM_SET_CAR},
   {"setcdr"           , SYM_SET_CDR},
   {"setix"            , SYM_SET_IX},
+  {"length"           , SYM_LIST_LENGTH},
+  {"range"            , SYM_RANGE},
 
   {"assoc"          , SYM_ASSOC}, // lookup an association
   {"cossa"          , SYM_COSSA}, // lookup an association "backwards"
@@ -200,19 +195,13 @@ special_sym const special_symbols[] =  {
   // fast access in list
   {"ix"             , SYM_IX},
 
-  // Low-level
-  {"encode-i32"     , SYM_ENCODE_I32},
-  {"encode-u32"     , SYM_ENCODE_U32},
-  {"encode-float"   , SYM_ENCODE_FLOAT},
-  {"decode"         , SYM_DECODE},
-
-  {"is-fundamental" , SYM_IS_FUNDAMENTAL},
-
   // aliases
   {"first"          , SYM_CAR},
   {"rest"           , SYM_CDR},
   {"fn"             , SYM_LAMBDA},
-  {"def"            , SYM_DEFINE}
+  {"def"            , SYM_DEFINE},
+  {"true"           , SYM_TRUE},
+  {"false"          , SYM_NIL}
 
 };
 
@@ -223,6 +212,8 @@ static lbm_uint next_variable_symbol_id = VARIABLE_SYMBOLS_START;
 
 static lbm_uint symbol_table_size_list = 0;
 static lbm_uint symbol_table_size_strings = 0;
+
+
 
 int lbm_symrepr_init(void) {
   symlist = NULL;

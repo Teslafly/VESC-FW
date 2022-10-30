@@ -347,53 +347,6 @@ the argument.
 
 ## Low level operations
 
-### encode-i32
-
-The `encode-i32` function converts a list of four (byte sized) values
-into an i32 value.
-
-Example that evaluates to the i32 value 1024.
-```clj
-(encode-i32 (list 0 0 4 0))
-```
-
-
----
-
-### encode-u32
-
-The `encode-u32` function converts a list of four (byte sized) values
-into an u32 value.
-
-Example that evaluates to the u32 value 1024.
-```clj
-(encode-u32 (list 0 0 4 0))
-```
-
----
-
-### encode-float
-
-The `encode-float` function converts a list four (byte sized) values
-into a float value.
-
-Example that evaluates to 3.14.
-```clj
-(encode-float (list 64 72 245 195))
-```
-
-
----
-
-### decode
-
-The `decode` function decodes a value into a list of four (byte sized) values.
-
-Example that decodes float 3.14 into the list (64 72 245 195).
-```clj
-(decode 3.14)
-```
-
 ---
 
 ## nil and t
@@ -562,18 +515,6 @@ get as result a unnamed symbol.
 
 ---
 
-### is-fundamental
-
-The `is-funamental` function returns true for built-in functions.
-
-Example that returns true.
-```clj
-(is-fundamental '+)
-```
-
----
-
-
 ## Special forms
 
 
@@ -683,7 +624,7 @@ an undefine expression is `(undefine name-expr)` where name-expr
 should evaluate to a symbol (for example `'apa`).
 
 Example
-```lisp
+```clj
 (undefine 'apa)
 ```
 
@@ -691,7 +632,7 @@ It is also possible to undefine several bindings at the same time by
 providing a list of names.
 
 Example
-```lisp
+```clj
 (undefine '(apa bepa cepa))
 ```
 
@@ -856,7 +797,7 @@ The `car` operation accesses the head element of a list. The following program e
 
 Use `first` to access the first element of a list or pair. A `first` expression  has the form `(first expr)`.
 
-```lisp
+```clj
 # (first (list 1 2 3 4))
 > 1
 ```
@@ -885,7 +826,7 @@ The `cdr` operation gives you the rest of a list. The example below evaluates to
 
 Use `rest` to access all elements except the first one of a list, or to access the second element in a pair. A `rest` expression has the form `(rest expr)`.
 
-```lisp
+```clj
 # (rest (list 1 2 3 4))
 > (2 3 4)
 ```
@@ -934,6 +875,47 @@ Example that creates the list (1 2 3 4).
 
 ---
 
+### length
+
+Computes the length of a list. The `length` function takes
+one argument and is of the form `(length expr)`.
+
+Example that evaluates to 4
+```clj
+
+(length (list 1 2 3 4))
+```
+
+---
+
+### range
+
+The `range` function computes a list with integer values from a
+range specified by its endpoints. The form of a range expression
+is `(range start-expr end-expr)`. The end point in the range is excluded.
+
+Example that generates the list (4 5 6 7).
+```clj
+(range 4 8)
+```
+
+A range specified with the end-point being smaller than the
+starting point is in descending order.
+
+Example that generates the list (7 6 5 4).
+```clj
+(range 8 4)
+```
+
+Negative number can be used to specify a range
+
+Example that generates the list (-10 -9 -8 -7 -6 -5 -4 -3 -2 -1 0 1 2 3 4 5 6 7 8 9)
+```clj
+(range -10 10)
+```
+
+---
+
 ### append
 
 The `append` function combines two lists into a longer list.
@@ -964,7 +946,7 @@ Destructively update an element in a list. The form of a `setix` expression
 is `(setix list-expr index-extr value-expr)`. Indexing starts from 0 and
 if you index out of bounds the result is nil.
 
-```lisp
+```clj
 # (setix (list 1 2 3 4 5) 2 77)
 > (1 2 77 4 5)
 ```
@@ -1026,7 +1008,7 @@ to ensure this.
 Example that adds the key `4` and associated value `lemur` to 
 an existing alist. 
 
-```lisp
+```clj
 # (acons 4 'lemur (list '(1 . horse) '(2 . donkey) '(3 . shark)))
 > ((4 . lemur) (1 . horse) (2 . donkey) (3 . shark))
 ```
@@ -1135,7 +1117,7 @@ Clears an array by writing zeroes to all locations.
 
 Example:
 
-```lisp
+```clj
 (array-clear arr)
 ```
 
@@ -1165,12 +1147,12 @@ The currently valid type qualifiers are:
 (The rest of the numerical types will be supported in the future) 
 
 Example that creates a byte array 
-```lisp
+```clj
 [ 1 2 3 4 5 6 7 8 9 10 ]
 ```
 
 Example that create an array of i32 values
-```lisp
+```clj
 [ type-i32 1 2 3 4 5 6 7 8 9 10 ]
 ```
 
@@ -1227,45 +1209,6 @@ An example that evaluates to 19.
 
 ---
 
-### ?i
-
-The `?i` pattern matches an integer (28bit integer on 32bit platforms
-and a 56bit integer on 64bit platforms) and binds that value to a
-variable.  Using the ?i pattern is done as `(?i var)` and the part
-of the expression that matches is bound to the `var`.
-
-The following example evaluates to `not-an-i`.
-```clj
-(match 3.14
-       ( (?i n) (+ n 1))
-       ( _ 'not-an-i))
-```
-The example below evaluates to 5.
-```clj
-(match 4
-       ( (?i n) (+ n 1))
-       ( _ 'not-an-i))
-```
-
-
----
-
-### ?u
-
-The `?u` pattern matches any unsigned and binds that value to a variable.
-Using the ?u pattern is done as `(?u var)` and the part of the expression
-that matches is bound to the `var`.
-
----
-
-### ?float
-
-The `?float` pattern matches any float and binds that value to a
-variable.  Using the `?float` pattern is done as `(?float var)` and
-the part of the expression that matches is bound to the `var`.
-
----
-
 ## Concurrency
 
 The concurrency support in LispBM is provided by the set of functions,
@@ -1305,7 +1248,7 @@ process of the form `(exit-error tid err-val)`. If the child process terminates 
 a message of the form `(exit-ok tid value)` is sent to the parent.
 
 Example:
-```lisp
+```clj
 (spawn-trap my-thread)
 
 (recv  ((exit-error (? tid) (? e)) ...)
@@ -1336,17 +1279,16 @@ is number indicating at least how many microseconds the process should sleep.
 
 ### atomic
 
-`atomic` can be used to execute a LispBM expression without allowing
-the runtime system to switch task during the time that takes.
+`atomic` can be used to execute a LispBM one or more expression without allowing
+the runtime system to switch task during that time.
 
 An example that atomically perfoms operations a,b and c.
 
-```lisp
+```clj
 (atomic
-   (progn
      a
      b
-     c))
+     c)
 ```
 ---
 
@@ -1390,6 +1332,17 @@ Example where a process waits for an integer `?i`.
 (recv ( (?i n) (+ n 1) ))
 ```
 
+---
+
+### set-mailbox-size
+
+Change the size of the mailbox in the current process.
+Standard mailbox size is 10 elements.
+
+Example that changes mailbox size to 100 elements.
+```clj
+(set-mailbox-size 100)
+```
 
 ---
 

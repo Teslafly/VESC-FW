@@ -43,7 +43,6 @@ void packet_reset(PACKET_STATE_t *state);
 void packet_process_byte(uint8_t rx_data, PACKET_STATE_t *state);
 void packet_send_packet(unsigned char *data, unsigned int len, PACKET_STATE_t *state);
 
-
 typedef struct {
 	char *name;
 	void *arg;
@@ -60,6 +59,9 @@ __attribute__((section(".libif"))) static volatile union {
 	vesc_c_if cif;
 	char pad[2048];
 } cif;
+
+static thread_t* lib_running_threads[20];
+static size_t lib_running_threads_cnt = 0;
 
 static void lib_sleep_ms(uint32_t ms) {
 	chThdSleepMilliseconds(ms);
@@ -112,7 +114,14 @@ static lib_thread lib_spawn(void (*func)(void*), size_t stack_size, char *name, 
 			info->func = func;
 			info->name = name;
 			info->w_mem = mem;
-			return (lib_thread)chThdCreateStatic(mem, stack_size, NORMALPRIO, lib_thd, info);
+
+			thread_t *thd = chThdCreateStatic(mem, stack_size, NORMALPRIO, lib_thd, info);
+
+			if (lib_running_threads_cnt < (sizeof(lib_running_threads) / sizeof(lib_running_threads[0]))) {
+				lib_running_threads[lib_running_threads_cnt++] = thd;
+			}
+
+			return (lib_thread)thd;
 		}
 	}
 
@@ -414,6 +423,88 @@ static float lib_get_cfg_float(CFG_PARAM p) {
 	return res;
 }
 
+static int lib_get_cfg_int(CFG_PARAM p) {
+	int res = 0.0;
+
+	const app_configuration *conf = app_get_configuration();
+
+	switch (p) {
+		case CFG_PARAM_app_can_mode: res = conf->can_mode; break;
+		default: break;
+	}
+
+	return res;
+}
+
+static bool lib_set_cfg_float(CFG_PARAM p, float value) {
+	bool res = false;
+
+	mc_configuration *mcconf = (mc_configuration*)mc_interface_get_configuration();
+	int changed_mc = 0;
+
+	// Safe changes that can be done instantly on the pointer. It is not that good to do
+	// it this way, but it is much faster.
+	// TODO: Check regularly and make sure that these stay safe.
+	switch (p) {
+		case CFG_PARAM_l_current_max: mcconf->l_current_max = value; changed_mc = 1; res = true; break;
+		case CFG_PARAM_l_current_min: mcconf->l_current_min = value; changed_mc = 1; res = true; break;
+		case CFG_PARAM_l_in_current_max: mcconf->l_in_current_max = value; changed_mc = 1; res = true; break;
+		case CFG_PARAM_l_in_current_min: mcconf->l_in_current_min = value; changed_mc = 1; res = true; break;
+		case CFG_PARAM_l_abs_current_max: mcconf->l_abs_current_max = value; changed_mc = 1; res = true; break;
+		case CFG_PARAM_l_min_erpm: mcconf->l_min_erpm = value; changed_mc = 1; res = true; break;
+		case CFG_PARAM_l_max_erpm: mcconf->l_max_erpm = value; changed_mc = 1; res = true; break;
+		case CFG_PARAM_l_erpm_start: mcconf->l_erpm_start = value; changed_mc = 1; res = true; break;
+		case CFG_PARAM_l_max_erpm_fbrake: mcconf->l_max_erpm_fbrake = value; changed_mc = 1; res = true; break;
+		case CFG_PARAM_l_max_erpm_fbrake_cc: mcconf->l_max_erpm_fbrake_cc = value; changed_mc = 1; res = true; break;
+		case CFG_PARAM_l_min_vin: mcconf->l_min_vin = value; changed_mc = 1; res = true; break;
+		case CFG_PARAM_l_max_vin: mcconf->l_max_vin = value; changed_mc = 1; res = true; break;
+		case CFG_PARAM_l_battery_cut_start: mcconf->l_battery_cut_start = value; changed_mc = 1; res = true; break;
+		case CFG_PARAM_l_battery_cut_end: mcconf->l_battery_cut_end = value; changed_mc = 1; res = true; break;
+		default: break;
+	}
+
+	if (changed_mc > 0) {
+		commands_apply_mcconf_hw_limits(mcconf);
+	}
+
+	return res;
+}
+
+static bool lib_set_cfg_int(CFG_PARAM p, int value) {
+	bool res = false;
+
+	app_configuration *appconf = mempools_alloc_appconf();
+	*appconf = *app_get_configuration();
+
+	switch (p) {
+	case CFG_PARAM_app_can_mode: appconf->can_mode = value; res = true; break;
+	case CFG_PARAM_app_can_baud_rate: appconf->can_baud_rate = value; res = true; break;
+	default: break;
+	}
+
+	if (res) {
+		app_set_configuration(appconf);
+	}
+
+	mempools_free_appconf(appconf);
+
+	return res;
+}
+
+static bool lib_store_cfg(void) {
+	mc_configuration *mcconf = mempools_alloc_mcconf();
+	*mcconf = *mc_interface_get_configuration();
+	bool res_mc = conf_general_store_mc_configuration(mcconf, mc_interface_get_motor_thread() == 2);
+	mempools_free_mcconf(mcconf);
+
+	app_configuration *appconf = mempools_alloc_appconf();
+	*appconf = *app_get_configuration();
+	bool res_app = conf_general_store_app_configuration(appconf);
+	mempools_free_appconf(appconf);
+
+	return res_mc && res_app;
+}
+
 static bool lib_create_byte_array(lbm_value *value, lbm_uint num_elt) {
 	return lbm_heap_allocate_array(value, num_elt, LBM_TYPE_BYTE);
 }
@@ -660,6 +751,10 @@ lbm_value ext_load_native_lib(lbm_value *args, lbm_uint argn) {
 
 		// Settings
 		cif.cif.get_cfg_float = lib_get_cfg_float;
+		cif.cif.get_cfg_int = lib_get_cfg_int;
+		cif.cif.set_cfg_float = lib_set_cfg_float;
+		cif.cif.set_cfg_int = lib_set_cfg_int;
+		cif.cif.store_cfg = lib_store_cfg;
 
 		lib_init_done = true;
 	}
@@ -738,4 +833,12 @@ void lispif_stop_lib(void) {
 			loaded_libs[i].stop_fun = NULL;
 		}
 	}
+
+	for (size_t i = 0;i < lib_running_threads_cnt;i++) {
+		if (!chThdTerminatedX(lib_running_threads[i])) {
+			lib_request_terminate(lib_running_threads[i]);
+		}
+	}
+
+	lib_running_threads_cnt = 0;
 }
