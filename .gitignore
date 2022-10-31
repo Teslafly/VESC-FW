@@ -16,8 +16,6 @@ workspace.code-workspace
 *.pro.shared
 
 .vscode
-.vscode/.cortex-debug.peripherals.state.json
-.vscode/.cortex-debug.registers.state.json
 *.log
 null.d
 nul.d

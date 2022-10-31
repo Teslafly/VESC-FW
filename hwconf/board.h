@@ -32,6 +32,16 @@
  * Board oscillators-related settings.
  * NOTE: LSE not fitted.
  */
+
+//// ### use this block to define your own clock in your hwconf. works with N*1mhz clock sources. ###
+//// ### HSECLK and PLLM_VALUE can be incremented in 1mhz increments. ###
+// #define STM32_HSECLK                25000000U
+// #define STM32_PLLM_VALUE                   25
+//// ### use if connecting oscillator to OSC_IN instead of crystal ###
+// #define STM32_HSE_BYPASS  
+//// ### if no external clocking just use ###
+//// #def HW_USE_INTERNAL_RC
+
 #if !defined(STM32_LSECLK)
 #define STM32_LSECLK                0U
 #endif

@@ -39,6 +39,8 @@
  */
 #define STM32F4xx_MCUCONF
 
+// see hwconf/board.h for clock configuration copy paste block
+
 // Internal RC osc
 #ifdef HW_USE_INTERNAL_RC
 #define STM32_NO_INIT                       FALSE
@@ -70,6 +72,9 @@
 #define STM32_BKPRAM_ENABLE                 FALSE
 #else
 // 8M XTAL
+// #if !defined(STM32_HSECLK)
+// #define STM32_HSECLK                8000000U
+// #endif
 #define STM32_NO_INIT                       FALSE
 #define STM32_HSI_ENABLED                   TRUE
 #define STM32_LSI_ENABLED                   TRUE
@@ -78,7 +83,9 @@
 #define STM32_CLOCK48_REQUIRED              TRUE
 #define STM32_SW                            STM32_SW_PLL
 #define STM32_PLLSRC                        STM32_PLLSRC_HSE
+#if !defined(STM32_PLLM_VALUE)
 #define STM32_PLLM_VALUE                    8
+#endif
 #define STM32_PLLN_VALUE                    336
 #define STM32_PLLP_VALUE                    2
 #define STM32_PLLQ_VALUE                    7
