@@ -68,7 +68,12 @@
 #define READ_APPEND_ARRAY     ((29 << LBM_VAL_SHIFT) | LBM_TYPE_U)
 #define MAP_FIRST             ((30 << LBM_VAL_SHIFT) | LBM_TYPE_U)
 #define MAP_REST              ((31 << LBM_VAL_SHIFT) | LBM_TYPE_U)
-#define NUM_CONTINUATIONS     32
+#define MATCH_GUARD           ((32 << LBM_VAL_SHIFT) | LBM_TYPE_U)
+#define NUM_CONTINUATIONS     33
+
+#define FM_NEED_GC       -1
+#define FM_NO_MATCH      -2
+#define FM_PATTERN_ERROR -3
 
 static const char* parse_error_eof = "End of parse stream";
 static const char* parse_error_token = "Malformed token";
@@ -839,7 +844,6 @@ static void advance_ctx(eval_context_t *ctx) {
     ctx->curr_exp = lbm_car(ctx->program);
     ctx->curr_env = ENC_SYM_NIL;
     ctx->program = lbm_cdr(ctx->program);
-    ctx->r = ENC_SYM_NIL;
     ctx->app_cont = false;
   } else {
     ctx->done = true;
@@ -970,16 +974,22 @@ static bool match(lbm_value p, lbm_value e, lbm_value *env, bool *gc) {
   return struct_eq(p, e);
 }
 
-static int find_match(lbm_value plist, lbm_value *earr, lbm_uint num, lbm_value *e, lbm_value *env, bool *gc) {
+static int find_match(lbm_value plist, lbm_value *earr, lbm_uint num, lbm_value *e, lbm_value *env) {
 
   lbm_value curr_p = plist;
   int n = 0;
+  bool gc = false;
   for (int i = 0; i < (int)num; i ++ ) {
     lbm_value curr_e = earr[i];
     while (lbm_type_of(curr_p) == LBM_TYPE_CONS) {
-      if (match(lbm_car(lbm_car(curr_p)), curr_e, env, gc)) {
-        if (*gc) return -1;
-        *e = lbm_cadr(lbm_car(curr_p));
+      lbm_value me = lbm_car(curr_p);
+      if (match(lbm_car(me), curr_e, env, &gc)) {
+        if (gc) return FM_NEED_GC;
+        *e = lbm_cadr(me);
+
+        if (!lbm_is_symbol_nil(lbm_cadr(lbm_cdr(me)))) {
+          return FM_PATTERN_ERROR;
+        }
         return n;
       }
       curr_p = lbm_cdr(curr_p);
@@ -988,7 +998,7 @@ static int find_match(lbm_value plist, lbm_value *earr, lbm_uint num, lbm_value 
     n ++;
   }
 
-  return -1;
+  return FM_NO_MATCH;
 }
 
 /****************************************************/
@@ -1298,6 +1308,41 @@ static void eval_if(eval_context_t *ctx) {
   }
 }
 
+static void eval_cond(eval_context_t *ctx) {
+  lbm_value cond1 = lbm_cadr(ctx->curr_exp);
+
+  if (lbm_is_symbol_nil(cond1)) {
+    ctx->r = ENC_SYM_NIL;
+    ctx->app_cont = true;
+  } else {
+    uint32_t len = lbm_list_length(cond1);
+    if (len != 2) {
+      lbm_set_error_reason("Incorrect syntax in cond");
+      error_ctx(ENC_SYM_EERROR);
+    }
+    lbm_value condition = lbm_car(cond1);
+    lbm_value body = lbm_cadr(cond1);
+    lbm_value rest;
+    WITH_GC(rest, lbm_cons(ENC_SYM_COND, lbm_cdr(lbm_cdr(ctx->curr_exp))));
+    lbm_uint *sptr = lbm_stack_reserve(&ctx->K, 4);
+    if (sptr) {
+      sptr[0] = rest;
+      sptr[1] = body;
+      sptr[2] = ctx->curr_env;
+      sptr[3] = IF;
+      ctx->curr_exp = condition;
+    } else {
+      error_ctx(ENC_SYM_STACK_ERROR);
+    }
+  }
+}
+
+static void eval_app_cont(eval_context_t *ctx) {
+  lbm_value tmp;
+  lbm_pop(&ctx->K, &tmp);
+  ctx->app_cont = true;
+}
+
 static void eval_let(eval_context_t *ctx) {
   lbm_value orig_env = ctx->curr_env;
   lbm_value binds    = lbm_cadr(ctx->curr_exp); // key value pairs.
@@ -1410,21 +1455,21 @@ static void eval_receive(eval_context_t *ctx) {
       /* The common case */
       lbm_value e;
       lbm_value new_env = ctx->curr_env;
-      bool do_gc = false;
-      int n = find_match(lbm_cdr(pats), msgs, num, &e, &new_env, &do_gc);
-      if (do_gc) {
+      int n = find_match(lbm_cdr(pats), msgs, num, &e, &new_env);
+      if (n == FM_NEED_GC) {
         gc();
-        do_gc = false;
-        n = find_match(lbm_cdr(pats), msgs, num, &e, &new_env, &do_gc);
-        if (do_gc) {
+        n = find_match(lbm_cdr(pats), msgs, num, &e, &new_env);
+        if (n == FM_NEED_GC) {
           ctx_running->done = true;
           error_ctx(ENC_SYM_MERROR);
           return;
         }
       }
-      if (n >= 0 ) { /* Match */
+      if (n == FM_PATTERN_ERROR) {
+        lbm_set_error_reason("Incorrect pattern format for recv");
+        error_ctx(ENC_SYM_EERROR);
+      } else if (n >= 0 ) { /* Match */
         mailbox_remove_mail(ctx, (lbm_uint)n);
-
         ctx->curr_env = new_env;
         ctx->curr_exp = e;
       } else { /* No match  go back to sleep */
@@ -1698,17 +1743,30 @@ static void apply_eval(lbm_value *args, lbm_uint nargs, eval_context_t *ctx) {
 static void apply_eval_program(lbm_value *args, lbm_uint nargs, eval_context_t *ctx) {
 
   lbm_value prg = args[1];
-  prg = lbm_list_append(prg, ctx->program);
+  lbm_value app_cont;
+  lbm_value app_cont_prg;
+  lbm_value new_prg;
 
+  lbm_value prg_copy;
+
+  WITH_GC(prg_copy, lbm_list_copy(prg));
   lbm_stack_drop(&ctx->K, nargs+1);
 
-  if (lbm_type_of(prg) != LBM_TYPE_CONS) {
+  if (ctx->K.sp > nargs+2) { // if there is a continuation
+    WITH_GC_1(app_cont, lbm_cons(ENC_SYM_APP_CONT, ENC_SYM_NIL), prg_copy);
+    WITH_GC_2(app_cont_prg, lbm_cons(app_cont, ENC_SYM_NIL), app_cont, prg_copy);
+    new_prg = lbm_list_append(app_cont_prg, ctx->program);
+    new_prg = lbm_list_append(prg_copy, new_prg);
+  } else {
+    new_prg = lbm_list_append(prg_copy, ctx->program);
+  }
+  if (lbm_type_of(new_prg) != LBM_TYPE_CONS) {
     error_ctx(ENC_SYM_EERROR);
     return;
   }
-
-  ctx->program = lbm_cdr(prg);
-  ctx->curr_exp = lbm_car(prg);
+  CHECK_STACK(lbm_push(&ctx->K, DONE));
+  ctx->program = lbm_cdr(new_prg);
+  ctx->curr_exp = lbm_car(new_prg);
 }
 
 static void apply_send(lbm_value *args, lbm_uint nargs, eval_context_t *ctx) {
@@ -2161,12 +2219,28 @@ static void cont_match(eval_context_t *ctx) {
     ctx->r = ENC_SYM_NO_MATCH;
     ctx->app_cont = true;
   } else if (lbm_is_cons(patterns)) {
-    lbm_value pattern = lbm_car(lbm_car(patterns));
-    lbm_value body    = lbm_cadr(lbm_car(patterns));
-
+    lbm_value match_case = lbm_car(patterns);
+    lbm_value pattern = lbm_car(match_case);
+    lbm_value n1      = lbm_cadr(match_case);
+    lbm_value n2      = lbm_cadr(lbm_cdr(match_case));
+    lbm_value body;
+    bool check_guard = false;
+    if (lbm_is_symbol_nil(n2)) {
+      body = n1;
+    } else {
+      body = n2;
+      check_guard = true;
+    }
     if (match(pattern, e, &new_env, &do_gc)) {
-      ctx->curr_env = new_env;
-      ctx->curr_exp = body;
+      if (check_guard) {
+        CHECK_STACK(lbm_push_3(&ctx->K, lbm_cdr(patterns), ctx->curr_env, MATCH));
+        CHECK_STACK(lbm_push_3(&ctx->K, body, e, MATCH_GUARD));
+        ctx->curr_env = new_env;
+        ctx->curr_exp = n1; // The guard
+      } else {
+        ctx->curr_env = new_env;
+        ctx->curr_exp = body;
+      }
     } else if (do_gc) {
       lbm_gc_mark_phase(patterns);
       lbm_gc_mark_phase(e);
@@ -2179,8 +2253,15 @@ static void cont_match(eval_context_t *ctx) {
         error_ctx(ENC_SYM_MERROR);
         return;
       }
-      ctx->curr_env = new_env;
-      ctx->curr_exp = body;
+      if (check_guard) {
+        CHECK_STACK(lbm_push_3(&ctx->K, lbm_cdr(patterns), ctx->curr_env, MATCH));
+        CHECK_STACK(lbm_push_3(&ctx->K, body, e, MATCH_GUARD));
+        ctx->curr_env = new_env;
+        ctx->curr_exp = n1; // The guard
+      } else {
+        ctx->curr_env = new_env;
+        ctx->curr_exp = body;
+      }
     } else {
       /* set up for checking of next pattern */
       CHECK_STACK(lbm_push_3(&ctx->K, lbm_cdr(patterns),ctx->curr_env, MATCH));
@@ -2256,6 +2337,23 @@ static void cont_map_rest(eval_context_t *ctx) {
     ctx->app_cont = true;
   }
 }
+
+static void cont_match_guard(eval_context_t *ctx) {
+  if (lbm_is_symbol_nil(ctx->r)) {
+    lbm_value e;
+    lbm_pop(&ctx->K, &e);
+    lbm_stack_drop(&ctx->K, 1);
+    ctx->r = e;
+    ctx->app_cont = true;
+  } else {
+    lbm_value body;
+    lbm_stack_drop(&ctx->K, 1);
+    lbm_pop(&ctx->K, &body);
+    lbm_stack_drop(&ctx->K, 3);
+    ctx->curr_exp = body;
+  }
+}
+
 
 /****************************************************/
 /*   READER                                         */
@@ -2849,11 +2947,12 @@ static const cont_fun continuations[NUM_CONTINUATIONS] =
     cont_read_start_array,
     cont_read_append_array,
     cont_map_first,
-    cont_map_rest
+    cont_map_rest,
+    cont_match_guard,
   };
 
 /*********************************************************/
-/* Evaluators lookup table                               */
+/* Evaluators lookup table (special forms)               */
 typedef void (*evaluator_fun)(eval_context_t *);
 
 static const evaluator_fun evaluators[] =
@@ -2873,6 +2972,8 @@ static const evaluator_fun evaluators[] =
    eval_selfevaluating, // macro
    eval_selfevaluating, // cont
    eval_selfevaluating, // closure
+   eval_cond,
+   eval_app_cont,
   };
 
 

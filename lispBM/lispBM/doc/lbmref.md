@@ -127,8 +127,8 @@ Compute 5 % 3, evaluates to 2.
 
 ### eq
 
-Compare expressions for equality. The eq implements structural
-equality.  The form of an eq expression is `(eq expr1 ... exprN)`
+Compare expressions for equality. The `eq` operation implements structural
+equality.  The form of an `eq` expression is `(eq expr1 ... exprN)`
 
 
 Compare the result of `(+ 1 2)` with 3. The
@@ -149,8 +149,10 @@ The following examples evaluate to `nil` representing false.
 
 (eq (+ 1 2) (+ 0 2) (+ -1 2))
 ```
-The = comparison can be used on tree shaped data. The following expression evaluates to
-`t`.
+
+The `eq` comparison can be used on tree shaped data. The following
+expression evaluates to `t`.
+
 ```clj
 (eq '(1 (1 2)) '(1 (1 2)))
 ```
@@ -165,7 +167,7 @@ If you know you are comparing numbers, it will be more efficient to use
 `=`.
 
 An important difference between `eq` and `=` is
-that equals compare the numerical values of the arguments. A 3 is a 3
+that `=` compare the numerical values of the arguments. A 3 is a 3
 independent of them being different types. `eq` on the other
 hand compares the representations of the arguments exactly and they must
 match in structure, type and value to be considered equal.
@@ -345,11 +347,9 @@ is the same type as the first of the arguments.
 Performs the bitwise not operations on a value. The result is of same type as
 the argument.
 
-## Low level operations
-
 ---
 
-## nil and t
+## nil and t, true and false
 
 ### nil
 
@@ -366,8 +366,20 @@ and nil in the <a href="#cdr"> cdr </a> field.
 
 ### t
 
-All non nil values are considered true in conditionals. t should be used in cases where an
+All non nil values are considered true in conditionals. `t` should be used in cases where an
 explicit true makes sense.
+
+---
+
+### true
+
+`true` is an alias for `t`.
+
+---
+
+### false
+
+`false` is an alias for `nil`.
 
 ---
 
@@ -446,13 +458,18 @@ Example that evaluates to 3.
 
 Evaluate a list of data where each element represents an expression.
 
-This function interacts with the continuation passing style
-of the evaluator in a slightly non-intuitive way and should
-be avoided in programs. It is used internally by the c-interoperation
-code to start evaluation of newly loaded program.
+Example that results in the value 15:
+```
+(define prg '( (+ 1 2) (+ 3 4) (+ 10 5)))
+(eval-program prg)
+```
 
-If you want to evaluate a program you can always use `eval` and
-put the program you wish to evaluate in a `progn` form.
+Example that prints the strings "apa", "bepa" and "cepa":
+```
+(define prg '( (print "apa") (print "bepa") (print "cepa")))
+(eval-program prg)
+```
+
 
 ---
 
@@ -530,6 +547,36 @@ The example below evaluates to 0 if a is less than or equal to 4. Otherwise it e
 (if (> a 4) (+ a 10) 0)
 ```
 
+---
+
+### cond
+
+`cond` is a generalization of `if` to discern between n different cases
+based on boolean expressions. The form of a `cond` expression is:
+`(cond ( cond-expr1 expr1) (cond-expr2 expr2) ... (cond-exprN exprN))`.
+The conditions are checked from first to last and for the first `cond-exprN`
+that evaluates to true, the corresponding `exprN` is evaluated.
+
+If no `cond-exprN` evaluates to true, the result of the entire conditional
+is `nil`. 
+
+Example that prints "Hello world":
+```clj
+(define a 0)
+
+(cond ( (< a 0) (print "abrakadabra"))
+      ( (> a 0) (print "llama"))
+      ( (= a 0) (print "Hello world")))
+```
+
+Example that evaluates to `nil` as none of the conditions evaluate to true.
+```clj
+(define a 5)
+
+(cond ( (= a 1)  'doughnut )
+      ( (= a 7)  'apple-strudel )
+      ( (= a 10) 'baklava))
+```
 ---
 
 ### lambda
@@ -1206,6 +1253,24 @@ An example that evaluates to 19.
        ((orange (? n)) (+ n 2))
        ((blue (? n)) (+ n 3)))
 ```
+
+---
+
+### Match with guards
+
+Patterns used in a match expressions can be augmented with a boolean
+guard to further discern between cases. A pattern with a guard is of the
+form `(pattern-expr guard-expr expr)`. A pattern with a guard, matches only
+if the pattern structurally matches and if the guard-expr evaluates to true
+in the match environment.
+
+Example:
+```clj
+(match (x)
+       ( (? y) (< y 0) 'less-than-zero)
+       ( (? y) (> y 0) 'greater-than-zero)
+       ( (? y) (= y 0) 'equal-to-zero))
+``` 
 
 ---
 
