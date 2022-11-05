@@ -15,7 +15,7 @@
         {
             "label": "upload",
             "type": "shell",
-            "command": "make fw_stm_disc_brain_upload"
+            "command": "make fw_stm_disc_brain_flash"
         }
     ]
 }
