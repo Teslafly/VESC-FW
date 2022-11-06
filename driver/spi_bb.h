@@ -26,10 +26,10 @@
 #include "stdbool.h"
 
 enum spi_types{
-	spi_type_hw, // spi = seperate mosi and miso wires
-	spi_type_sw,
-	ssc_type_hw, // ssc = one data wire using mosi pin
-	ssc_type_sw,
+	spi_type_sw, // spi = seperate mosi and miso wires, (hw = hw spi pins)
+	spi_type_hw, 
+	ssc_type_sw, // ssc = one data wire using mosi pin
+	ssc_type_hw, 
 	};
 
 typedef struct {

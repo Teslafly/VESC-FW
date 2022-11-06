@@ -79,9 +79,7 @@ bool encoder_init(volatile mc_configuration *conf) {
 		res = true;
 	} break;
 
-	case SENSOR_PORT_MODE_MT6816_SPI_HW:
-	case SENSOR_PORT_MODE_MT6816_SSC_HW:
-	case SENSOR_PORT_MODE_MT6816_SSC_SW: {
+	case SENSOR_PORT_MODE_MT6816_SPI_HW: {
 		SENSOR_PORT_5V();
 
 		if (!enc_mt6816_init(&encoder_cfg_mt6816)) {
@@ -94,15 +92,13 @@ bool encoder_init(volatile mc_configuration *conf) {
 
 		res = true;
 	} break;
-
-	case SENSOR_PORT_MODE_TLE5014_SSC_HW:
-	case SENSOR_PORT_MODE_TLE5014_SSC_SW: {
+	case SENSOR_PORT_MODE_TLE5014_SSC_SW:
+	case SENSOR_PORT_MODE_TLE5014_SSC_HW: {
 		SENSOR_PORT_3V3();
 
 		//must support 4 modes:
 		// ssc (3 wire) sw spi
-		// ssc (3 wire) hw spi w dma
-		// can be just a change in the interface? all register access/etc is same.
+		// ssc (3 wire) hw spi w dma (sw spi using hw spi pins for now)
 
 		if (!enc_tle5012_init(&encoder_cfg_tle5012)) {
 			encoder_type_now = ENCODER_TYPE_NONE;
@@ -350,8 +346,6 @@ void encoder_check_faults(volatile mc_configuration *m_conf, bool is_second_moto
 			break;
 
 		case SENSOR_PORT_MODE_MT6816_SPI_HW:
-		case SENSOR_PORT_MODE_MT6816_SSC_HW:
-		case SENSOR_PORT_MODE_MT6816_SSC_SW:
 			if (encoder_cfg_mt6816.state.encoder_no_magnet_error_rate > 0.05) {
 				mc_interface_fault_stop(FAULT_CODE_ENCODER_NO_MAGNET, is_second_motor, false);
 			}
@@ -486,8 +480,6 @@ static void terminal_encoder(int argc, const char **argv) {
 		break;
 
 	case SENSOR_PORT_MODE_MT6816_SPI_HW:
-	case SENSOR_PORT_MODE_MT6816_SSC_HW:
-	case SENSOR_PORT_MODE_MT6816_SSC_SW:
 		commands_printf("Low flux error (no magnet): errors: %d, error rate: %.3f %%",
 				encoder_cfg_mt6816.state.encoder_no_magnet_error_cnt,
 				(double)(encoder_cfg_mt6816.state.encoder_no_magnet_error_rate * 100.0));
