@@ -6,7 +6,8 @@
         {
             "label": "build",
             "type": "shell",
-            "command": "make fw_stm_disc_brain",
+            // "command": "make fw_stm_disc_brain",
+            "command": "make fw_60_mk4",
             "problemMatcher": [
                 "$gcc"
             ]
@@ -15,7 +16,8 @@
         {
             "label": "upload",
             "type": "shell",
-            "command": "make fw_stm_disc_brain_flash"
+            // "command": "make fw_stm_disc_brain_flash"
+            "command": "make fw_60_mk4_flash"
         }
     ]
 }
