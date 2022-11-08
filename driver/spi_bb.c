@@ -192,27 +192,13 @@ void ssc_bb_transfer_16(
 		uint16_t send = out_buf ? out_buf[i] : 0xFFFF;
 		uint16_t receive = 0;
 
-		stm32_gpio_t *read_gpio;
-		int read_pin;
-
-		if(s->spi_type == ssc_type_hw)
-		{
-			read_gpio = s->mosi_gpio; //ssc usses mosi for all comms
-			read_pin = s->mosi_pin; // what if just set the mosi and miso to the same pin in the ssc init?
-		}else{
-			read_gpio = s->miso_gpio;
-			read_pin = s->miso_pin;
-			// write = true; // why was this ever here? it breaks things. look at git.
-		}
-
+		//ssc usses mosi for all comms
 		if(write && s->mosi_gpio){
-			// need to set pin level before setting pin to output.
 			palWritePad(s->mosi_gpio, s->mosi_pin, send >> 15); 
-
 			palSetPadMode(s->mosi_gpio, s->mosi_pin,
 				PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
 		} else {
-			palSetPadMode(read_gpio, read_pin, PAL_MODE_INPUT_PULLUP); // set up in spi init for non ssc?
+			palSetPadMode(s->mosi_gpio, s->mosi_pin, PAL_MODE_INPUT_PULLUP); // set up in spi init for non ssc?
 			write = false;
 		}
 
@@ -226,15 +212,13 @@ void ssc_bb_transfer_16(
 				send <<= 1;
 			}
 
+			// read when clk low
 			spi_bb_delay_short();
-			// spi_bb_delay();
 			palClearPad(s->sck_gpio, s->sck_pin);
 			spi_bb_delay_short();
-			// read when clk low
-
-			// only read once to go fast.
+			
 			receive <<= 1;
-			receive |= palReadPad(read_gpio, read_pin);
+			receive |= palReadPad(s->mosi_gpio, s->mosi_pin);
 		}
 
 		if (in_buf) {
@@ -242,7 +226,6 @@ void ssc_bb_transfer_16(
 		}
 	}
 }
-
 
 void spi_bb_begin(spi_bb_state *s) {
 	spi_bb_delay();
