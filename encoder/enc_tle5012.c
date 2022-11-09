@@ -38,18 +38,51 @@
 #include <math.h>
 #include <string.h>
 
+// Bitmasks for several read and write functions
+#define TLE5012_SYSTEM_ERROR_MASK           0x4000    //!< \brief System error masks for safety words
+#define TLE5012_INTERFACE_ERROR_MASK        0x2000    //!< \brief Interface error masks for safety words
+#define TLE5012_INV_ANGLE_ERROR_MASK        0x1000    //!< \brief Angle error masks for safety words
+
+#define TLE5012_CRC_POLYNOMIAL              0x1D      //!< \brief values used for calculating the CRC
+#define TLE5012_CRC_SEED                    0xFF
+// #define TLE5012_CRC_NUM_REGISTERS           0x0008    //!< \brief number of CRC relevant registers
+// #define TLE5012_MAX_REGISTER_MEM            0x0030    //!< \brief max readable register values buffer
+// #define TLE5012_MAX_NUM_REG                 0x16      //!< \brief defines the value for temporary data to read all readable registers
+
+
+enum tle5012_registers {
+	REG_STAT    =  0,     //!< STAT status register
+	REG_ACSTAT  =  1,     //!< ACSTAT activation status register
+	REG_AVAL    =  2,     //!< AVAL angle value register
+	REG_ASPD    =  3,     //!< ASPD angle speed register
+	REG_AREV    =  4,     //!< AREV angle revolution register
+	REG_FSYNC   =  5,     //!< FSYNC frame synchronization register
+	REG_MOD_1   =  6,     //!< MOD_1 interface mode1 register
+	REG_SIL     =  7,     //!< SIL register
+	REG_MOD_2   =  8,     //!< MOD_2 interface mode2 register
+	REG_MOD_3   =  9,     //!< MOD_3 interface mode3 register
+	REG_OFFX    = 10,     //!< OFFX offset x
+	REG_OFFY    = 11,     //!< OFFY offset y
+	REG_SYNCH   = 12,     //!< SYNCH synchronicity
+	REG_IFAB    = 13,     //!< IFAB register
+	REG_MOD_4   = 14,     //!< MOD_4 interface mode4 register
+	REG_TCO_Y   = 15,     //!< TCO_Y temperature coefficient register
+	REG_ADC_X   = 16,     //!< ADC_X ADC X-raw value
+	REG_ADC_Y   = 17,     //!< ADC_Y ADC Y-raw value
+	REG_D_MAG   = 18,     //!< D_MAG angle vector magnitude
+	REG_T_RAW   = 19,     //!< T_RAW temperature sensor raw-value
+	REG_IIF_CNT = 20,     //!< IIF_CNT IIF counter value
+	REG_T25O    = 21,     //!< T25O temperature 25°c offset value
+};
+
 
 typedef enum spi_direction {
 	READ = true, 
 	WRITE = false
 } spi_direction; 
 
-// uint16_t enc_tle5012_read_register(TLE5012_config_t *cfg, uint8_t address);
 uint8_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t *data, spi_direction read, bool safe);
 
-
-// uint8_t getFirstByte(uint16_t twoByteWord);
-// uint8_t getSecondByte(uint16_t twoByteWord);
 uint8_t crc8(uint8_t *data, uint8_t length);
 uint8_t checkSafety(uint16_t command, uint16_t safetyword, const uint16_t *readreg, uint16_t length);
 
@@ -71,7 +104,7 @@ bool enc_tle5012_init(TLE5012_config_t *cfg) {
 		return true;
 
 	} else {
-		// sw spi
+		// software ssc
 		memset(&cfg->state, 0, sizeof(TLE5012_state)); 
 
 		// ssc mode uses mosi pin only. (both MISO/MOSI set to MOSI gpio)
@@ -84,7 +117,64 @@ bool enc_tle5012_init(TLE5012_config_t *cfg) {
 		return true;
 	}
 
-	// set up control registers to be identical across variants
+
+	/*
+	// TLE5012B E1000 (IIF) configuration:
+	IIF-type: E1000
+	The TLE5012B E1000 is preconfigured for Incremental Interface and fast angle update rate (42.7 μs). 
+	It is most suitable for BLDC motor commutation.
+	• Incremental Interface A/B mode.
+	• 12bit mode, one count per 0.088° angle step.
+	• Absolute count enabled.
+	• Autocalibration mode 1 enabled.
+	• Prediction disabled.
+	• Hysteresis set to 0.703°.
+	• IFA/IFB/IFC pins set to push-pull output.
+	• SSC interface’s DATA pin set to push-pull output.
+	• IFA/IFB/IFC pins set to strong driver, DATA pin set to strong driver, fast edge.
+	• Voltage spike filter on input pads disabled.
+
+	- Interface Mode1 Register
+		fir_md = 0b01  // Update Rate Setting (Filter Decimation), 42.7 μs (minimum)
+		clk_sel = 0    // Clock Source Select, internal
+		dspu_hold = 0  // DSPU in normal schedule operation, no watchdog reset
+		iif_mod = 0b01 // Incremental Interface Mode, A/B operation with Index on IFC pin
+		Offset = 0x06
+		mask = 0b11 00000000 1 0 1 11 // reserved unset only
+		word = 0b01 00000000 0 0 0 01
+	- Interface Mode2 Register
+		predict: 0     // prediction disabled
+		autocal = 0b01 //auto-cal. mode 1: update every angle update cycle
+			           // change autocal to 0b00? (no auto-calibration)
+		Offset = 0x08
+		mask = 0b0 1111111111 1 1 11
+		word = 0b0 1111111111 0 0 01
+	- Interface Mode3 Register
+		spikef = 0   // Analog Spike Filter of Input Pads, disabled
+		ssc_od = 0   // SSC-Interface Data Pin Output Mode, Push-Pull
+		PAD_drv = 00 // Configuration of Pad-Driver, 
+					 // IFA/IFB/IFC: strong driver, DATA: strong driver, fast edge
+		Offset = 0x09
+		mask = 0b00000000000 1 1 11 // can overwrite ang base to 0?
+		word = 0b00000000000 0 0 00
+	- TCO_Y // nothing derivate-specific
+		sbist = 1// built in self test on startup
+		crc = crc of parameters if autocalibrate not set.
+	- IFAB Register
+		fir_udr = 1 // FIR Update Rate, FIR_MD = ‘01’ (42.7 μs)
+		ifab_od = 0 // IFA,IFB,IFC Output Mode, Push-Pull
+		ifab_hyst = 0b11 // HSM and IIF Mode: Hysteresis, 0.70° (max)
+		mask = 0b00000000000 1 1 11
+		word = 0b00000000000 1 0 11
+	- Interface Mode4 Register
+		hsm_plp = 0b0001 // Incremental Interface Mode: Absolute Count, absolute count enabled
+		ifab_res = 0b00  // Incremental Interface Mode: IIF resolution, 12bit, 0.088° step
+		if_md = 0b00     // Interface Mode on IFA,IFB,IFC, IIF
+		mask = 0b0000000 1111 11 11
+		word = 0b0000000 0001 00 00
+	*/
+
+	// set up control registers to be identical across tle5012 variants using above settings
 	uint16_t tleregister;
 	// Interface Mode1
 	enc_tle5012_transfer(cfg, 0x06, &tleregister, READ, true);
@@ -148,15 +238,10 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	}
 	cfg->state.last_update_time = timer_time_now();
 
-
-
-
-
 	uint16_t rx_data;
-	uint8_t tle_status = enc_tle5012_transfer(cfg, 0x02, &rx_data, READ, true);  // define register names values?
+	uint8_t tle_status = enc_tle5012_transfer(cfg, REG_AVAL, &rx_data, READ, true);  // define register names values?
 
 	if (tle_status == 0){
-		// palClearPad(GPIOD, 1);
 		uint16_t pos = rx_data & 0x7FFF;
 		cfg->state.last_enc_angle = (float) pos * (360.0 / 32768.0); // 2^15 = 32768.0
 		UTILS_LP_FAST(cfg->state.spi_error_rate, 0.0, timestep);
@@ -176,6 +261,25 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	}
 }
 
+// get tle5012 temp in celsius.
+uint8_t enc_tle5012_get_temperature(TLE5012_config_t *cfg, double *temperature) {
+	uint16_t rawTemp = 0;
+	uint8_t tle_status_err = enc_tle5012_transfer(cfg, REG_FSYNC, &rawTemp, READ, true);
+
+	// extract 9 temp bits
+	rawTemp = (rawTemp & (0x01FF)); 
+
+	//check if the value received is positive or negative
+	if (rawTemp & 0x0100)
+	{
+		rawTemp = rawTemp - 0x0200; // convert to 9 bit signed
+	}
+	// temperature = (rawTemp + TEMP_OFFSET) / (TEMP_DIV);
+	*temperature = ((((int16_t) rawTemp) + 152.0) / (2.776));
+
+	return (tle_status_err);
+}
+
 uint8_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t *data, spi_direction read, bool safety) {
 	const uint8_t upd = 0b0;
 	uint16_t safety_word;
@@ -189,7 +293,6 @@ uint8_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t *d
 	// [9..4] = address, status=0x00, angle=0x02, speed=0x03
 	// [3..0] = 4-bit Number of Data Words (if bits set to 0000B, no safety word is provided)
 
-	
 
 	uint16_t safeword; // this can probably be simplified. just pass safety?
 	if (safety) {
@@ -218,37 +321,6 @@ uint8_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t *d
 	return status;
 }
 
-// Bitmasks for several read and write functions
-#define TLE5012_SYSTEM_ERROR_MASK           0x4000    //!< \brief System error masks for safety words
-#define TLE5012_INTERFACE_ERROR_MASK        0x2000    //!< \brief Interface error masks for safety words
-#define TLE5012_INV_ANGLE_ERROR_MASK        0x1000    //!< \brief Angle error masks for safety words
-
-#define TLE5012_CRC_POLYNOMIAL              0x1D      //!< \brief values used for calculating the CRC
-#define TLE5012_CRC_SEED                    0xFF
-// #define TLE5012_CRC_NUM_REGISTERS           0x0008    //!< \brief number of CRC relevant registers
-// #define TLE5012_MAX_REGISTER_MEM            0x0030    //!< \brief max readable register values buffer
-// #define TLE5012_MAX_NUM_REG                 0x16      //!< \brief defines the value for temporary data to read all readable registers
-
-
-// /*!
-//  * Gets the first byte of a 2 byte word
-//  * @param twoByteWord insert word of two bytes long
-//  * @return returns the first byte
-//  */
-// uint8_t getFirstByte(uint16_t twoByteWord)
-// {
-// 	return ((uint8_t) (twoByteWord >> 8));
-// }
-
-// /*!
-//  * Gets the second byte of the 2 byte word
-//  * @param twoByteWord insert word of two bytes long
-//  * @return returns the second byte
-//  */
-// uint8_t getSecondByte(uint16_t twoByteWord)
-// {
-// 	return ((uint8_t) twoByteWord);
-// }
 
 /*!
  * Function for calculation the CRC.
@@ -276,7 +348,6 @@ uint8_t crc8(uint8_t *data, uint8_t length)
 			}
 		}
 	}
-
 	return ((~crc) & TLE5012_CRC_SEED);
 }
 
@@ -292,7 +363,7 @@ uint8_t checkSafety(uint16_t command, uint16_t safetyword, const uint16_t *readr
 	[7..0]: crc 
 	*/
 
-	if (!((safetyword) & TLE5012_SYSTEM_ERROR_MASK)){
+	if (!((safetyword) & TLE5012_SYSTEM_ERROR_MASK)) {
 		//SYSTEM_ERROR;
 		// resetSafety();
 		return 2;
@@ -312,8 +383,7 @@ uint8_t checkSafety(uint16_t command, uint16_t safetyword, const uint16_t *readr
 		temp[0] = (uint8_t) (command >> 8);
 		temp[1] = (uint8_t) (command);
 
-		for (uint16_t i = 0; i < length; i++)
-		{
+		for (uint16_t i = 0; i < length; i++) {
 			temp[2 + 2 * i] = (uint8_t) (readreg[i] >> 8);
 			temp[2 + 2 * i + 1] = (uint8_t) (readreg[i]);
 		}
@@ -321,146 +391,16 @@ uint8_t checkSafety(uint16_t command, uint16_t safetyword, const uint16_t *readr
 		volatile uint8_t crcReceivedFinal = (uint8_t) safetyword;
 		volatile uint8_t crc = crc8(temp, lengthOfTemp);
 
-		if (crc == crcReceivedFinal){
+		if (crc == crcReceivedFinal) {
 			// NO_ERROR;
 			return 0;
-		}else{
+		} else {
 			// CRC_ERROR;
 			return 1;
 		}
 	}
 	return false;
 }
-
-
-/*
-	// TLE5012B E1000 (IIF) configuration:
-	IIF-type: E1000
-	The TLE5012B E1000 is preconfigured for Incremental Interface and fast angle update rate (42.7 μs). It is most
-	suitable for BLDC motor commutation.
-	• Incremental Interface A/B mode.
-	• 12bit mode, one count per 0.088° angle step.
-	• Absolute count enabled.
-	• Autocalibration mode 1 enabled.
-	• Prediction disabled.
-	• Hysteresis set to 0.703°.
-	• IFA/IFB/IFC pins set to push-pull output.
-	• SSC interface’s DATA pin set to push-pull output.
-	• IFA/IFB/IFC pins set to strong driver, DATA pin set to strong driver, fast edge.
-	• Voltage spike filter on input pads disabled.
-
-	- Interface Mode1 Register
-		fir_md = 0b01 // Update Rate Setting (Filter Decimation), 42.7 μs (minimum)
-					// should this be increased to 11 (170.6 μs) for noise reduction?
-		clk_sel = 0 // Clock Source Select, internal
-		dspu_hold = 0, DSPU in normal schedule operation, no watchdog reset
-		iif_mod = 0b01 // Incremental Interface Mode, A/B operation with Index on IFC pin
-		Offset = 0x06
-		mask = 0b11 00000000 1 0 1 11 // reserved unset only
-		word = 0b01 00000000 0 0 0 01
-	- Interface Mode2 Register
-		predict: 0 // prediction disabled
-		autocal = 0b01 //auto-cal. mode 1: update every angle update cycle
-			// change autocal to 0b00? (no auto-calibration)
-		Offset = 0x08
-		mask = 0b0 1111111111 1 1 11
-		word = 0b0 1111111111 0 0 01
-	- Interface Mode3 Register
-		spikef = 0 // Analog Spike Filter of Input Pads, disabled
-		ssc_od = 0 // SSC-Interface Data Pin Output Mode, Push-Pull
-		PAD_drv = 00 // Configuration of Pad-Driver, 
-					 // IFA/IFB/IFC: strong driver, DATA: strong driver, fast edge
-		Offset = 0x09
-		mask = 0b00000000000 1 1 11 // can overwrite ang base to 0?
-		word = 0b00000000000 0 0 00
-	- TCO_Y // nothing derivate-specific
-		sbist = 1// built in self test on startup
-		crc = crc of parameters if autocalibrate not set.
-	- IFAB Register
-		fir_udr = 1 // FIR Update Rate, FIR_MD = ‘01’ (42.7 μs)
-		ifab_od = 0 // IFA,IFB,IFC Output Mode, Push-Pull
-		ifab_hyst = 0b11 // HSM and IIF Mode: Hysteresis, 0.70° (max)
-		mask = 0b00000000000 1 1 11
-		word = 0b00000000000 1 0 11
-	- Interface Mode4 Register
-		hsm_plp = 0b0001 // Incremental Interface Mode: Absolute Count, absolute count enabled
-		ifab_res = 0b00 // Incremental Interface Mode: IIF resolution, 12bit, 0.088° step
-		if_md = 0b00 // Interface Mode on IFA,IFB,IFC, IIF
-		mask = 0b0000000 1111 11 11
-		word = 0b0000000 0001 00 00
-*/
-
-// //-----------------------------------------------------------------------------
-// // begin generic data transfer functions
-// errorTypes Tle5012b::readFromSensor(uint16_t command, uint16_t &data, updTypes upd, safetyTypes safe)
-// {
-// 	errorTypes checkError = NO_ERROR;
-
-// 	_command[0] = READ_SENSOR | command | upd | safe;
-// 	uint16_t _received[MAX_REGISTER_MEM] = {0};
-// 	sBus->sendReceive(_command, 1, _received, 2);
-// 	data = _received[0];
-// 	if (safe == SAFE_high)
-// 	{
-// 		checkError = checkSafety(_received[1], _command[0], &_received[0], 1);
-// 		if (checkError != NO_ERROR)
-// 		{
-// 			data = 0;
-// 		}
-// 	}
-// 	return (checkError);
-// }
-
-// errorTypes Tle5012b::getTemperature(double &temperature)
-// {
-// 	int16_t rawTemp = 0;
-// 	return (getTemperature(temperature, rawTemp, UPD_low, SAFE_high));
-// }
-// errorTypes Tle5012b::getTemperature(double &temperature, int16_t &rawTemp, updTypes upd, safetyTypes safe)
-// {
-// 	uint16_t rawData = 0;
-// 	errorTypes status = readFromSensor(reg.REG_FSYNC, rawData, upd, safe);
-// 	if (status != NO_ERROR)
-// 	{
-// 		return (status);
-// 	}
-// 	rawData = (rawData & (DELETE_7BITS));
-// 	//check if the value received is positive or negative
-// 	if (rawData & CHECK_BIT_9)
-// 	{
-// 		rawData = rawData - CHANGE_UNIT_TO_INT_9;
-// 	}
-// 	rawTemp = rawData;
-// 	temperature = (rawTemp + TEMP_OFFSET) / (TEMP_DIV);
-// 	return (status);
-// }
-
-
-// const Reg::AddressField_t Reg::addrFields[] =
-// {
-// 	{REG_STAT,     1    },    //!< \brief STAT status register
-// 	{REG_ACSTAT,   2    },    //!< \brief ACSTAT activation status register
-// 	{REG_AVAL,     3    },    //!< \brief AVAL angle value register
-// 	{REG_ASPD,     4    },    //!< \brief ASPD angle speed register
-// 	{REG_AREV,     5    },    //!< \brief AREV angle revolution register
-// 	{REG_FSYNC,    6    },    //!< \brief FSYNC frame synchronization register
-// 	{REG_MOD_1,    7    },    //!< \brief MOD_1 interface mode1 register
-// 	{REG_SIL,      8    },    //!< \brief SIL register
-// 	{REG_MOD_2,    9    },    //!< \brief MOD_2 interface mode2 register
-// 	{REG_MOD_3,   10    },    //!< \brief MOD_3 interface mode3 register
-// 	{REG_OFFX,    11    },    //!< \brief OFFX offset x
-// 	{REG_OFFY,    12    },    //!< \brief OFFY offset y
-// 	{REG_SYNCH,   13    },    //!< \brief SYNCH synchronicity
-// 	{REG_IFAB,    14    },    //!< \brief IFAB register
-// 	{REG_MOD_4,   15    },    //!< \brief MOD_4 interface mode4 register
-// 	{REG_TCO_Y,   16    },    //!< \brief TCO_Y temperature coefficient register
-// 	{REG_ADC_X,   17    },    //!< \brief ADC_X ADC X-raw value
-// 	{REG_ADC_Y,   18    },    //!< \brief ADC_Y ADC Y-raw value
-// 	{REG_D_MAG,   19    },    //!< \brief D_MAG angle vector magnitude
-// 	{REG_T_RAW,   20    },    //!< \brief T_RAW temperature sensor raw-value
-// 	{REG_IIF_CNT, 21    },    //!< \brief IIF_CNT IIF counter value
-// 	{REG_T25O,    22    },    //!< \brief T25O temperature 25°c offset value
-// };
 
 // const Reg::BitField_t Reg::bitFields[] =
 // {

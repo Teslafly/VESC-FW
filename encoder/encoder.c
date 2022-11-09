@@ -486,11 +486,14 @@ static void terminal_encoder(int argc, const char **argv) {
 		break;
 
 	case SENSOR_PORT_MODE_TLE5014_SSC_HW:
-	case SENSOR_PORT_MODE_TLE5014_SSC_SW:
-		commands_printf("Last Status Error: %d, magnet errors:  %d, ssc error rate: %.3f %%",
+	case SENSOR_PORT_MODE_TLE5014_SSC_SW: ;
+		double temperature = 0;
+		enc_tle5012_get_temperature(&encoder_cfg_tle5012, &temperature);
+		commands_printf("Last Status: %d, no-magnet error rate:  %d, ssc error rate: %.3f %%, temp %.2f C",
 				encoder_cfg_tle5012.state.last_status_error,
 				(double)(encoder_cfg_tle5012.state.encoder_no_magnet_error_rate),
-				(double)(encoder_cfg_tle5012.state.spi_error_rate * 100.0));
+				(double)(encoder_cfg_tle5012.state.spi_error_rate * 100.0),
+				temperature);
 
 		// todo, get status word (reg 0x00), temp, magnet strength, etc
 		break;
