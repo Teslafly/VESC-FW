@@ -1208,7 +1208,7 @@ static lbm_value ext_set_pos(lbm_value *args, lbm_uint argn) {
 static lbm_value ext_foc_openloop(lbm_value *args, lbm_uint argn) {
 	CHECK_ARGN_NUMBER(2);
 	timeout_reset();
-	mcpwm_foc_set_openloop(lbm_dec_as_float(args[0]), lbm_dec_as_float(args[1]));
+	mc_interface_set_openloop_current(lbm_dec_as_float(args[0]), lbm_dec_as_float(args[1]));
 	return ENC_SYM_TRUE;
 }
 
@@ -3176,7 +3176,8 @@ typedef struct {
 
 static void measure_res_task(void *arg) {
 	measure_res_args *a = (measure_res_args*)arg;
-	float res = mcpwm_foc_measure_resistance(a->current, a->samples, true);
+	float res = -1.0;
+	mcpwm_foc_measure_resistance(a->current, a->samples, true, &res);
 	lbm_unblock_ctx(a->id, lbm_enc_float(res));
 }
 
@@ -3929,6 +3930,7 @@ static void event_add(ext_event e, uint8_t *opt_array, int opt_array_len) {
 	if (!rb_is_full(&rb_events)) {
 		if (opt_array != NULL) {
 			e.array = lispif_malloc(opt_array_len);
+			e.array_len = opt_array_len;
 			if (e.array == NULL) {
 				return;
 			}
@@ -3965,11 +3967,11 @@ void lispif_load_vesc_extensions(void) {
 	lbm_add_symbol_const("event-data-rx", &sym_event_data_rx);
 	lbm_add_symbol_const("event-shutdown", &sym_event_shutdown);
 
-	lbm_add_symbol_const("?01", &sym_res);
-	lbm_add_symbol_const("?02", &sym_loop);
+	lbm_add_symbol_const("a01", &sym_res);
+	lbm_add_symbol_const("a02", &sym_loop);
 	lbm_add_symbol_const("break", &sym_break);
-	lbm_add_symbol_const("?03", &sym_brk);
-	lbm_add_symbol_const("?04", &sym_rst);
+	lbm_add_symbol_const("a03", &sym_brk);
+	lbm_add_symbol_const("a04", &sym_rst);
 
 	memset(&syms_vesc, 0, sizeof(syms_vesc));
 

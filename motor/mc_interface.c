@@ -119,6 +119,7 @@ static volatile int m_sample_now;
 static volatile int m_sample_trigger;
 static volatile float m_last_adc_duration_sample;
 static volatile bool m_sample_is_second_motor;
+static volatile gnss_data m_gnss = {0};
 
 typedef struct {
 	bool is_second_motor;
@@ -772,6 +773,103 @@ void mc_interface_set_handbrake_rel(float val) {
 	}
 
 	mc_interface_set_handbrake(val * fabsf(motor_now()->m_conf.lo_current_motor_min_now));
+}
+
+void mc_interface_set_openloop_current(float current, float rpm) {
+	if (fabsf(current) > 0.001) {
+		SHUTDOWN_RESET();
+	}
+
+	if (mc_interface_try_input()) {
+		return;
+	}
+
+	switch (motor_now()->m_conf.motor_type) {
+	case MOTOR_TYPE_BLDC:
+	case MOTOR_TYPE_DC:
+		break;
+
+	case MOTOR_TYPE_FOC:
+		mcpwm_foc_set_openloop_current(current, DIR_MULT * rpm);
+		break;
+
+	default:
+		break;
+	}
+
+	events_add("set_openloop_current", current);
+}
+void mc_interface_set_openloop_phase(float current, float phase){
+	if (fabsf(current) > 0.001) {
+		SHUTDOWN_RESET();
+	}
+
+	if (mc_interface_try_input()) {
+		return;
+	}
+
+	switch (motor_now()->m_conf.motor_type) {
+	case MOTOR_TYPE_BLDC:
+	case MOTOR_TYPE_DC:
+		break;
+
+	case MOTOR_TYPE_FOC:
+		mcpwm_foc_set_openloop_phase(current, DIR_MULT * phase);
+		break;
+
+	default:
+		break;
+	}
+
+	events_add("set_openloop_phase", phase);
+}
+void mc_interface_set_openloop_duty(float dutyCycle, float rpm){
+	if (fabsf(dutyCycle) > 0.001) {
+		SHUTDOWN_RESET();
+	}
+
+	if (mc_interface_try_input()) {
+		return;
+	}
+
+	switch (motor_now()->m_conf.motor_type) {
+	case MOTOR_TYPE_BLDC:
+	case MOTOR_TYPE_DC:
+		break;
+
+	case MOTOR_TYPE_FOC:
+		mcpwm_foc_set_openloop_duty(dutyCycle, DIR_MULT * rpm);
+		break;
+
+	default:
+		break;
+	}
+
+	events_add("set_openloop_duty", dutyCycle);
+}
+void mc_interface_set_openloop_duty_phase(float dutyCycle, float phase){
+	if (fabsf(dutyCycle) > 0.001) {
+		SHUTDOWN_RESET();
+	}
+
+	if (mc_interface_try_input()) {
+		return;
+	}
+
+	switch (motor_now()->m_conf.motor_type) {
+	case MOTOR_TYPE_BLDC:
+	case MOTOR_TYPE_DC:
+		break;
+
+	case MOTOR_TYPE_FOC:
+		mcpwm_foc_set_openloop_duty_phase(dutyCycle, phase); // Should this use DIR_MULT?
+		break;
+
+	default:
+		break;
+	}
+
+	events_add("set_openloop_duty_phase", phase);
 }
 
 void mc_interface_brake_now(void) {
@@ -1561,6 +1659,10 @@ setup_values mc_interface_get_setup_values(void) {
 	}
 
 	return val;
+}
+
+volatile gnss_data *mc_interface_gnss(void) {
+	return &m_gnss;
 }
 
 /**
