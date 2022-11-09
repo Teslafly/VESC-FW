@@ -18,6 +18,10 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+	Encoder driver for TLE5012
+	https://www.infineon.com/dgdl/Infineon-TLE5012B_Exxxx-DataSheet-v02_01-EN.pdf?fileId=db3a304334fac4c601350f31c43c433f
  */
 
 #include "enc_mt6816.h"
@@ -44,8 +48,8 @@ typedef enum spi_direction {
 uint8_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t *data, spi_direction read, bool safe);
 
 
-uint8_t getFirstByte(uint16_t twoByteWord);
-uint8_t getSecondByte(uint16_t twoByteWord);
+// uint8_t getFirstByte(uint16_t twoByteWord);
+// uint8_t getSecondByte(uint16_t twoByteWord);
 uint8_t crc8(uint8_t *data, uint8_t length);
 uint8_t checkSafety(uint16_t command, uint16_t safetyword, const uint16_t *readreg, uint16_t length);
 
@@ -144,70 +148,9 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	}
 	cfg->state.last_update_time = timer_time_now();
 
-/*
-	// TLE5012B E1000 (IIF) configuration:
-	IIF-type: E1000
-	The TLE5012B E1000 is preconfigured for Incremental Interface and fast angle update rate (42.7 μs). It is most
-	suitable for BLDC motor commutation.
-	• Incremental Interface A/B mode.
-	• 12bit mode, one count per 0.088° angle step.
-	• Absolute count enabled.
-	• Autocalibration mode 1 enabled.
-	• Prediction disabled.
-	• Hysteresis set to 0.703°.
-	• IFA/IFB/IFC pins set to push-pull output.
-	• SSC interface’s DATA pin set to push-pull output.
-	• IFA/IFB/IFC pins set to strong driver, DATA pin set to strong driver, fast edge.
-	• Voltage spike filter on input pads disabled.
 
 
-	- Interface Mode1 Register
-		fir_md = 0b01 // Update Rate Setting (Filter Decimation), 42.7 μs (minimum)
-					// should this be increased to 11 (170.6 μs) for noise reduction?
-		clk_sel = 0 // Clock Source Select, internal
-		dspu_hold = 0, DSPU in normal schedule operation, no watchdog reset
-		iif_mod = 0b01 // Incremental Interface Mode, A/B operation with Index on IFC pin
-		Offset = 0x06
-		mask = 0b11 00000000 1 0 1 11 // reserved unset only
-		word = 0b01 00000000 0 0 0 01
-	- Interface Mode2 Register
-		predict: 0 // prediction disabled
-		autocal = 0b01 //auto-cal. mode 1: update every angle update cycle
-			// change autocal to 0b00? (no auto-calibration)
-		Offset = 0x08
-		mask = 0b0 1111111111 1 1 11
-		word = 0b0 1111111111 0 0 01
-	- Interface Mode3 Register
-		spikef = 0 // Analog Spike Filter of Input Pads, disabled
-		ssc_od = 0 // SSC-Interface Data Pin Output Mode, Push-Pull
-		PAD_drv = 00 // Configuration of Pad-Driver, 
-					 // IFA/IFB/IFC: strong driver, DATA: strong driver, fast edge
-		Offset = 0x09
-		mask = 0b00000000000 1 1 11 // can overwrite ang base to 0?
-		word = 0b00000000000 0 0 00
-	- TCO_Y // nothing derivate-specific
-		sbist = 1// built in self test on startup
-		crc = crc of parameters if autocalibrate not set.
-	- IFAB Register
-		fir_udr = 1 // FIR Update Rate, FIR_MD = ‘01’ (42.7 μs)
-		ifab_od = 0 // IFA,IFB,IFC Output Mode, Push-Pull
-		ifab_hyst = 0b11 // HSM and IIF Mode: Hysteresis, 0.70° (max)
-		mask = 0b00000000000 1 1 11
-		word = 0b00000000000 1 0 11
-	- Interface Mode4 Register
-		hsm_plp = 0b0001 // Incremental Interface Mode: Absolute Count, absolute count enabled
-		ifab_res = 0b00 // Incremental Interface Mode: IIF resolution, 12bit, 0.088° step
-		if_md = 0b00 // Interface Mode on IFA,IFB,IFC, IIF
-		mask = 0b0000000 1111 11 11
-		word = 0b0000000 0001 00 00
-*/
 
-	// // sw spi
-	// spi_bb_begin(&(cfg->sw_spi));
-	// ssc_bb_transfer_16(&(cfg->sw_spi), &rx_data[0], &command_word, 1, 1); // send command
-	// ssc_bb_transfer_16(&(cfg->sw_spi), &rx_data[0], 0, 2, false); // read 2 words(16b)
-	// spi_bb_end(&(cfg->sw_spi));
-	// uint8_t status = checkSafety(command_word, rx_data[1], &rx_data[0], 1);
 
 	uint16_t rx_data;
 	uint8_t tle_status = enc_tle5012_transfer(cfg, 0x02, &rx_data, READ, true);  // define register names values?
@@ -218,16 +161,13 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 		cfg->state.last_enc_angle = (float) pos * (360.0 / 32768.0); // 2^15 = 32768.0
 		UTILS_LP_FAST(cfg->state.spi_error_rate, 0.0, timestep);
 	}else{
-		// palSetPadMode(GPIOD, 1, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
-		// palSetPad(GPIOD, 1);
-
 		if (tle_status != 1 ) { // if not just a crc error
 
 			// read/clear error reg
 			uint16_t status_reg_dat;
 			uint8_t tle_status_err = enc_tle5012_transfer(cfg, 0x00, &status_reg_dat, READ, true);
-
-			// raise encoder exception?
+			
+			// raise encoder exception? if over certain error rate. 10% maybe?
 		}
 
 		cfg->state.last_status_error = tle_status;
@@ -290,25 +230,25 @@ uint8_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t *d
 // #define TLE5012_MAX_NUM_REG                 0x16      //!< \brief defines the value for temporary data to read all readable registers
 
 
-/*!
- * Gets the first byte of a 2 byte word
- * @param twoByteWord insert word of two bytes long
- * @return returns the first byte
- */
-uint8_t getFirstByte(uint16_t twoByteWord)
-{
-	return ((uint8_t) (twoByteWord >> 8));
-}
+// /*!
+//  * Gets the first byte of a 2 byte word
+//  * @param twoByteWord insert word of two bytes long
+//  * @return returns the first byte
+//  */
+// uint8_t getFirstByte(uint16_t twoByteWord)
+// {
+// 	return ((uint8_t) (twoByteWord >> 8));
+// }
 
-/*!
- * Gets the second byte of the 2 byte word
- * @param twoByteWord insert word of two bytes long
- * @return returns the second byte
- */
-uint8_t getSecondByte(uint16_t twoByteWord)
-{
-	return ((uint8_t) twoByteWord);
-}
+// /*!
+//  * Gets the second byte of the 2 byte word
+//  * @param twoByteWord insert word of two bytes long
+//  * @return returns the second byte
+//  */
+// uint8_t getSecondByte(uint16_t twoByteWord)
+// {
+// 	return ((uint8_t) twoByteWord);
+// }
 
 /*!
  * Function for calculation the CRC.
@@ -369,16 +309,16 @@ uint8_t checkSafety(uint16_t command, uint16_t safetyword, const uint16_t *readr
 		uint16_t lengthOfTemp = length * 2 + 2;
 		uint8_t temp[lengthOfTemp];
 
-		temp[0] = getFirstByte(command);
-		temp[1] = getSecondByte(command);
+		temp[0] = (uint8_t) (command >> 8);
+		temp[1] = (uint8_t) (command);
 
 		for (uint16_t i = 0; i < length; i++)
 		{
-			temp[2 + 2 * i] = getFirstByte(readreg[i]);
-			temp[2 + 2 * i + 1] = getSecondByte(readreg[i]);
+			temp[2 + 2 * i] = (uint8_t) (readreg[i] >> 8);
+			temp[2 + 2 * i + 1] = (uint8_t) (readreg[i]);
 		}
 
-		volatile uint8_t crcReceivedFinal = getSecondByte(safetyword);
+		volatile uint8_t crcReceivedFinal = (uint8_t) safetyword;
 		volatile uint8_t crc = crc8(temp, lengthOfTemp);
 
 		if (crc == crcReceivedFinal){
@@ -391,6 +331,65 @@ uint8_t checkSafety(uint16_t command, uint16_t safetyword, const uint16_t *readr
 	}
 	return false;
 }
+
+
+/*
+	// TLE5012B E1000 (IIF) configuration:
+	IIF-type: E1000
+	The TLE5012B E1000 is preconfigured for Incremental Interface and fast angle update rate (42.7 μs). It is most
+	suitable for BLDC motor commutation.
+	• Incremental Interface A/B mode.
+	• 12bit mode, one count per 0.088° angle step.
+	• Absolute count enabled.
+	• Autocalibration mode 1 enabled.
+	• Prediction disabled.
+	• Hysteresis set to 0.703°.
+	• IFA/IFB/IFC pins set to push-pull output.
+	• SSC interface’s DATA pin set to push-pull output.
+	• IFA/IFB/IFC pins set to strong driver, DATA pin set to strong driver, fast edge.
+	• Voltage spike filter on input pads disabled.
+
+	- Interface Mode1 Register
+		fir_md = 0b01 // Update Rate Setting (Filter Decimation), 42.7 μs (minimum)
+					// should this be increased to 11 (170.6 μs) for noise reduction?
+		clk_sel = 0 // Clock Source Select, internal
+		dspu_hold = 0, DSPU in normal schedule operation, no watchdog reset
+		iif_mod = 0b01 // Incremental Interface Mode, A/B operation with Index on IFC pin
+		Offset = 0x06
+		mask = 0b11 00000000 1 0 1 11 // reserved unset only
+		word = 0b01 00000000 0 0 0 01
+	- Interface Mode2 Register
+		predict: 0 // prediction disabled
+		autocal = 0b01 //auto-cal. mode 1: update every angle update cycle
+			// change autocal to 0b00? (no auto-calibration)
+		Offset = 0x08
+		mask = 0b0 1111111111 1 1 11
+		word = 0b0 1111111111 0 0 01
+	- Interface Mode3 Register
+		spikef = 0 // Analog Spike Filter of Input Pads, disabled
+		ssc_od = 0 // SSC-Interface Data Pin Output Mode, Push-Pull
+		PAD_drv = 00 // Configuration of Pad-Driver, 
+					 // IFA/IFB/IFC: strong driver, DATA: strong driver, fast edge
+		Offset = 0x09
+		mask = 0b00000000000 1 1 11 // can overwrite ang base to 0?
+		word = 0b00000000000 0 0 00
+	- TCO_Y // nothing derivate-specific
+		sbist = 1// built in self test on startup
+		crc = crc of parameters if autocalibrate not set.
+	- IFAB Register
+		fir_udr = 1 // FIR Update Rate, FIR_MD = ‘01’ (42.7 μs)
+		ifab_od = 0 // IFA,IFB,IFC Output Mode, Push-Pull
+		ifab_hyst = 0b11 // HSM and IIF Mode: Hysteresis, 0.70° (max)
+		mask = 0b00000000000 1 1 11
+		word = 0b00000000000 1 0 11
+	- Interface Mode4 Register
+		hsm_plp = 0b0001 // Incremental Interface Mode: Absolute Count, absolute count enabled
+		ifab_res = 0b00 // Incremental Interface Mode: IIF resolution, 12bit, 0.088° step
+		if_md = 0b00 // Interface Mode on IFA,IFB,IFC, IIF
+		mask = 0b0000000 1111 11 11
+		word = 0b0000000 0001 00 00
+*/
+
 // //-----------------------------------------------------------------------------
 // // begin generic data transfer functions
 // errorTypes Tle5012b::readFromSensor(uint16_t command, uint16_t &data, updTypes upd, safetyTypes safe)

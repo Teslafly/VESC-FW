@@ -180,6 +180,18 @@ void spi_bb_transfer_16(
 	}
 }
 
+
+/**
+ * @brief 
+ * Software data transfer using SSC protocol.
+ * (SSC = SPI with mosi/miso combined into 1 bidirectional wire)
+ * 
+ * @param s  		pointer software spi state
+ * @param in_buf 	pointer to empty rx array of uint16_t with same N as length
+ * @param out_buf 	pointer to tx array of uint16_t with same N as length
+ * @param length 	number of 16 bit transfers
+ * @param write 	0 = read, 1 = write
+ */
 void ssc_bb_transfer_16(
 		spi_bb_state *s, 
 		uint16_t *in_buf, 
@@ -192,13 +204,13 @@ void ssc_bb_transfer_16(
 		uint16_t send = out_buf ? out_buf[i] : 0xFFFF;
 		uint16_t receive = 0;
 
-		//ssc usses mosi for all comms
+		//ssc uses mosi for all data
 		if(write && s->mosi_gpio){
 			palWritePad(s->mosi_gpio, s->mosi_pin, send >> 15); 
 			palSetPadMode(s->mosi_gpio, s->mosi_pin,
 				PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
 		} else {
-			palSetPadMode(s->mosi_gpio, s->mosi_pin, PAL_MODE_INPUT_PULLUP); // set up in spi init for non ssc?
+			palSetPadMode(s->mosi_gpio, s->mosi_pin, PAL_MODE_INPUT_PULLUP);
 			write = false;
 		}
 
@@ -212,11 +224,11 @@ void ssc_bb_transfer_16(
 				send <<= 1;
 			}
 
-			// read when clk low
 			spi_bb_delay_short();
 			palClearPad(s->sck_gpio, s->sck_pin);
 			spi_bb_delay_short();
-			
+
+			// read when clk low
 			receive <<= 1;
 			receive |= palReadPad(s->mosi_gpio, s->mosi_pin);
 		}
