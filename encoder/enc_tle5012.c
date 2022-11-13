@@ -39,16 +39,12 @@
 #include <string.h>
 
 // Bitmasks for several read and write functions
-#define TLE5012_SYSTEM_ERROR_MASK           0x4000    //!< \brief System error masks for safety words
-#define TLE5012_INTERFACE_ERROR_MASK        0x2000    //!< \brief Interface error masks for safety words
-#define TLE5012_INV_ANGLE_ERROR_MASK        0x1000    //!< \brief Angle error masks for safety words
+#define TLE5012_SYSTEM_ERROR_MASK           0x4000    //!< System error masks for safety words
+#define TLE5012_INTERFACE_ERROR_MASK        0x2000    //!< Interface error masks for safety words
+#define TLE5012_INV_ANGLE_ERROR_MASK        0x1000    //!< Angle error masks for safety words
 
-#define TLE5012_CRC_POLYNOMIAL              0x1D      //!< \brief values used for calculating the CRC
+#define TLE5012_CRC_POLYNOMIAL              0x1D      //!< values used for calculating the CRC
 #define TLE5012_CRC_SEED                    0xFF
-// #define TLE5012_CRC_NUM_REGISTERS           0x0008    //!< \brief number of CRC relevant registers
-// #define TLE5012_MAX_REGISTER_MEM            0x0030    //!< \brief max readable register values buffer
-// #define TLE5012_MAX_NUM_REG                 0x16      //!< \brief defines the value for temporary data to read all readable registers
-
 
 enum tle5012_registers {
 	REG_STAT    =  0,     //!< STAT status register
