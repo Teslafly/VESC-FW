@@ -487,15 +487,23 @@ static void terminal_encoder(int argc, const char **argv) {
 
 	case SENSOR_PORT_MODE_TLE5014_SSC_HW:
 	case SENSOR_PORT_MODE_TLE5014_SSC_SW: ;
+		uint8_t status = encoder_cfg_tle5012.state.last_status_error; // get before other queries
 		double temperature = 0;
+		uint16_t magnet_magnitude = 0;
 		enc_tle5012_get_temperature(&encoder_cfg_tle5012, &temperature);
-		commands_printf("Last Status: %d, no-magnet error rate:  %d, ssc error rate: %.3f %%, temp %.2f C",
-				encoder_cfg_tle5012.state.last_status_error,
-				(double)(encoder_cfg_tle5012.state.encoder_no_magnet_error_rate),
+		enc_tle5012_get_magnet_magnitude(&encoder_cfg_tle5012, &magnet_magnitude);
+		commands_printf("Last error: %d, ssc error rate: %.3f %%, temp %.2f C, magnet strength (0-1024): %d",
+				status,
 				(double)(encoder_cfg_tle5012.state.spi_error_rate * 100.0),
-				temperature);
+				temperature,
+				magnet_magnitude);
 
+		//need seperate error rates. ssc error rate should be ssc crc error rate only
+		//have a total encoder error rate for any err in the safe word?
+
+		// need connected no/yes and magnet detected no/yes (strength) values (need to figure out how to filter out magnet strength errors)
 		// todo, get status word (reg 0x00), temp, magnet strength, etc
+		// fix tle_status to be an actual enum instead of int value.
 		break;
 
 	case SENSOR_PORT_MODE_TS5700N8501:

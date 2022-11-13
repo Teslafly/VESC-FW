@@ -205,6 +205,14 @@ bool enc_tle5012_init(TLE5012_config_t *cfg) {
 	tleregister = tleregister & ~0b000000011111111;
 	tleregister = tleregister |  0b000000000010000;
 	enc_tle5012_transfer(cfg, 0x0E, &tleregister, WRITE, true);
+
+	// uint16_t magnet_magnitude = 0;
+	// enc_tle5012_get_magnet_magnitude(cfg, &magnet_magnitude);
+	// if (magnet_magnitude < 10) {
+	// 	// raise encoder magnet error
+	// 	// how is this reset though? check at 10hz ish?
+	// }
+
 	return false;
 }
 
@@ -250,7 +258,7 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 
 			// read/clear error reg
 			uint16_t status_reg_dat;
-			uint8_t tle_status_err = enc_tle5012_transfer(cfg, 0x00, &status_reg_dat, READ, true);
+			enc_tle5012_transfer(cfg, REG_STAT, &status_reg_dat, READ, true);
 			
 			// raise encoder exception? if over certain error rate. 10% maybe?
 		}
@@ -270,12 +278,25 @@ uint8_t enc_tle5012_get_temperature(TLE5012_config_t *cfg, double *temperature) 
 	rawTemp = (rawTemp & (0x01FF)); 
 
 	//check if the value received is positive or negative
-	if (rawTemp & 0x0100)
-	{
+	if (rawTemp & 0x0100) {
 		rawTemp = rawTemp - 0x0200; // convert to 9 bit signed
 	}
 	// temperature = (rawTemp + TEMP_OFFSET) / (TEMP_DIV);
 	*temperature = ((((int16_t) rawTemp) + 152.0) / (2.776));
+
+	return (tle_status_err);
+}
+
+// Unsigned Angle Vector Magnitude after X, Y error compensation (due to temperature).
+uint8_t enc_tle5012_get_magnet_magnitude(TLE5012_config_t *cfg, uint16_t *magnitude) {
+	uint16_t rawMag = 0;
+	uint8_t tle_status_err = enc_tle5012_transfer(cfg, REG_D_MAG, &rawMag, READ, true);
+
+	// extract 10 mag bits
+	rawMag = (rawMag & (0x03FF)); 
+
+	// MAG = (SQRT(X*X+Y*Y))/64
+	*magnitude = (uint16_t) rawMag;
 
 	return (tle_status_err);
 }
