@@ -1,19 +1,19 @@
 /*
-	Copyright 2018 Benjamin Vedder	benjamin@vedder.se
+	Copyright 2012-2022 Benjamin Vedder	benjamin@vedder.se
 
 	This program is free software: you can redistribute it and/or modify
-	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
-	(at your option) any later version.
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
 
-	This program is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	GNU General Public License for more details.
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-	You should have received a copy of the GNU General Public License
-	along with this program.  If not, see <http://www.gnu.org/licenses/>.
-	*/
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    */
 
 #include "hw.h"
 
@@ -21,7 +21,9 @@
 #include "hal.h"
 #include "stm32f4xx_conf.h"
 #include "utils_math.h"
-#include <math.h>
+#include "drv8301.h"
+#include "terminal.h"
+#include "commands.h"
 #include "mc_interface.h"
 
 // Variables
@@ -34,16 +36,34 @@ static const I2CConfig i2cfg = {
 		STD_DUTY_CYCLE
 };
 
+
 void hw_init_gpio(void) {
 	// GPIO clock enable
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOH, ENABLE);
 
 	// LEDs
-	// No Leds on hardware
+	palSetPadMode(LED_GREEN_GPIO, LED_GREEN_PIN,
+			PAL_MODE_OUTPUT_PUSHPULL |
+			PAL_STM32_OSPEED_HIGHEST);
+	palSetPadMode(LED_RED_GPIO, LED_RED_PIN,
+			PAL_MODE_OUTPUT_PUSHPULL |
+			PAL_STM32_OSPEED_HIGHEST);
+
+	// ENABLE_GATE
+	palSetPadMode(GPIOB, 5,
+			PAL_MODE_OUTPUT_PUSHPULL |
+			PAL_STM32_OSPEED_HIGHEST);
+
+	ENABLE_GATE();
+
+	// Phase filters
+	palSetPadMode(PHASE_FILTER_GPIO, PHASE_FILTER_PIN,
+			PAL_MODE_OUTPUT_PUSHPULL |
+			PAL_STM32_OSPEED_HIGHEST);
+	PHASE_FILTER_OFF();
 
 	// GPIOA Configuration: Channel 1 to 3 as alternate function push-pull
 	palSetPadMode(GPIOA, 8, PAL_MODE_ALTERNATE(GPIO_AF_TIM1) |
@@ -66,32 +86,13 @@ void hw_init_gpio(void) {
 			PAL_STM32_OSPEED_HIGHEST |
 			PAL_STM32_PUDR_FLOATING);
 
-	// Hall sensors	
+	// Hall sensors
 	palSetPadMode(HW_HALL_ENC_GPIO1, HW_HALL_ENC_PIN1, PAL_MODE_INPUT_PULLUP);
 	palSetPadMode(HW_HALL_ENC_GPIO2, HW_HALL_ENC_PIN2, PAL_MODE_INPUT_PULLUP);
 	palSetPadMode(HW_HALL_ENC_GPIO3, HW_HALL_ENC_PIN3, PAL_MODE_INPUT_PULLUP);
 
-	// These are JTAG pins so need to release that first	
-	palClearPad(GPIOB, 3);
-	palClearPad(GPIOB, 4);
-	palClearPad(GPIOB, 5);
-
-	// Phase filters
-	palSetPadMode(GPIOB, 3, PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_OSPEED_HIGHEST);
-	palSetPadMode(GPIOB, 4, PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_OSPEED_HIGHEST);
-	palSetPadMode(GPIOB, 5, PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_OSPEED_HIGHEST);
-	PHASE_FILTER_OFF();
-
-	// Current filter, no use on low side shunts
-	//palSetPadMode(GPIOH, 1, PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_OSPEED_HIGHEST);
-	//palSetPadMode(GPIOC, 2, PAL_MODE_OUTPUT_OPENDRAIN | PAL_STM32_OSPEED_HIGHEST);
-	//CURRENT_FILTER_ON();	
-
-	// AUX pin
-	AUX_OFF();
-	palSetPadMode(AUX_GPIO, AUX_PIN,
-			PAL_MODE_OUTPUT_PUSHPULL |
-			PAL_STM32_OSPEED_HIGHEST);
+	// Fault pin
+	palSetPadMode(GPIOB, 7, PAL_MODE_INPUT_PULLUP);
 
 	// ADC Pins
 	palSetPadMode(GPIOA, 0, PAL_MODE_INPUT_ANALOG);
@@ -101,54 +102,56 @@ void hw_init_gpio(void) {
 	palSetPadMode(GPIOA, 5, PAL_MODE_INPUT_ANALOG);
 	palSetPadMode(GPIOA, 6, PAL_MODE_INPUT_ANALOG);
 
-	palSetPadMode(GPIOB, 0, PAL_MODE_INPUT_ANALOG);
-	palSetPadMode(GPIOB, 1, PAL_MODE_INPUT_ANALOG);
-
 	palSetPadMode(GPIOC, 0, PAL_MODE_INPUT_ANALOG);
 	palSetPadMode(GPIOC, 1, PAL_MODE_INPUT_ANALOG);
 	palSetPadMode(GPIOC, 2, PAL_MODE_INPUT_ANALOG);
 	palSetPadMode(GPIOC, 3, PAL_MODE_INPUT_ANALOG);
 	palSetPadMode(GPIOC, 4, PAL_MODE_INPUT_ANALOG);
-	palSetPadMode(GPIOC, 5, PAL_MODE_INPUT_ANALOG);
+
+	drv8301_init();
+
+	// DAC as voltage reference for shunt amps
+	palSetPadMode(GPIOA, 4, PAL_MODE_INPUT_ANALOG);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_DAC, ENABLE);
+	DAC->CR |= DAC_CR_EN1;
+	DAC->DHR12R1 = 2047;
 }
 
 void hw_setup_adc_channels(void) {
+	uint8_t t_samp = ADC_SampleTime_15Cycles;
+
 	// ADC1 regular channels
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_0, 1, ADC_SampleTime_15Cycles);
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 2, ADC_SampleTime_15Cycles);
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_5, 3, ADC_SampleTime_15Cycles);
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_14, 4, ADC_SampleTime_15Cycles);
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_Vrefint, 5, ADC_SampleTime_15Cycles);
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_8, 6, ADC_SampleTime_15Cycles);
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 1, t_samp);
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_0, 2, t_samp);
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_5, 3, t_samp);
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_14, 4, t_samp);
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_Vrefint, 5, t_samp);
 
 	// ADC2 regular channels
-	ADC_RegularChannelConfig(ADC2, ADC_Channel_1, 1, ADC_SampleTime_15Cycles);
-	ADC_RegularChannelConfig(ADC2, ADC_Channel_11, 2, ADC_SampleTime_15Cycles);
-	ADC_RegularChannelConfig(ADC2, ADC_Channel_6, 3, ADC_SampleTime_15Cycles);
-	ADC_RegularChannelConfig(ADC2, ADC_Channel_15, 4, ADC_SampleTime_15Cycles);
-	ADC_RegularChannelConfig(ADC2, ADC_Channel_0, 5, ADC_SampleTime_15Cycles);
-	ADC_RegularChannelConfig(ADC2, ADC_Channel_9, 6, ADC_SampleTime_15Cycles);
+	ADC_RegularChannelConfig(ADC2, ADC_Channel_11, 1, t_samp);
+	ADC_RegularChannelConfig(ADC2, ADC_Channel_1, 2, t_samp);
+	ADC_RegularChannelConfig(ADC2, ADC_Channel_6, 3, t_samp);
+	ADC_RegularChannelConfig(ADC2, ADC_Channel_15, 4, t_samp);
+	ADC_RegularChannelConfig(ADC2, ADC_Channel_0, 5, t_samp);
 
 	// ADC3 regular channels
-	ADC_RegularChannelConfig(ADC3, ADC_Channel_2, 1, ADC_SampleTime_15Cycles);
-	ADC_RegularChannelConfig(ADC3, ADC_Channel_12, 2, ADC_SampleTime_15Cycles);
-	ADC_RegularChannelConfig(ADC3, ADC_Channel_3, 3, ADC_SampleTime_15Cycles);
-	ADC_RegularChannelConfig(ADC3, ADC_Channel_13, 4, ADC_SampleTime_15Cycles);
-	ADC_RegularChannelConfig(ADC3, ADC_Channel_1, 5, ADC_SampleTime_15Cycles);
-	ADC_RegularChannelConfig(ADC3, ADC_Channel_2, 6, ADC_SampleTime_15Cycles);
+	ADC_RegularChannelConfig(ADC3, ADC_Channel_12, 1, t_samp);
+	ADC_RegularChannelConfig(ADC3, ADC_Channel_2, 2, t_samp);
+	ADC_RegularChannelConfig(ADC3, ADC_Channel_3, 3, t_samp);
+	ADC_RegularChannelConfig(ADC3, ADC_Channel_13, 4, t_samp);
+	ADC_RegularChannelConfig(ADC3, ADC_Channel_1, 5, t_samp);
 
 	// Injected channels
-	ADC_InjectedChannelConfig(ADC1, ADC_Channel_10, 1, ADC_SampleTime_15Cycles);
-	ADC_InjectedChannelConfig(ADC2, ADC_Channel_11, 1, ADC_SampleTime_15Cycles);
-	ADC_InjectedChannelConfig(ADC3, ADC_Channel_12, 1, ADC_SampleTime_15Cycles);
-	ADC_InjectedChannelConfig(ADC1, ADC_Channel_10, 2, ADC_SampleTime_15Cycles);
-	ADC_InjectedChannelConfig(ADC2, ADC_Channel_11, 2, ADC_SampleTime_15Cycles);
-	ADC_InjectedChannelConfig(ADC3, ADC_Channel_12, 2, ADC_SampleTime_15Cycles);
-	ADC_InjectedChannelConfig(ADC1, ADC_Channel_10, 3, ADC_SampleTime_15Cycles);
-	ADC_InjectedChannelConfig(ADC2, ADC_Channel_11, 3, ADC_SampleTime_15Cycles);
-	ADC_InjectedChannelConfig(ADC3, ADC_Channel_12, 3, ADC_SampleTime_15Cycles);
+	ADC_InjectedChannelConfig(ADC1, ADC_Channel_10, 1, t_samp);
+	ADC_InjectedChannelConfig(ADC2, ADC_Channel_11, 1, t_samp);
+	ADC_InjectedChannelConfig(ADC3, ADC_Channel_12, 1, t_samp);
+	ADC_InjectedChannelConfig(ADC1, ADC_Channel_10, 2, t_samp);
+	ADC_InjectedChannelConfig(ADC2, ADC_Channel_11, 2, t_samp);
+	ADC_InjectedChannelConfig(ADC3, ADC_Channel_12, 2, t_samp);
+	ADC_InjectedChannelConfig(ADC1, ADC_Channel_10, 3, t_samp);
+	ADC_InjectedChannelConfig(ADC2, ADC_Channel_11, 3, t_samp);
+	ADC_InjectedChannelConfig(ADC3, ADC_Channel_12, 3, t_samp);
 }
-
 
 void hw_start_i2c(void) {
 	i2cAcquireBus(&HW_I2C_DEV);

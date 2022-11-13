@@ -146,6 +146,31 @@ Get value from BMS. Examples:
 (get-bms-val 'bms-msg-age) ; Age of last message from BMS in seconds
 ```
 
+#### set-bms-val
+
+```clj
+(set-bms-val val optValArg new-value)
+```
+
+This lets you set BMS-values so that VESC Tool and the BMS limits can see and use them. The same values as described in [get-bms-val](#get-bms-val) can be updated, but with an argument at the end with what the value should be set to.
+
+This is useful if you want to implement communication with a custom BMS and have it show up in VESC Tool.
+
+Example:
+
+```clj
+(set-bms-val 'bms-cell-num 12) ; It is a 12s pack
+(set-bms-val 'bms-v-cell 2 3.92) ; Set cell 2 voltage to 3.92V
+```
+
+#### send-bms-can
+
+```clj
+(send-bms-can)
+```
+
+Send BMS-values on CAN-bus. This his useful if a custom BMS-driver is implemented using [set-bms-val](#set-bms-val) in order to make devices on the CAN-bus aware of the BMS-state using the VESC protocol.
+
 #### get-adc
 
 ```clj
@@ -371,6 +396,14 @@ Send input to the VESC Remote app. Unlike the ADC and PPM apps, input can be sen
 ```
 
 Disable app output for ms milliseconds. 0 means enable now and -1 means disable forever. This can be used to override the control of apps temporarily.
+
+#### app-pas-get-rpm
+
+```clj
+(app-pas-get-rpm)
+```
+
+Returns the pedal RPM measured by the PAS-app. If you want to implement your own PAS-control based on this RPM you can use [app-disable-output](#app-disable-output) to disable the output of the PAS-app.
 
 ### Motor Set Commands
 
@@ -891,6 +924,9 @@ Raw data commands useful for debugging hardware issues.
 ```
 
 Get raw current measurements. Motor is the motor index (1 or 2), phase is the phase (1, 2 or 3) and useRaw is whether to convert the measurements to currents or to use raw ADC values.
+
+**NOTE**  
+These samples can come from either V0 or V7 depending on when the function is called (although most likely V7 as less other computations happen then), so when the motor is running this is most likely not going to look good, especially if the hardware does not have phase shunts. This function is intended for debugging hardware and returns just was goes into the ADC without any processing.
 
 Example for reading phase B on motor 1 as raw ADC values:
 
@@ -1806,10 +1842,14 @@ Convert string str to lower case. Example:
 #### str-cmp
 
 ```clj
-(str-cmp str1 str1)
+(str-cmp str1 str1 optN)
 ```
 
-Compare strings str1 and str2. Works in the same way as the strcmp-function in C, meaning that equal strings return 0 and different strings return their difference according how they would be sorted. Example:
+Compare strings str1 and str2. Works in the same way as the strcmp-function in C, meaning that equal strings return 0 and different strings return their difference according how they would be sorted.
+
+The optional argument optN can be used to specify how many characters to compare (like strncmp in C). If it is left out all characters will be compared.
+
+Example:
 
 ```clj
 (str-cmp "Hello" "Hello")
@@ -1820,6 +1860,9 @@ Compare strings str1 and str2. Works in the same way as the strcmp-function in C
 
 (str-cmp "World" "Hello")
 > 15
+
+(str-cmp "ab" "abcd" 2) ; Compare only the first two characters
+> 0
 ```
 
 #### str-cmp-asc
@@ -1849,6 +1892,35 @@ Calculate length of string str excluding the null termination. Example:
 ```clj
 (str-len "Hello")
 > 5
+```
+
+#### to-str
+
+```clj
+(to-str arg1 ... argN)
+```
+
+Convert LBM-types to their string representation and return that string. Example:
+
+```clj
+(to-str '(1 2 3))
+> "(1 2 3)"
+
+(to-str "aAa" 4 '(a 2 3) 2 3 "Hello")
+> "aAa 4 (a 2 3) 2 3 Hello"
+```
+
+#### to-str-delim
+
+```clj
+(to-str-delim delimiter arg1 ... argN)
+```
+
+Same as [to-str](#to-str), but with a custom delimiter. Example:
+
+```clj
+(to-str-delim "::" "aAa" 4 '(a 2 3) 2 3 "Hello")
+> "aAa::4::(a 2 3)::2::3::Hello"
 ```
 
 ## Events
@@ -2331,7 +2403,7 @@ Fault code. Converted to a fault string in the VESC Tool log analysis tool.
 Configure log field on log device. Parameters:
 
 **can-id**  
-ID on the CAN-bus.
+ID on the CAN-bus. Setting the id to -1 will send the data to VESC Tool.
 
 **field-ind**  
 Field index in the log.
@@ -2366,7 +2438,7 @@ Timestamp fields are displayed with the format hh:mm:ss.
 Start logging. Before starting to log all fields should be configured with [log-config-field](#log-config-field).
 
 **can-id**  
-ID on the CAN-bus.
+ID on the CAN-bus. Setting the id to -1 will send the data to VESC Tool.
 
 **field-num**  
 Number of log fields.
@@ -2386,7 +2458,7 @@ If set to true the log device will append a GNSS-position to each sample. This r
 (log-start can-id)
 ```
 
-Stop logging data on log device with can-id.
+Stop logging data on log device with can-id. Setting the id to -1 will send the data to VESC Tool.
 
 #### log-send-f32
 
@@ -2394,7 +2466,67 @@ Stop logging data on log device with can-id.
 (log-send-f32 can-id from-field-ind sample1 ... sampleN)
 ```
 
-Send log samples to log device with can-id. This function takes 1 to 100 samples as arguments which will be applied to the log fields starting from from-field-ind. The samples can be numbers or lists of numbers.
+Send log samples to log device with can-id. This function takes 1 to 100 samples as arguments which will be applied to the log fields starting from from-field-ind. The samples can be numbers or lists of numbers. Setting the id to -1 will send the data to VESC Tool.
+
+#### log-send-f64
+
+```clj
+(log-send-f64 can-id from-field-ind sample1 ... sampleN)
+```
+
+Same as [log-send-f32](#log-send-f32) but uses 64-bit values for higher precision and takes up to 50 samples. Useful for e.g. gnss-positions where 32-bit floats do not give enough precision due to the size of the earth.
+
+## GNSS
+
+If a GNSS-receiver such as the VESC Express is connected on the CAN-bus, the position, speed, time and precision data from it can be read from LBM.
+
+#### gnss-lat-lon
+
+```clj
+(gnss-lat-lon)
+```
+
+Returns the latitude and longitude of the position as a list with two elements.
+
+#### gnss-height
+
+```clj
+(gnss-height)
+```
+
+Returns the height of the position in meters.
+
+#### gnss-speed
+
+```clj
+(gnss-speed)
+```
+
+Returns the speed on meters per second.
+
+#### gnss-hdop
+
+```clj
+(gnss-hdop)
+```
+
+Returns the hdop-value of the position. Lower values mean that the precision is better.
+
+#### gnss-date-time
+
+```clj
+(gnss-date-time)
+```
+
+Returns date and time of the last position sample as a list with the format (year month day hours minutes seconds milliseconds).
+
+#### gnss-age
+
+```clj
+(gnss-age)
+```
+
+Returns the age of the last gnss-sample in seconds.
 
 ## How to update
 
