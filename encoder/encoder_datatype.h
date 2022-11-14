@@ -101,11 +101,6 @@ typedef struct { // sw ssc
 	TLE5012_state state;
 } TLE5012_config_t;
 
-typedef enum ssc_direction {
-	READ = true, 
-	WRITE = false
-} ssc_direction; 
-
 typedef enum tle5012_errortypes {
 	NO_ERROR               = 0x00,  //!< NO_ERROR = Safety word was OK
 	SYSTEM_ERROR           = 0x01,  //!< SYSTEM_ERROR = over/under voltage, VDD negative, GND off, ROM defect, no magnet

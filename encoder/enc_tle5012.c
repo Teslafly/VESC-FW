@@ -71,6 +71,11 @@ enum tle5012_registers {
 	REG_T25O    = 21,     //!< T25O temperature 25°c offset value
 };
 
+typedef enum ssc_direction {
+	SSC_READ = true, 
+	SSC_WRITE = false
+} ssc_direction; 
+
 bool enc_tle5012_setup(TLE5012_config_t *cfg);
 tle5012_errortypes enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t *data, ssc_direction read, bool safe);
 
@@ -176,34 +181,34 @@ bool enc_tle5012_setup(TLE5012_config_t *cfg) {
 	tle5012_errortypes errorCheck = 0;
 	uint16_t tleregister;
 	// Interface Mode1
-	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x06, &tleregister, READ, true);
+	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x06, &tleregister, SSC_READ, true);
 	tleregister = tleregister & ~0b110000000010111; // mask (1 = cleared)
 	tleregister = tleregister |  0b010000000000001; // set bits
-	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x06, &tleregister, WRITE, true);
+	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x06, &tleregister, SSC_WRITE, true);
 
 	// Interface Mode2
-	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x08, &tleregister, READ, true);
+	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x08, &tleregister, SSC_READ, true);
 	tleregister = tleregister & ~0b011111111111111;
 	tleregister = tleregister |  0b011111111110001;
-	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x08, &tleregister, WRITE, true);
+	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x08, &tleregister, SSC_WRITE, true);
 
 	// Interface Mode3
-	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x09, &tleregister, READ, true);
+	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x09, &tleregister, SSC_READ, true);
 	tleregister = tleregister & ~0b000000000001111;
 	tleregister = tleregister |  0b000000000000000;
-	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x09, &tleregister, WRITE, true);
+	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x09, &tleregister, SSC_WRITE, true);
 
 	// IFAB Register
-	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x0D, &tleregister, READ, true);
+	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x0D, &tleregister, SSC_READ, true);
 	tleregister = tleregister & ~0b000000000001111;
 	tleregister = tleregister |  0b000000000001011;
-	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x0D, &tleregister, WRITE, true);
+	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x0D, &tleregister, SSC_WRITE, true);
 
 	// Interface Mode4
-	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x0E, &tleregister, READ, true);
+	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x0E, &tleregister, SSC_READ, true);
 	tleregister = tleregister & ~0b000000011111111;
 	tleregister = tleregister |  0b000000000010000;
-	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x0E, &tleregister, WRITE, true);
+	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x0E, &tleregister, SSC_WRITE, true);
 
 	cfg->state.last_status_error = errorCheck;
 
@@ -222,7 +227,7 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	cfg->state.last_update_time = timer_time_now();
 
 	uint16_t rx_data;
-	uint8_t tle_status = enc_tle5012_transfer(cfg, REG_AVAL, &rx_data, READ, true);  // define register names values?
+	uint8_t tle_status = enc_tle5012_transfer(cfg, REG_AVAL, &rx_data, SSC_READ, true);  // define register names values?
 	cfg->state.last_status_error = tle_status;
 
 	if (tle_status == NO_ERROR ){
@@ -234,7 +239,7 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 
 			// read/clear error reg
 			uint16_t status_reg_dat;
-			enc_tle5012_transfer(cfg, REG_STAT, &status_reg_dat, READ, true);
+			enc_tle5012_transfer(cfg, REG_STAT, &status_reg_dat, SSC_READ, true);
 		}
 
 		++cfg->state.spi_error_cnt;
@@ -245,7 +250,7 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 // get tle5012 temp in celsius.
 tle5012_errortypes enc_tle5012_get_temperature(TLE5012_config_t *cfg, double *temperature) {
 	uint16_t rawTemp = 0;
-	uint8_t tle_status_err = enc_tle5012_transfer(cfg, REG_FSYNC, &rawTemp, READ, true);
+	uint8_t tle_status_err = enc_tle5012_transfer(cfg, REG_FSYNC, &rawTemp, SSC_READ, true);
 	// extract 9 temp bits
 	rawTemp = (rawTemp & (0x01FF)); 
 	//check if the value received is positive or negative
@@ -262,7 +267,7 @@ tle5012_errortypes enc_tle5012_get_temperature(TLE5012_config_t *cfg, double *te
 tle5012_errortypes enc_tle5012_get_magnet_magnitude(TLE5012_config_t *cfg, uint16_t *magnitude) {
 
 	uint16_t rawMag = 0;
-	uint8_t tle_status_err = enc_tle5012_transfer(cfg, REG_D_MAG, &rawMag, READ, true);
+	uint8_t tle_status_err = enc_tle5012_transfer(cfg, REG_D_MAG, &rawMag, SSC_READ, true);
 
 	// extract 10 mag bits
 	rawMag = (rawMag && (0x03FF)); 
