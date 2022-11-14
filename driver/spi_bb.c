@@ -180,7 +180,6 @@ void spi_bb_transfer_16(
 	}
 }
 
-
 /**
  * @brief 
  * Software data transfer using SSC protocol.

@@ -92,23 +92,36 @@ bool encoder_init(volatile mc_configuration *conf) {
 
 		res = true;
 	} break;
-	case SENSOR_PORT_MODE_TLE5014_SSC_SW:
-	case SENSOR_PORT_MODE_TLE5014_SSC_HW: {
-		SENSOR_PORT_3V3();
 
-		//must support 4 modes:
-		// ssc (3 wire) sw spi
-		// ssc (3 wire) hw spi w dma (sw spi using hw spi pins for now)
+	// ssc (3 wire) sw spi on hall pins
+	case SENSOR_PORT_MODE_TLE5014_SSC_SW: {
+		SENSOR_PORT_5V();
 
-		if (!enc_tle5012_init(&encoder_cfg_tle5012)) {
+		if (!enc_tle5012_init_sw_ssc(&encoder_cfg_tle5012)) {
 			encoder_type_now = ENCODER_TYPE_NONE;
 			return false;
 		}
 
 		encoder_type_now = ENCODER_TYPE_TLE5012;
 		// timer_start(10000);
-		timer_start(2000);
+		timer_start(2000); // slow down sw spi for now as not optimised
 
+		res = true;
+	} break;
+
+	// ssc (3 wire) hw spi w dma (sw spi using hw spi pins for now)
+	case SENSOR_PORT_MODE_TLE5014_SSC_HW: {
+		SENSOR_PORT_5V();
+
+		if (!enc_tle5012_init_hw_ssc(&encoder_cfg_tle5012)) {
+			encoder_type_now = ENCODER_TYPE_NONE;
+			return false;
+		}
+
+		encoder_type_now = ENCODER_TYPE_TLE5012;
+		// timer_start(10000);
+		timer_start(2000); // slow down sw spi for now as not optimised
+		
 		res = true;
 	} break;
 
@@ -353,15 +366,13 @@ void encoder_check_faults(volatile mc_configuration *m_conf, bool is_second_moto
 		
 		case SENSOR_PORT_MODE_TLE5014_SSC_HW:
 		case SENSOR_PORT_MODE_TLE5014_SSC_SW:
-			// if (encoder_cfg_tle5012.state.encoder_no_magnet_error_rate > 0.05) {
-			// 	mc_interface_fault_stop(FAULT_CODE_ENCODER_NO_MAGNET, is_second_motor, false);
-			// }
 			if (encoder_cfg_tle5012.state.spi_error_rate > 0.10) {
 				mc_interface_fault_stop(FAULT_CODE_ENCODER_FAULT, is_second_motor, false);
 			}
-			if (encoder_cfg_tle5012.state.last_status_error != NO_ERROR) {
+			if (encoder_cfg_tle5012.state.last_status_error != NO_ERROR &&
+			    encoder_cfg_tle5012.state.last_status_error != CRC_ERROR) {
 				mc_interface_fault_stop(FAULT_CODE_ENCODER_FAULT, is_second_motor, false);
-			}
+			} // allow some crc errors below 10% error rate
 			break;
 
 		case SENSOR_PORT_MODE_SINCOS:
@@ -498,14 +509,12 @@ static void terminal_encoder(int argc, const char **argv) {
 		uint16_t magnet_magnitude = 0;
 		enc_tle5012_get_temperature(&encoder_cfg_tle5012, &temperature);
 		enc_tle5012_get_magnet_magnitude(&encoder_cfg_tle5012, &magnet_magnitude);
-		commands_printf("Last error: %d, ssc error rate: %.3f %%, temp %.2f C, magnet strength: %d",
+		commands_printf("Last error: %d, ssc error rate: %.3f %%, magnet strength: %d, temp %.2f C",
 				status,
 				(double)(encoder_cfg_tle5012.state.spi_error_rate * 100.0),
-				temperature,
-				magnet_magnitude);
-
-		// need connected no/yes and magnet detected no/yes (strength) values (need to figure out how to filter out magnet strength errors)
-		// todo, get status word (reg 0x00), temp, magnet strength, etc
+				magnet_magnitude,
+				temperature);
+		// todo, get/report status word (reg 0x00), make "last error" verbose
 		break;
 
 	case SENSOR_PORT_MODE_TS5700N8501:

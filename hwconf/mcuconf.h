@@ -41,7 +41,6 @@
 
 // see hwconf/board.h for clock configuration copy paste block
 
-
 // Internal RC osc
 #ifdef HW_USE_INTERNAL_RC
 	#define STM32_HSE_ENABLED					FALSE
@@ -50,16 +49,16 @@
 	#if !defined(STM32_HSECLK)
 		#define STM32_HSECLK				16000000U
 	#endif
-#else
-	#ifdef HW_USE_25MHZ_EXT_CLOCK
-		#define STM32_PLLM_VALUE				25
-		#define STM32_HSE_BYPASS				TRUE
-		#if !defined(STM32_HSECLK)
-			#define STM32_HSECLK				25000000U
-		#endif
-	#endif
 #endif
 
+// 25 mhz external signal input
+#ifdef HW_USE_25MHZ_EXT_CLOCK
+	#define STM32_HSE_BYPASS				TRUE
+	#define STM32_PLLM_VALUE				25
+	#if !defined(STM32_HSECLK)
+		#define STM32_HSECLK				25000000U
+	#endif
+#endif
 
 // 8M  XTAL base config
 #define STM32_NO_INIT						FALSE

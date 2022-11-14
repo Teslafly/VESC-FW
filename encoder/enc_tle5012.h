@@ -25,14 +25,12 @@
 #include "datatypes.h"
 #include "encoder/encoder_datatype.h"
 
-
-
-bool enc_tle5012_init(TLE5012_config_t *cfg);
+bool enc_tle5012_init_sw_ssc(TLE5012_config_t *cfg);
+bool enc_tle5012_init_hw_ssc(TLE5012_config_t *cfg);
 void enc_tle5012_deinit(TLE5012_config_t *cfg);
 void enc_tle5012_routine(TLE5012_config_t *cfg);
 tle5012_errortypes enc_tle5012_get_temperature(TLE5012_config_t *cfg, double *temperature);
 tle5012_errortypes enc_tle5012_get_magnet_magnitude(TLE5012_config_t *cfg, uint16_t *magnitude);
-
 
 // Macros
 #define TLE5012_LAST_ANGLE(cfg)		((cfg)->state.last_enc_angle)

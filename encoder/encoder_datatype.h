@@ -108,7 +108,7 @@ typedef enum ssc_direction {
 
 typedef enum tle5012_errortypes {
 	NO_ERROR               = 0x00,  //!< NO_ERROR = Safety word was OK
-	SYSTEM_ERROR           = 0x01,  //!< SYSTEM_ERROR = over/under voltage, VDD negative, GND off, ROM defect
+	SYSTEM_ERROR           = 0x01,  //!< SYSTEM_ERROR = over/under voltage, VDD negative, GND off, ROM defect, no magnet
 	INTERFACE_ACCESS_ERROR = 0x02,  //!< INTERFACE_ACCESS_ERROR = wrong address or wrong lock
 	INVALID_ANGLE_ERROR    = 0x04,  //!< INVALID_ANGLE_ERROR = NO_GMR_A = 1 or NO_GMR_XY = 1
 	ANGLE_SPEED_ERROR      = 0x08,  //!< ANGLE_SPEED_ERROR = combined error, angular speed calculation wrong
