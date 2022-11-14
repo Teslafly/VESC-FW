@@ -18,6 +18,31 @@
             "type": "shell",
             // "command": "make fw_stm_disc_brain_flash"
             "command": "make fw_60_mk4_flash"
+        },
+
+        {
+            "label": "Launch OpenOCD",
+            "command": "openocd.exe",
+            "args": [
+                "-f",
+                "${input:openocd.config}",
+                "-c",
+                "\"bindto 0.0.0.0\""
+            ],
+            "type": "shell",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+    ],
+    "inputs": [
+        {
+            "id": "openocd.config",
+            "type": "pickString",
+            "description": "Select the configuration file for OpenOCD",
+            "options": [
+                "board/stm32f0discovery.cfg"
+            ],
+            "default": "board/stm32f0discovery.cfg"
         }
     ]
 }
