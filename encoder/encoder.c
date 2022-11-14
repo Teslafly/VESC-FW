@@ -97,6 +97,19 @@ bool encoder_init(volatile mc_configuration *conf) {
 	case SENSOR_PORT_MODE_TLE5014_SSC_SW: {
 		SENSOR_PORT_5V();
 
+		// reuse global config, so must set up complete ssc config
+		spi_bb_state sw_ssc = {
+					HW_HALL_ENC_GPIO3, HW_HALL_ENC_PIN3, // nss
+					HW_HALL_ENC_GPIO1, HW_HALL_ENC_PIN1, // sck
+					HW_HALL_ENC_GPIO2, HW_HALL_ENC_PIN2, // mosi
+					HW_HALL_ENC_GPIO2, HW_HALL_ENC_PIN2, // miso
+					ssc_type_sw,
+					0, // has_started
+					0, // has_error
+					{{NULL, NULL}, NULL, NULL} // Mutex
+			};
+		encoder_cfg_tle5012.sw_spi = sw_ssc;
+
 		if (!enc_tle5012_init_sw_ssc(&encoder_cfg_tle5012)) {
 			encoder_type_now = ENCODER_TYPE_NONE;
 			return false;
@@ -113,6 +126,19 @@ bool encoder_init(volatile mc_configuration *conf) {
 	case SENSOR_PORT_MODE_TLE5014_SSC_HW: {
 		SENSOR_PORT_5V();
 
+		// reuse global config, so must set up complete ssc config
+		spi_bb_state sw_ssc = {
+					HW_SPI_PORT_NSS, HW_SPI_PIN_NSS, // nss
+					HW_SPI_PORT_SCK, HW_SPI_PIN_SCK, // sck
+					HW_SPI_PORT_MOSI, HW_SPI_PIN_MOSI, // mosi
+					HW_SPI_PORT_MOSI, HW_SPI_PIN_MOSI, // miso (shared dat line)
+					ssc_type_sw,
+					0, // has_started
+					0, // has_error
+					{{NULL, NULL}, NULL, NULL} // Mutex
+			};
+		encoder_cfg_tle5012.sw_spi = sw_ssc;	
+
 		if (!enc_tle5012_init_hw_ssc(&encoder_cfg_tle5012)) {
 			encoder_type_now = ENCODER_TYPE_NONE;
 			return false;
@@ -121,7 +147,7 @@ bool encoder_init(volatile mc_configuration *conf) {
 		encoder_type_now = ENCODER_TYPE_TLE5012;
 		// timer_start(10000);
 		timer_start(2000); // slow down sw spi for now as not optimised
-		
+
 		res = true;
 	} break;
 

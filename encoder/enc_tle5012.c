@@ -214,9 +214,9 @@ bool enc_tle5012_setup(TLE5012_config_t *cfg) {
 
 	// setup will not succeed unless we can talk to sensor and magnet detected
 	if (errorCheck != NO_ERROR){
-		return true;
+		return false;
 	}
-	return false;
+	return true;
 }
 
 void enc_tle5012_routine(TLE5012_config_t *cfg) {
