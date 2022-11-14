@@ -72,15 +72,13 @@ enum tle5012_registers {
 };
 
 
-typedef enum spi_direction {
-	READ = true, 
-	WRITE = false
-} spi_direction; 
 
-uint8_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t *data, spi_direction read, bool safe);
+
+bool enc_tle5012_setup(TLE5012_config_t *cfg);
+tle5012_errortypes enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t *data, ssc_direction read, bool safe);
 
 uint8_t crc8(uint8_t *data, uint8_t length);
-uint8_t checkSafety(uint16_t command, uint16_t safetyword, const uint16_t *readreg, uint16_t length);
+tle5012_errortypes checkSafety(uint16_t command, uint16_t safetyword, const uint16_t *readreg, uint16_t length);
 
 
 bool enc_tle5012_init(TLE5012_config_t *cfg) {
@@ -103,7 +101,6 @@ bool enc_tle5012_init(TLE5012_config_t *cfg) {
 		// software ssc
 		memset(&cfg->state, 0, sizeof(TLE5012_state)); 
 
-		// ssc mode uses mosi pin only. (both MISO/MOSI set to MOSI gpio)
 		spi_bb_init(&(cfg->sw_spi));
 
 		cfg->state.last_status_error = 0;
@@ -113,6 +110,33 @@ bool enc_tle5012_init(TLE5012_config_t *cfg) {
 		return true;
 	}
 
+	enc_tle5012_setup(cfg);
+}
+
+void enc_tle5012_deinit(TLE5012_config_t *cfg) {
+	bool hwspi = false;
+	if (hwspi){
+		// if (cfg->spi_dev == NULL) {
+		// 	return;
+		// }
+
+	    // palSetPadMode(cfg->miso_gpio, cfg->miso_pin, PAL_MODE_INPUT_PULLUP); check for spi vs ssc mode
+		// palSetPadMode(cfg->sck_gpio, cfg->sck_pin, PAL_MODE_INPUT_PULLUP);
+		// palSetPadMode(cfg->nss_gpio, cfg->nss_pin, PAL_MODE_INPUT_PULLUP);
+		// palSetPadMode(cfg->mosi_gpio, cfg->mosi_pin, PAL_MODE_INPUT_PULLUP);
+
+		// spiStop(cfg->spi_dev);
+
+	} else {
+		// sw spi	
+		spi_bb_deinit(&(cfg->sw_spi)); 
+
+		cfg->state.last_enc_angle = 0.0;
+		cfg->state.spi_error_rate = 0.0;
+	}
+}
+
+bool enc_tle5012_setup(TLE5012_config_t *cfg) {
 
 	/*
 	// TLE5012B E1000 (IIF) configuration:
@@ -171,69 +195,56 @@ bool enc_tle5012_init(TLE5012_config_t *cfg) {
 	*/
 
 	// set up control registers to be identical across tle5012 variants using above settings
+	tle5012_errortypes errorCheck = 0;
 	uint16_t tleregister;
 	// Interface Mode1
-	enc_tle5012_transfer(cfg, 0x06, &tleregister, READ, true);
+	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x06, &tleregister, READ, true);
 	tleregister = tleregister & ~0b110000000010111; // mask (1 = cleared)
 	tleregister = tleregister |  0b010000000000001; // set bits
-	enc_tle5012_transfer(cfg, 0x06, &tleregister, WRITE, true);
+	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x06, &tleregister, WRITE, true);
 
 	// Interface Mode2
-	enc_tle5012_transfer(cfg, 0x08, &tleregister, READ, true);
+	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x08, &tleregister, READ, true);
 	tleregister = tleregister & ~0b011111111111111;
 	tleregister = tleregister |  0b011111111110001;
-	enc_tle5012_transfer(cfg, 0x08, &tleregister, WRITE, true);
+	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x08, &tleregister, WRITE, true);
 
 	// Interface Mode3
-	enc_tle5012_transfer(cfg, 0x09, &tleregister, READ, true);
+	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x09, &tleregister, READ, true);
 	tleregister = tleregister & ~0b000000000001111;
 	tleregister = tleregister |  0b000000000000000;
-	enc_tle5012_transfer(cfg, 0x09, &tleregister, WRITE, true);
+	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x09, &tleregister, WRITE, true);
 
 	// IFAB Register
-	enc_tle5012_transfer(cfg, 0x0D, &tleregister, READ, true);
+	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x0D, &tleregister, READ, true);
 	tleregister = tleregister & ~0b000000000001111;
 	tleregister = tleregister |  0b000000000001011;
-	enc_tle5012_transfer(cfg, 0x0D, &tleregister, WRITE, true);
+	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x0D, &tleregister, WRITE, true);
 
 	// Interface Mode4
-	enc_tle5012_transfer(cfg, 0x0E, &tleregister, READ, true);
+	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x0E, &tleregister, READ, true);
 	tleregister = tleregister & ~0b000000011111111;
 	tleregister = tleregister |  0b000000000010000;
-	enc_tle5012_transfer(cfg, 0x0E, &tleregister, WRITE, true);
+	errorCheck = errorCheck && enc_tle5012_transfer(cfg, 0x0E, &tleregister, WRITE, true);
 
 	// uint16_t magnet_magnitude = 0;
-	// enc_tle5012_get_magnet_magnitude(cfg, &magnet_magnitude);
+	// errorCheck = errorCheck && enc_tle5012_get_magnet_magnitude(cfg, &magnet_magnitude);
 	// if (magnet_magnitude < 10) {
 	// 	// raise encoder magnet error
 	// 	// how is this reset though? check at 10hz ish?
 	// }
 
+	if (errorCheck != NO_ERROR){
+		// raise encodererror
+	}
+
+	// need to chheck for comms and raise encoder error if setup communications failed
+	// any way to retry encoder setup?
+
 	return false;
 }
 
-void enc_tle5012_deinit(TLE5012_config_t *cfg) {
-	bool hwspi = false;
-	if (hwspi){
-		// if (cfg->spi_dev == NULL) {
-		// 	return;
-		// }
 
-	    // palSetPadMode(cfg->miso_gpio, cfg->miso_pin, PAL_MODE_INPUT_PULLUP); check for spi vs ssc mode
-		// palSetPadMode(cfg->sck_gpio, cfg->sck_pin, PAL_MODE_INPUT_PULLUP);
-		// palSetPadMode(cfg->nss_gpio, cfg->nss_pin, PAL_MODE_INPUT_PULLUP);
-		// palSetPadMode(cfg->mosi_gpio, cfg->mosi_pin, PAL_MODE_INPUT_PULLUP);
-
-		// spiStop(cfg->spi_dev);
-
-	} else {
-		// sw spi	
-		spi_bb_deinit(&(cfg->sw_spi)); 
-
-		cfg->state.last_enc_angle = 0.0;
-		cfg->state.spi_error_rate = 0.0;
-	}
-}
 
 void enc_tle5012_routine(TLE5012_config_t *cfg) {
 	float timestep = timer_seconds_elapsed_since(cfg->state.last_update_time);
@@ -244,29 +255,27 @@ void enc_tle5012_routine(TLE5012_config_t *cfg) {
 
 	uint16_t rx_data;
 	uint8_t tle_status = enc_tle5012_transfer(cfg, REG_AVAL, &rx_data, READ, true);  // define register names values?
+	cfg->state.last_status_error = tle_status;
 
-	if (tle_status == 0){
+	if (tle_status == NO_ERROR ){
 		uint16_t pos = rx_data & 0x7FFF;
 		cfg->state.last_enc_angle = (float) pos * (360.0 / 32768.0); // 2^15 = 32768.0
 		UTILS_LP_FAST(cfg->state.spi_error_rate, 0.0, timestep);
 	}else{
-		if (tle_status != 1 ) { // if not just a crc error
+		if (tle_status != CRC_ERROR ) { // if not just a crc error
 
 			// read/clear error reg
 			uint16_t status_reg_dat;
 			enc_tle5012_transfer(cfg, REG_STAT, &status_reg_dat, READ, true);
-			
-			// raise encoder exception? if over certain error rate. 10% maybe?
 		}
 
-		cfg->state.last_status_error = tle_status;
 		++cfg->state.spi_error_cnt;
 		UTILS_LP_FAST(cfg->state.spi_error_rate, 1.0, timestep);
 	}
 }
 
 // get tle5012 temp in celsius.
-uint8_t enc_tle5012_get_temperature(TLE5012_config_t *cfg, double *temperature) {
+tle5012_errortypes enc_tle5012_get_temperature(TLE5012_config_t *cfg, double *temperature) {
 	uint16_t rawTemp = 0;
 	uint8_t tle_status_err = enc_tle5012_transfer(cfg, REG_FSYNC, &rawTemp, READ, true);
 
@@ -284,7 +293,7 @@ uint8_t enc_tle5012_get_temperature(TLE5012_config_t *cfg, double *temperature) 
 }
 
 // Unsigned Angle Vector Magnitude after X, Y error compensation (due to temperature).
-uint8_t enc_tle5012_get_magnet_magnitude(TLE5012_config_t *cfg, uint16_t *magnitude) {
+tle5012_errortypes enc_tle5012_get_magnet_magnitude(TLE5012_config_t *cfg, uint16_t *magnitude) {
 	uint16_t rawMag = 0;
 	uint8_t tle_status_err = enc_tle5012_transfer(cfg, REG_D_MAG, &rawMag, READ, true);
 
@@ -297,7 +306,7 @@ uint8_t enc_tle5012_get_magnet_magnitude(TLE5012_config_t *cfg, uint16_t *magnit
 	return (tle_status_err);
 }
 
-uint8_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t *data, spi_direction read, bool safety) {
+tle5012_errortypes enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t *data, ssc_direction read, bool safety) {
 	const uint8_t upd = 0b0;
 	uint16_t safety_word;
 
@@ -327,13 +336,7 @@ uint8_t enc_tle5012_transfer(TLE5012_config_t *cfg, uint8_t address, uint16_t *d
 	}
 	spi_bb_end(&(cfg->sw_spi));
 
-	uint8_t status = checkSafety(command_word, safety_word, data, 1);
-	// if (status != 0){
-	// 	palClearPad(GPIOD, 1);
-	// }else{
-	// 	palSetPadMode(GPIOD, 1, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
-	// 	palSetPad(GPIOD, 1);
-	// }
+	tle5012_errortypes status = checkSafety(command_word, safety_word, data, 1);
 
 	return status;
 }
@@ -368,8 +371,8 @@ uint8_t crc8(uint8_t *data, uint8_t length)
 	return ((~crc) & TLE5012_CRC_SEED);
 }
 
-
-uint8_t checkSafety(uint16_t command, uint16_t safetyword, const uint16_t *readreg, uint16_t length){	
+// check crc and safety word
+tle5012_errortypes checkSafety(uint16_t command, uint16_t safetyword, const uint16_t *readreg, uint16_t length){	
 	/*
 	safety word:
 	[15]:Indication of chip reset or watchdog overflow (resets after readout) via SSC
@@ -379,19 +382,17 @@ uint8_t checkSafety(uint16_t command, uint16_t safetyword, const uint16_t *readr
 	[11..8]: Sensor number response indicator
 	[7..0]: crc 
 	*/
+	tle5012_errortypes errorCheck;
 
 	if (!((safetyword) & TLE5012_SYSTEM_ERROR_MASK)) {
-		//SYSTEM_ERROR;
+		errorCheck= SYSTEM_ERROR;
 		// resetSafety();
-		return 2;
 	} else if (!((safetyword) & TLE5012_INTERFACE_ERROR_MASK)) {
-		//INTERFACE_ACCESS_ERROR;
+		errorCheck = INTERFACE_ACCESS_ERROR;
 		//resetSafety();
-		return 3;
 	} else if (!((safetyword) & TLE5012_INV_ANGLE_ERROR_MASK)) {
-		// INVALID_ANGLE_ERROR;
+		errorCheck = INVALID_ANGLE_ERROR;
 		//resetSafety();
-		return 4;
 	} else {
 		//resetSafety();
 		uint16_t lengthOfTemp = length * 2 + 2;
@@ -409,14 +410,13 @@ uint8_t checkSafety(uint16_t command, uint16_t safetyword, const uint16_t *readr
 		volatile uint8_t crc = crc8(temp, lengthOfTemp);
 
 		if (crc == crcReceivedFinal) {
-			// NO_ERROR;
-			return 0;
+			errorCheck = NO_ERROR;
 		} else {
-			// CRC_ERROR;
-			return 1;
+			errorCheck = CRC_ERROR;
+			// resetSafety();
 		}
 	}
-	return false;
+	return errorCheck;
 }
 
 // const Reg::BitField_t Reg::bitFields[] =

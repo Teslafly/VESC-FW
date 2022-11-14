@@ -96,26 +96,24 @@ typedef struct {
 	uint32_t last_update_time;
 } TLE5012_state;
 
-// typedef struct {  // hw ssc
-// 	SPIDriver *spi_dev;
-// 	SPIConfig hw_spi_cfg;
-// 	stm32_gpio_t *nss_gpio;
-// 	int nss_pin;
-// 	stm32_gpio_t *sck_gpio;
-// 	int sck_pin;
-// 	stm32_gpio_t *mosi_gpio;
-// 	int mosi_pin;
-// 	stm32_gpio_t *miso_gpio;
-// 	int miso_pin;
-
-// 	TLE5012_state state;
-// } TLE5012_config_t;
-
 typedef struct { // sw ssc
 	spi_bb_state sw_spi;
 	TLE5012_state state;
 } TLE5012_config_t;
 
+typedef enum ssc_direction {
+	READ = true, 
+	WRITE = false
+} ssc_direction; 
+
+typedef enum tle5012_errortypes {
+	NO_ERROR               = 0x00,  //!< NO_ERROR = Safety word was OK
+	SYSTEM_ERROR           = 0x01,  //!< SYSTEM_ERROR = over/under voltage, VDD negative, GND off, ROM defect
+	INTERFACE_ACCESS_ERROR = 0x02,  //!< INTERFACE_ACCESS_ERROR = wrong address or wrong lock
+	INVALID_ANGLE_ERROR    = 0x04,  //!< INVALID_ANGLE_ERROR = NO_GMR_A = 1 or NO_GMR_XY = 1
+	ANGLE_SPEED_ERROR      = 0x08,  //!< ANGLE_SPEED_ERROR = combined error, angular speed calculation wrong
+	CRC_ERROR              = 0xFF   //!< CRC_ERROR = Cyclic Redundancy Check (CRC), which includes the STAT and RESP bits wrong
+} tle5012_errortypes; 
 
 typedef struct {
 	volatile bool index_found;
