@@ -1315,6 +1315,26 @@ static lbm_value ext_get_fault(lbm_value *args, lbm_uint argn) {
 	return lbm_enc_i(mc_interface_get_fault());
 }
 
+static lbm_value ext_get_ah(lbm_value *args, lbm_uint argn) {
+	(void)args; (void)argn;
+	return lbm_enc_float(mc_interface_get_amp_hours(false));
+}
+
+static lbm_value ext_get_wh(lbm_value *args, lbm_uint argn) {
+	(void)args; (void)argn;
+	return lbm_enc_float(mc_interface_get_watt_hours(false));
+}
+
+static lbm_value ext_get_ah_chg(lbm_value *args, lbm_uint argn) {
+	(void)args; (void)argn;
+	return lbm_enc_float(mc_interface_get_amp_hours_charged(false));
+}
+
+static lbm_value ext_get_wh_chg(lbm_value *args, lbm_uint argn) {
+	(void)args; (void)argn;
+	return lbm_enc_float(mc_interface_get_watt_hours_charged(false));
+}
+
 // CAN-commands
 
 static lbm_value ext_can_current(lbm_value *args, lbm_uint argn) {
@@ -2814,6 +2834,7 @@ static lbm_value to_str(char *delimiter, lbm_value *args, lbm_uint argn) {
 	if (lbm_create_array(&res, LBM_TYPE_CHAR, str_ofs + 1)) {
 		lbm_array_header_t *arr = (lbm_array_header_t*)lbm_car(res);
 		strncpy((char*)arr->data, str, str_ofs + 1);
+		lispif_free(str);
 		return res;
 	} else {
 		lispif_free(str);
@@ -4253,6 +4274,10 @@ void lispif_load_vesc_extensions(void) {
 	lbm_add_extension("get-dist-abs", ext_get_dist_abs);
 	lbm_add_extension("get-batt", ext_get_batt);
 	lbm_add_extension("get-fault", ext_get_fault);
+	lbm_add_extension("get-ah", ext_get_ah);
+	lbm_add_extension("get-wh", ext_get_wh);
+	lbm_add_extension("get-ah-chg", ext_get_ah_chg);
+	lbm_add_extension("get-wh-chg", ext_get_wh_chg);
 
 	// CAN-comands
 	lbm_add_extension("canset-current", ext_can_current);
