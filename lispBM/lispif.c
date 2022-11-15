@@ -32,7 +32,7 @@
 #define LISP_MEM_BITMAP_SIZE	LBM_MEMORY_BITMAP_SIZE_14K
 #define GC_STACK_SIZE			160
 #define PRINT_STACK_SIZE		128
-#define EXTENSION_STORAGE_SIZE	230
+#define EXTENSION_STORAGE_SIZE	240
 #define VARIABLE_STORAGE_SIZE	64
 
 __attribute__((section(".ram4"))) static lbm_cons_t heap[HEAP_SIZE] __attribute__ ((aligned (8)));
@@ -574,28 +574,29 @@ bool lispif_restart(bool print, bool load_code) {
 		lispif_load_vesc_extensions();
 		lbm_set_dynamic_load_callback(lispif_vesc_dynamic_loader);
 
-		if (load_code) {
-			int code_chars = strlen(code_data);
+		int code_chars = strnlen(code_data, code_len);
 
-			if (code_len > code_chars + 3) {
-				int32_t ind = code_chars + 1;
-				uint16_t num_imports = buffer_get_uint16((uint8_t*)code_data, &ind);
+		// Load imports
+		if (code_len > code_chars + 3) {
+			int32_t ind = code_chars + 1;
+			uint16_t num_imports = buffer_get_uint16((uint8_t*)code_data, &ind);
 
-				if (num_imports > 0 && num_imports < 500) {
-					for (int i = 0;i < num_imports;i++) {
-						char *name = code_data + ind;
-						ind += strlen(name) + 1;
-						int32_t offset = buffer_get_int32((uint8_t*)code_data, &ind);
-						int32_t len = buffer_get_int32((uint8_t*)code_data, &ind);
+			if (num_imports > 0 && num_imports < 500) {
+				for (int i = 0;i < num_imports;i++) {
+					char *name = code_data + ind;
+					ind += strlen(name) + 1;
+					int32_t offset = buffer_get_int32((uint8_t*)code_data, &ind);
+					int32_t len = buffer_get_int32((uint8_t*)code_data, &ind);
 
-						lbm_value val;
-						if (lbm_share_array(&val, code_data + offset, LBM_TYPE_BYTE, len)) {
-							lbm_define(name, val);
-						}
+					lbm_value val;
+					if (lbm_share_array(&val, code_data + offset, LBM_TYPE_BYTE, len)) {
+						lbm_define(name, val);
 					}
 				}
 			}
+		}
 
+		if (load_code) {
 			if (print) {
 				commands_printf_lisp("Parsing %d characters", code_chars);
 			}

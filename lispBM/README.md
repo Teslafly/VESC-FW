@@ -555,14 +555,14 @@ Get motor RPM. Negative values mean that the motor spins in the reverse directio
 
 #### get-temp-fet
 ```clj
-(get-temp-fet)
+(get-temp-fet optFet)
 ```
 
-Get MOSFET temperature.
+Get MOSFET temperature. The argument optFet can be used to select senor 1 to 3. If it is left out or 0 the highest temperature is returned. If the hardware only has one sensor 0 is returned for sensors 1 to 3.
 
-#### get-temp-motor
+#### get-temp-mot
 ```clj
-(get-temp-motor)
+(get-temp-mot)
 ```
 
 Get motor temperature.
@@ -629,6 +629,57 @@ Get the number of amp hours charged since start.
 ```
 
 Get the number of watt hours charged since start.
+
+### Setup Values
+
+These commands return the accumulated values from all VESC-based motor controllers on the CAN-bus. Note that the corresponding CAN status messages must be activated for these commands to work.
+
+#### setup-ah
+```clj
+(setup-ah)
+```
+
+Get the number of amp hours consumed since start.
+
+#### setup-ah-chg
+```clj
+(setup-ah-chg)
+```
+
+Get the number of amp hours charged since start.
+
+#### setup-wh
+```clj
+(setup-wh)
+```
+
+Get the number of watt hours consumed since start.
+
+#### setup-wh-chg
+```clj
+(setup-wh-chg)
+```
+
+Get the number of watt hours charged since start.
+
+#### setup-current
+```clj
+(setup-current)
+```
+
+Get total motor current. Positive means that current is flowing into the motor and negative means that current is flowing out of the motor (regenerative braking).
+
+#### setup-current-in
+```clj
+(setup-current-in)
+```
+
+#### setup-num-vescs
+```clj
+(setup-num-vescs)
+```
+
+Get the number of VESC-based motor controllers the setup values are accumulated from.
 
 ### CAN-Commands
 

@@ -702,7 +702,7 @@ static lbm_value ext_get_adc_decoded(lbm_value *args, lbm_uint argn) {
 
 static lbm_value ext_systime(lbm_value *args, lbm_uint argn) {
 	(void)args; (void)argn;
-	return lbm_enc_i32(chVTGetSystemTimeX());
+	return lbm_enc_u32(chVTGetSystemTimeX());
 }
 
 static lbm_value ext_secs_since(lbm_value *args, lbm_uint argn) {
@@ -1281,8 +1281,31 @@ static lbm_value ext_get_rpm(lbm_value *args, lbm_uint argn) {
 }
 
 static lbm_value ext_get_temp_fet(lbm_value *args, lbm_uint argn) {
-	(void)args; (void)argn;
-	return lbm_enc_float(mc_interface_temp_fet_filtered());
+	CHECK_NUMBER_ALL();
+
+	if (argn > 1) {
+		return ENC_SYM_EERROR;
+	}
+
+	int fet = 0;
+	if (argn == 1) {
+		fet = lbm_dec_as_i32(args[0]);
+	}
+
+	bool is_m2 = mc_interface_get_motor_thread() == 2;
+
+	switch (fet) {
+		case 0:
+			return lbm_enc_float(mc_interface_temp_fet_filtered());
+		case 1:
+			return lbm_enc_float(is_m2 ? NTC_TEMP_MOS1_M2() : NTC_TEMP_MOS1());
+		case 2:
+			return lbm_enc_float(is_m2 ? NTC_TEMP_MOS2_M2() : NTC_TEMP_MOS2());
+		case 3:
+			return lbm_enc_float(is_m2 ? NTC_TEMP_MOS3_M2() : NTC_TEMP_MOS3());
+		default:
+			return ENC_SYM_EERROR;
+	}
 }
 
 static lbm_value ext_get_temp_mot(lbm_value *args, lbm_uint argn) {
@@ -1333,6 +1356,43 @@ static lbm_value ext_get_ah_chg(lbm_value *args, lbm_uint argn) {
 static lbm_value ext_get_wh_chg(lbm_value *args, lbm_uint argn) {
 	(void)args; (void)argn;
 	return lbm_enc_float(mc_interface_get_watt_hours_charged(false));
+}
+
+// Setup values
+
+static lbm_value ext_setup_ah(lbm_value *args, lbm_uint argn) {
+	(void)args; (void)argn;
+	return lbm_enc_float(mc_interface_get_setup_values().ah_tot);
+}
+
+static lbm_value ext_setup_ah_chg(lbm_value *args, lbm_uint argn) {
+	(void)args; (void)argn;
+	return lbm_enc_float(mc_interface_get_setup_values().ah_charge_tot);
+}
+
+static lbm_value ext_setup_wh(lbm_value *args, lbm_uint argn) {
+	(void)args; (void)argn;
+	return lbm_enc_float(mc_interface_get_setup_values().wh_tot);
+}
+
+static lbm_value ext_setup_wh_chg(lbm_value *args, lbm_uint argn) {
+	(void)args; (void)argn;
+	return lbm_enc_float(mc_interface_get_setup_values().wh_charge_tot);
+}
+
+static lbm_value ext_setup_current(lbm_value *args, lbm_uint argn) {
+	(void)args; (void)argn;
+	return lbm_enc_float(mc_interface_get_setup_values().current_tot);
+}
+
+static lbm_value ext_setup_current_in(lbm_value *args, lbm_uint argn) {
+	(void)args; (void)argn;
+	return lbm_enc_float(mc_interface_get_setup_values().current_in_tot);
+}
+
+static lbm_value ext_setup_num_vescs(lbm_value *args, lbm_uint argn) {
+	(void)args; (void)argn;
+	return lbm_enc_i(mc_interface_get_setup_values().num_vescs);
 }
 
 // CAN-commands
@@ -4278,6 +4338,15 @@ void lispif_load_vesc_extensions(void) {
 	lbm_add_extension("get-wh", ext_get_wh);
 	lbm_add_extension("get-ah-chg", ext_get_ah_chg);
 	lbm_add_extension("get-wh-chg", ext_get_wh_chg);
+
+	// Setup values
+	lbm_add_extension("setup-ah", ext_setup_ah);
+	lbm_add_extension("setup-ah-chg", ext_setup_ah_chg);
+	lbm_add_extension("setup-wh", ext_setup_wh);
+	lbm_add_extension("setup-wh-chg", ext_setup_wh_chg);
+	lbm_add_extension("setup-current", ext_setup_current);
+	lbm_add_extension("setup-current-in", ext_setup_current_in);
+	lbm_add_extension("setup-num-vescs", ext_setup_num_vescs);
 
 	// CAN-comands
 	lbm_add_extension("canset-current", ext_can_current);
