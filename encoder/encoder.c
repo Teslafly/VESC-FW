@@ -116,8 +116,7 @@ bool encoder_init(volatile mc_configuration *conf) {
 		}
 
 		encoder_type_now = ENCODER_TYPE_TLE5012;
-		// timer_start(10000);
-		timer_start(2000); // slow down sw spi for now as not optimised
+		timer_start(4000); // slow down sw spi as transactions long
 
 		res = true;
 	} break;
@@ -146,7 +145,7 @@ bool encoder_init(volatile mc_configuration *conf) {
 
 		encoder_type_now = ENCODER_TYPE_TLE5012;
 		// timer_start(10000);
-		timer_start(2000); // slow down sw spi for now as not optimised
+		timer_start(4000);
 
 		res = true;
 	} break;
