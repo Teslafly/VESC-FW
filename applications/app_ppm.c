@@ -50,6 +50,8 @@ static volatile ppm_config config;
 static volatile int pulses_without_power = 0;
 static float input_val = 0.0;
 static volatile float direction_hyst = 0;
+static volatile bool ppm_detached = false;
+static volatile float ppm_override = 0.0;
 
 // Private functions
 
@@ -86,6 +88,14 @@ float app_ppm_get_decoded_level(void) {
 	return input_val;
 }
 
+void app_ppm_detach(bool detach) {
+	ppm_detached = detach;
+}
+
+void app_ppm_override(float val) {
+	ppm_override = val;
+}
+
 static void servodec_func(void) {
 	ppm_rx = true;
 	chSysLockFromISR();
@@ -120,12 +130,18 @@ static THD_FUNCTION(ppm_thread, arg) {
 		const float rpm_now = mc_interface_get_rpm();
 		float servo_val = servodec_get_servo(0);
 		float servo_ms = utils_map(servo_val, -1.0, 1.0, config.pulse_start, config.pulse_end);
+
+		if (ppm_detached) {
+			servo_val = ppm_override;
+		}
+
 		static bool servoError = false;
 
 		switch (config.ctrl_type) {
 		case PPM_CTRL_TYPE_CURRENT_NOREV:
 		case PPM_CTRL_TYPE_DUTY_NOREV:
 		case PPM_CTRL_TYPE_PID_NOREV:
+		case PPM_CTRL_TYPE_PID_POSITION_360:
 			input_val = servo_val;
 			servo_val += 1.0;
 			servo_val /= 2.0;
@@ -143,7 +159,6 @@ static THD_FUNCTION(ppm_thread, arg) {
 			input_val = servo_val;
 			break;
 		}
-
 		// All pins and buttons are still decoded for debugging, even
 		// when output is disabled.
 		if (app_is_output_disabled()) {
@@ -330,6 +345,34 @@ static THD_FUNCTION(ppm_thread, arg) {
 			if (!(pulses_without_power < MIN_PULSES_WITHOUT_POWER && config.safe_start)) {
 				mc_interface_set_pid_speed(servo_val * config.pid_max_erpm);
 				send_current = true;
+			}
+			break;
+
+		case PPM_CTRL_TYPE_PID_POSITION_180: // -180 to 180. center ppm safestart
+		case PPM_CTRL_TYPE_PID_POSITION_360: // 0 to +360. minimum ppm safestart
+			if (fabsf(servo_val) < 0.02) {
+				pulses_without_power++;
+			}
+
+			float angle;
+			if (config.ctrl_type == PPM_CTRL_TYPE_PID_POSITION_180) {
+				angle = (servo_val * 180); // -1 <> +1
+			} else {
+				angle = (servo_val * 360); // 0 <> +1
+			}
+			utils_norm_angle(&angle);
+			if (!(pulses_without_power < MIN_PULSES_WITHOUT_POWER && config.safe_start)) {
+				// try to more intelligently safe start by waiting until 
+				// ppm "angle" is close to motor angle to go into position mode.
+				if (mc_interface_get_control_mode() != CONTROL_MODE_POS){ 	
+					if (fabsf(angle - mc_interface_get_pid_pos_now()) < 10) {
+						// enable position control.
+						mc_interface_set_pid_pos(angle);
+					}
+					break;
+				} else {
+					mc_interface_set_pid_pos(angle);
+				}
 			}
 			break;
 

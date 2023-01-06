@@ -53,8 +53,8 @@ static lbm_cons_t heap[HEAP_SIZE] __attribute__ ((aligned (8)));
 static uint32_t memory_array[LBM_MEMORY_SIZE_8K];
 static uint32_t bitmap_array[LBM_MEMORY_BITMAP_SIZE_8K];
 
-static lbm_tokenizer_string_state_t string_tok_state;
-static lbm_tokenizer_char_stream_t string_tok;
+static lbm_string_channel_state_t string_tok_state;
+static lbm_char_channel_t string_tok;
 
 BaseSequentialStream *chp = NULL;
 
@@ -308,15 +308,9 @@ int main(void) {
       while(lbm_get_eval_state() != EVAL_CPS_STATE_PAUSED) {
         sleep_callback(10);
       }
-      chprintf(chp, "Evaluator paused\r\nEnter command :continue to unpause or :step to perform single stepping\r\n");
+      chprintf(chp, "Evaluator paused\r\nEnter command :continue to unpause\r\n");
     } else if (strncmp(str, ":continue", 9) == 0) {
       lbm_continue_eval();
-    } else if (strncmp(str, ":step", 5) == 0) {
-      lbm_step_eval();
-      while(lbm_get_eval_state() != EVAL_CPS_STATE_PAUSED) {
-        chThdSleepMilliseconds(1);
-      }
-      chprintf(chp, "Evaluator paused\r\nEnter command :continue to unpause or :step to perform single stepping\r\n");
     } else if (strncmp(str, ":reset", 6) == 0) {
       lbm_pause_eval();
       while(lbm_get_eval_state() != EVAL_CPS_STATE_PAUSED) {
@@ -334,19 +328,6 @@ int main(void) {
 
       lbm_add_extension("print", ext_print);
 
-    } else if (strncmp(str, ":prelude", 8) == 0) {
-
-      lbm_pause_eval();
-      while(lbm_get_eval_state() != EVAL_CPS_STATE_PAUSED) {
-        chThdSleepMilliseconds(1);
-      }
-      prelude_load(&string_tok_state,
-                   &string_tok);
-
-      lbm_cid cid = lbm_load_and_eval_program(&string_tok);
-
-      lbm_continue_eval();
-      lbm_wait_ctx((lbm_cid)cid,WAIT_TIMEOUT);
     } else if (strncmp(str, ":quit", 5) == 0) {
 
       break;
@@ -375,9 +356,9 @@ int main(void) {
         while(lbm_get_eval_state() != EVAL_CPS_STATE_PAUSED) {
           sleep_callback(10);
         }
-        lbm_create_char_stream_from_string(&string_tok_state,
-                                              &string_tok,
-                                              file_buffer);
+        lbm_create_string_char_channel(&string_tok_state,
+                                       &string_tok,
+                                       file_buffer);
 
         systime_t t_load = chVTGetSystemTimeX();
 
@@ -393,7 +374,7 @@ int main(void) {
           sleep_callback(10);
         }
 
-        systime_t t_eval = chVTGetSystemTimeX();
+        //systime_t t_eval = chVTGetSystemTimeX();
         cid = lbm_eval_defined_program("prg");
 
         lbm_continue_eval();
@@ -418,7 +399,7 @@ int main(void) {
         continue;
       }
 
-      lbm_value t;
+      //lbm_value t;
 
       /* Get exclusive access to the heap */
       lbm_pause_eval();
@@ -426,15 +407,15 @@ int main(void) {
         sleep_callback(10);
       }
 
-      lbm_create_char_stream_from_string(&string_tok_state,
-                                            &string_tok,
-                                            str);
+      lbm_create_string_char_channel(&string_tok_state,
+                                     &string_tok,
+                                     str);
 
       lbm_cid cid = lbm_load_and_eval_expression(&string_tok);
 
       lbm_continue_eval();
 
-      printf("started ctx: %u\n", cid);
+      //printf("started ctx: %ld\n", cid);
       lbm_wait_ctx((lbm_cid)cid, WAIT_TIMEOUT);
     }
   }

@@ -32,6 +32,7 @@
 #include "datatypes.h"
 #include "comm_can.h"
 #include "terminal.h"
+#include "digital_filter.h"
 
 
 #include <math.h>
@@ -69,16 +70,6 @@ typedef enum {
 	ON
 } SwitchState;
 
-typedef struct{
-	float a0, a1, a2, b1, b2;
-	float z1, z2;
-} Biquad;
-
-typedef enum {
-	BQ_LOWPASS,
-	BQ_HIGHPASS
-} BiquadType;
-
 // Balance thread
 static THD_FUNCTION(balance_thread, arg);
 static THD_WORKING_AREA(balance_thread_wa, 1024); // 2kb stack for this thread
@@ -95,7 +86,7 @@ static float torquetilt_on_step_size, torquetilt_off_step_size, turntilt_step_si
 static float tiltback_variable, tiltback_variable_max_erpm, noseangling_step_size;
 
 // Runtime values read from elsewhere
-static float pitch_angle, last_pitch_angle, roll_angle, abs_roll_angle, abs_roll_angle_sin;
+static float pitch_angle, last_pitch_angle, roll_angle, abs_roll_angle, abs_roll_angle_sin, last_gyro_y;
 static float gyro[3];
 static float duty_cycle, abs_duty_cycle;
 static float erpm, abs_erpm, avg_erpm;
@@ -106,7 +97,7 @@ static SwitchState switch_state;
 
 // Rumtime state values
 static BalanceState state;
-static float proportional, integral, derivative;
+static float proportional, integral, derivative, proportional2, integral2, derivative2;
 static float last_proportional, abs_proportional;
 static float pid_value;
 static float setpoint, setpoint_target, setpoint_target_interpolated;
@@ -120,7 +111,6 @@ static systime_t current_time, last_time, diff_time, loop_overshoot;
 static float filtered_loop_overshoot, loop_overshoot_alpha, filtered_diff_time;
 static systime_t fault_angle_pitch_timer, fault_angle_roll_timer, fault_switch_timer, fault_switch_half_timer, fault_duty_timer;
 static float d_pt1_lowpass_state, d_pt1_lowpass_k, d_pt1_highpass_state, d_pt1_highpass_k;
-static Biquad d_biquad_lowpass, d_biquad_highpass;
 static float motor_timeout;
 static systime_t brake_timeout;
 
@@ -137,35 +127,6 @@ static void terminal_experiment(int argc, const char **argv);
 static float app_balance_get_debug(int index);
 static void app_balance_sample_debug(void);
 static void app_balance_experiment(void);
-
-// Utility Functions
-float biquad_process(Biquad *biquad, float in) {
-    float out = in * biquad->a0 + biquad->z1;
-    biquad->z1 = in * biquad->a1 + biquad->z2 - biquad->b1 * out;
-    biquad->z2 = in * biquad->a2 - biquad->b2 * out;
-    return out;
-}
-void biquad_config(Biquad *biquad, BiquadType type, float Fc) {
-	float K = tanf(M_PI * Fc);	// -0.0159;
-	float Q = 0.707; // maximum sharpness (0.5 = maximum smoothness)
-	float norm = 1 / (1 + K / Q + K * K);
-	if (type == BQ_LOWPASS) {
-		biquad->a0 = K * K * norm;
-		biquad->a1 = 2 * biquad->a0;
-		biquad->a2 = biquad->a0;
-	}
-	else if (type == BQ_HIGHPASS) {
-		biquad->a0 = 1 * norm;
-		biquad->a1 = -2 * biquad->a0;
-		biquad->a2 = biquad->a0;
-	}
-	biquad->b1 = 2 * (K * K - 1) * norm;
-	biquad->b2 = (1 - K / Q + K * K) * norm;
-}
-void biquad_reset(Biquad *biquad) {
-	biquad->z1 = 0;
-	biquad->z2 = 0;
-}
 
 // Exposed Functions
 void app_balance_configure(balance_config *conf, imu_config *conf2) {
@@ -199,14 +160,6 @@ void app_balance_configure(balance_config *conf, imu_config *conf2) {
 		float dT = 1.0 / balance_conf.hertz;
 		float RC = 1.0 / ( 2.0 * M_PI * balance_conf.kd_pt1_highpass_frequency);
 		d_pt1_highpass_k =  dT / (RC + dT);
-	}
-	if(balance_conf.kd_biquad_lowpass > 0){
-		float Fc = balance_conf.kd_biquad_lowpass / balance_conf.hertz;
-		biquad_config(&d_biquad_lowpass, BQ_LOWPASS, Fc);
-	}
-	if(balance_conf.kd_biquad_highpass > 0){
-		float Fc = balance_conf.kd_biquad_highpass / balance_conf.hertz;
-		biquad_config(&d_biquad_highpass, BQ_HIGHPASS, Fc);
 	}
 	if(balance_conf.torquetilt_filter > 0){ // Torquetilt Current Biquad
 		float Fc = balance_conf.torquetilt_filter / balance_conf.hertz;
@@ -298,12 +251,11 @@ static void reset_vars(void){
 	// Clear accumulated values.
 	integral = 0;
 	last_proportional = 0;
+	integral2 = 0;
 	yaw_integral = 0;
 	yaw_last_proportional = 0;
 	d_pt1_lowpass_state = 0;
 	d_pt1_highpass_state = 0;
-	biquad_reset(&d_biquad_lowpass);
-	biquad_reset(&d_biquad_highpass);
 	// Set values for startup
 	setpoint = pitch_angle;
 	setpoint_target_interpolated = pitch_angle;
@@ -356,13 +308,15 @@ static bool check_faults(bool ignoreTimers){
 	}
 
 	// Switch partially open and stopped
-	if((switch_state == HALF || switch_state == OFF) && abs_erpm < balance_conf.fault_adc_half_erpm){
-		if(ST2MS(current_time - fault_switch_half_timer) > balance_conf.fault_delay_switch_half || ignoreTimers){
-			state = FAULT_SWITCH_HALF;
-			return true;
+	if(!balance_conf.fault_is_dual_switch) {
+		if((switch_state == HALF || switch_state == OFF) && abs_erpm < balance_conf.fault_adc_half_erpm){
+			if(ST2MS(current_time - fault_switch_half_timer) > balance_conf.fault_delay_switch_half || ignoreTimers){
+				state = FAULT_SWITCH_HALF;
+				return true;
+			}
+		} else {
+			fault_switch_half_timer = current_time;
 		}
-	} else {
-		fault_switch_half_timer = current_time;
 	}
 
 	// Check pitch angle
@@ -527,7 +481,11 @@ static void apply_turntilt(void){
 	}
 
 	// Limit angle to max angle
-	turntilt_target = fminf(turntilt_target, balance_conf.turntilt_angle_limit);
+	if(turntilt_target > 0){
+		turntilt_target = fminf(turntilt_target, balance_conf.turntilt_angle_limit);
+	}else{
+		turntilt_target = fmaxf(turntilt_target, -balance_conf.turntilt_angle_limit);
+	}
 
 	// Move towards target limited by max speed
 	if(fabsf(turntilt_target - turntilt_interpolated) < turntilt_step_size){
@@ -579,6 +537,12 @@ static void brake(void){
 }
 
 static void set_current(float current, float yaw_current){
+	// Limit current output to configured max output (does not account for yaw_current)
+	if(current > 0 && current > mc_interface_get_configuration()->l_current_max){
+		current = mc_interface_get_configuration()->l_current_max;
+	}else if(current < 0 && current < mc_interface_get_configuration()->l_current_min){
+		current = mc_interface_get_configuration()->l_current_min;
+	}
 	// Reset the timeout
 	timeout_reset();
 	// Set current
@@ -625,8 +589,10 @@ static THD_FUNCTION(balance_thread, arg) {
 		motor_current = mc_interface_get_tot_current_directional_filtered();
 		motor_position = mc_interface_get_pid_pos_now();
 
-		// Get the values we want
+		// Set "last" values to previous loops values
 		last_pitch_angle = pitch_angle;
+		last_gyro_y = gyro[1];
+		// Get the values we want
 		pitch_angle = RAD2DEG_f(imu_get_pitch());
 		roll_angle = RAD2DEG_f(imu_get_roll());
 		abs_roll_angle = fabsf(roll_angle);
@@ -672,7 +638,10 @@ static THD_FUNCTION(balance_thread, arg) {
 			if(adc1 > balance_conf.fault_adc1 && adc2 > balance_conf.fault_adc2){
 				switch_state = ON;
 			}else if(adc1 > balance_conf.fault_adc1 || adc2 > balance_conf.fault_adc2){
-				switch_state = HALF;
+				if (balance_conf.fault_is_dual_switch)
+					switch_state = ON;
+				else
+					switch_state = HALF;
 			}else{
 				switch_state = OFF;
 			}
@@ -715,6 +684,11 @@ static THD_FUNCTION(balance_thread, arg) {
 				integral = integral + proportional;
 				derivative = last_pitch_angle - pitch_angle;
 
+				// Apply I term Filter
+				if(balance_conf.ki_limit > 0 && fabsf(integral * balance_conf.ki) > balance_conf.ki_limit){
+					integral = balance_conf.ki_limit / balance_conf.ki * SIGN(integral);
+				}
+
 				// Apply D term filters
 				if(balance_conf.kd_pt1_lowpass_frequency > 0){
 					d_pt1_lowpass_state = d_pt1_lowpass_state + d_pt1_lowpass_k * (derivative - d_pt1_lowpass_state);
@@ -724,14 +698,21 @@ static THD_FUNCTION(balance_thread, arg) {
 					d_pt1_highpass_state = d_pt1_highpass_state + d_pt1_highpass_k * (derivative - d_pt1_highpass_state);
 					derivative = derivative - d_pt1_highpass_state;
 				}
-				if(balance_conf.kd_biquad_lowpass > 0){
-					derivative = biquad_process(&d_biquad_lowpass, derivative);
-				}
-				if(balance_conf.kd_biquad_highpass > 0){
-					derivative = biquad_process(&d_biquad_highpass, derivative);
-				}
 
 				pid_value = (balance_conf.kp * proportional) + (balance_conf.ki * integral) + (balance_conf.kd * derivative);
+
+				if(balance_conf.pid_mode == BALANCE_PID_MODE_ANGLE_RATE_CASCADE){
+					proportional2 = pid_value - gyro[1];
+					integral2 = integral2 + proportional2;
+					derivative2 = last_gyro_y - gyro[1];
+
+					// Apply I term Filter
+					if(balance_conf.ki_limit > 0 && fabsf(integral2 * balance_conf.ki2) > balance_conf.ki_limit){
+						integral2 = balance_conf.ki_limit / balance_conf.ki2 * SIGN(integral2);
+					}
+
+					pid_value = (balance_conf.kp2 * proportional2) + (balance_conf.ki2 * integral2) + (balance_conf.kd2 * derivative2);
+				}
 
 				last_proportional = proportional;
 
@@ -744,7 +725,6 @@ static THD_FUNCTION(balance_thread, arg) {
 						pid_value += balance_conf.booster_current * SIGN(proportional);
 					}
 				}
-
 
 				if(balance_conf.multi_esc){
 					// Calculate setpoint
@@ -910,6 +890,14 @@ static float app_balance_get_debug(int index){
 			return filtered_loop_overshoot;
 		case(13):
 			return filtered_diff_time;
+		case(14):
+			return integral;
+		case(15):
+			return integral * balance_conf.ki;
+		case(16):
+			return integral2;
+		case(17):
+			return integral2 * balance_conf.ki2;
 		default:
 			return 0;
 	}

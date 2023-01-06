@@ -62,7 +62,9 @@ typedef enum {
 	FOC_SENSOR_MODE_HFI,
 	FOC_SENSOR_MODE_HFI_START,
 	FOC_SENSOR_MODE_HFI_V2,
-	FOC_SENSOR_MODE_HFI_V3
+	FOC_SENSOR_MODE_HFI_V3,
+	FOC_SENSOR_MODE_HFI_V4,
+	FOC_SENSOR_MODE_HFI_V5
 } mc_foc_sensor_mode;
 
 // Auxiliary output mode
@@ -90,7 +92,9 @@ typedef enum {
 	TEMP_SENSOR_NTC_100K_25C,
 	TEMP_SENSOR_KTY84_130,
 	TEMP_SENSOR_NTCX,
-	TEMP_SENSOR_PTCX
+	TEMP_SENSOR_PTCX,
+	TEMP_SENSOR_PT1000,
+	TEMP_SENSOR_DISABLED
 } temp_sensor_type;
 
 // General purpose drive output mode
@@ -118,6 +122,9 @@ typedef enum {
 
 typedef enum {
 	FOC_OBSERVER_ORTEGA_ORIGINAL = 0,
+	FOC_OBSERVER_MXLEMMING,
+	FOC_OBSERVER_ORTEGA_LAMBDA_COMP,
+	FOC_OBSERVER_MXLEMMING_LAMBDA_COMP,
 } mc_foc_observer_type;
 
 typedef enum {
@@ -147,7 +154,10 @@ typedef enum {
 	FAULT_CODE_FLASH_CORRUPTION_APP_CFG,
 	FAULT_CODE_FLASH_CORRUPTION_MC_CFG,
 	FAULT_CODE_ENCODER_NO_MAGNET,
-	FAULT_CODE_ENCODER_MAGNET_TOO_STRONG
+	FAULT_CODE_ENCODER_MAGNET_TOO_STRONG,
+	FAULT_CODE_PHASE_FILTER,
+	FAULT_CODE_ENCODER_FAULT,
+	FAULT_CODE_LV_OUTPUT_FAULT,
 } mc_fault_code;
 
 typedef enum {
@@ -182,7 +192,12 @@ typedef enum {
 	SENSOR_PORT_MODE_SINCOS,
 	SENSOR_PORT_MODE_TS5700N8501,
 	SENSOR_PORT_MODE_TS5700N8501_MULTITURN,
-	SENSOR_PORT_MODE_MT6816_SPI
+	SENSOR_PORT_MODE_MT6816_SPI_HW,
+	SENSOR_PORT_MODE_AS5x47U_SPI,
+	SENSOR_PORT_MODE_BISSC,
+	SENSOR_PORT_MODE_TLE5012_SSC_SW,
+	SENSOR_PORT_MODE_TLE5012_SSC_HW,
+	SENSOR_PORT_MODE_CUSTOM_ENCODER,
 } sensor_port_mode;
 
 typedef struct {
@@ -250,6 +265,7 @@ typedef enum {
 
 typedef struct {
 	BMS_TYPE type;
+	uint8_t limit_mode;
 	float t_limit_start;
 	float t_limit_end;
 	float soc_limit_start;
@@ -268,7 +284,7 @@ typedef struct {
 	float v_cell[32];
 	bool bal_state[32];
 	int temp_adc_num;
-	float temps_adc[10];
+	float temps_adc[50];
 	float temp_ic;
 	float temp_hum;
 	float hum;
@@ -318,6 +334,13 @@ typedef enum {
 	SPEED_SRC_CORRECTED = 0,
 	SPEED_SRC_OBSERVER,
 } SPEED_SRC;
+
+typedef enum {
+	SAT_COMP_DISABLED = 0,
+	SAT_COMP_FACTOR,
+	SAT_COMP_LAMBDA,
+	SAT_COMP_LAMBDA_AND_FACTOR
+} SAT_COMP_MODE;
 
 typedef struct {
 	// Limits
@@ -382,11 +405,6 @@ typedef struct {
 	float foc_encoder_offset;
 	bool foc_encoder_inverted;
 	float foc_encoder_ratio;
-	float foc_encoder_sin_offset;
-	float foc_encoder_sin_gain;
-	float foc_encoder_cos_offset;
-	float foc_encoder_cos_gain;
-	float foc_encoder_sincos_filter_constant;
 	float foc_motor_l;
 	float foc_motor_ld_lq_diff;
 	float foc_motor_r;
@@ -398,6 +416,8 @@ typedef struct {
 	float foc_pll_ki;
 	float foc_duty_dowmramp_kp;
 	float foc_duty_dowmramp_ki;
+	float foc_start_curr_dec;
+	float foc_start_curr_dec_rpm;
 	float foc_openloop_rpm;
 	float foc_openloop_rpm_low;
 	float foc_d_gain_scale_start;
@@ -406,12 +426,15 @@ typedef struct {
 	float foc_sl_openloop_time;
 	float foc_sl_openloop_time_lock;
 	float foc_sl_openloop_time_ramp;
+	float foc_sl_openloop_boost_q;
+	float foc_sl_openloop_max_q;
 	mc_foc_sensor_mode foc_sensor_mode;
 	uint8_t foc_hall_table[8];
 	float foc_hall_interp_erpm;
 	float foc_sl_erpm;
 	bool foc_sample_v0_v7;
 	bool foc_sample_high_current;
+	SAT_COMP_MODE foc_sat_comp_mode;
 	float foc_sat_comp;
 	bool foc_temp_comp;
 	float foc_temp_comp_base_temp;
@@ -432,6 +455,7 @@ typedef struct {
 	float foc_offsets_voltage[3];
 	float foc_offsets_voltage_undriven[3];
 	bool foc_phase_filter_enable;
+	bool foc_phase_filter_disable_fault;
 	float foc_phase_filter_max_erpm;
 	MTPA_MODE foc_mtpa_mode;
 	// Field Weakening
@@ -480,6 +504,12 @@ typedef struct {
 	float m_duty_ramp_step;
 	float m_current_backoff_gain;
 	uint32_t m_encoder_counts;
+	float m_encoder_sin_offset;
+	float m_encoder_sin_amp;
+	float m_encoder_cos_offset;
+	float m_encoder_cos_amp;
+	float m_encoder_sincos_filter_constant;
+	float m_encoder_sincos_phase_correction;
 	sensor_port_mode m_sensor_port_mode;
 	bool m_invert_direction;
 	drv8301_oc_mode m_drv8301_oc_mode;
@@ -492,6 +522,7 @@ typedef struct {
 	temp_sensor_type m_motor_temp_sens_type;
 	float m_ptc_motor_coeff;
 	int m_hall_extra_samples;
+	int m_batt_filter_const;
 	float m_ntcx_ptcx_temp_base;
 	float m_ntcx_ptcx_res;
 	// Setup info
@@ -550,7 +581,9 @@ typedef enum {
 	PPM_CTRL_TYPE_PID,
 	PPM_CTRL_TYPE_PID_NOREV,
 	PPM_CTRL_TYPE_CURRENT_BRAKE_REV_HYST,
-	PPM_CTRL_TYPE_CURRENT_SMART_REV
+	PPM_CTRL_TYPE_CURRENT_SMART_REV,
+	PPM_CTRL_TYPE_PID_POSITION_180,
+	PPM_CTRL_TYPE_PID_POSITION_360,
 } ppm_control_type;
 
 typedef struct {
@@ -612,13 +645,14 @@ typedef struct {
 	float hyst;
 	float voltage_start;
 	float voltage_end;
+	float voltage_min;
+	float voltage_max;
 	float voltage_center;
 	float voltage2_start;
 	float voltage2_end;
 	bool use_filter;
 	SAFE_START_MODE safe_start;
-	bool cc_button_inverted;
-	bool rev_button_inverted;
+	uint8_t buttons;
 	bool voltage_inverted;
 	bool voltage2_inverted;
 	float throttle_exp;
@@ -728,10 +762,19 @@ typedef struct {
 	bool send_crc_ack;
 } nrf_config;
 
+typedef enum {
+	BALANCE_PID_MODE_ANGLE = 0,
+	BALANCE_PID_MODE_ANGLE_RATE_CASCADE
+} BALANCE_PID_MODE;
+
 typedef struct {
+	BALANCE_PID_MODE pid_mode;
 	float kp;
 	float ki;
 	float kd;
+	float kp2;
+	float ki2;
+	float kd2;
 	uint16_t hertz;
 	uint16_t loop_time_filter;
 	float fault_pitch;
@@ -745,6 +788,7 @@ typedef struct {
 	uint16_t fault_delay_switch_half;
 	uint16_t fault_delay_switch_full;
 	uint16_t fault_adc_half_erpm;
+	bool fault_is_dual_switch;
 	float tiltback_duty_angle;
 	float tiltback_duty_speed;
 	float tiltback_duty;
@@ -773,10 +817,9 @@ typedef struct {
 	float brake_current;
 	uint16_t brake_timeout;
 	float yaw_current_clamp;
+	float ki_limit;
 	uint16_t kd_pt1_lowpass_frequency;
 	uint16_t kd_pt1_highpass_frequency;
-	float kd_biquad_lowpass;
-	float kd_biquad_highpass;
 	float booster_angle;
 	float booster_ramp;
 	float booster_current;
@@ -823,10 +866,22 @@ typedef enum {
 	AHRS_MODE_MADGWICK_FUSION
 } AHRS_MODE;
 
+typedef enum {
+	IMU_FILTER_LOW = 0,
+	IMU_FILTER_MEDIUM,
+	IMU_FILTER_HIGH
+} IMU_FILTER;
+
 typedef struct {
 	IMU_TYPE type;
 	AHRS_MODE mode;
+	IMU_FILTER filter;
+	float accel_lowpass_filter_x;
+	float accel_lowpass_filter_y;
+	float accel_lowpass_filter_z;
+	float gyro_lowpass_filter;
 	int sample_rate_hz;
+	bool use_magnetometer;
 	float accel_confidence_decay;
 	float mahony_kp;
 	float mahony_ki;
@@ -841,7 +896,8 @@ typedef struct {
 typedef enum {
 	CAN_MODE_VESC = 0,
 	CAN_MODE_UAVCAN,
-	CAN_MODE_COMM_BRIDGE
+	CAN_MODE_COMM_BRIDGE,
+	CAN_MODE_UNUSED,
 } CAN_MODE;
 
 typedef enum {
@@ -850,6 +906,11 @@ typedef enum {
 	UAVCAN_RAW_MODE_DUTY,
 	UAVCAN_RAW_MODE_RPM
 } UAVCAN_RAW_MODE;
+
+typedef enum {
+	UAVCAN_STATUS_CURRENT_MODE_MOTOR = 0,
+	UAVCAN_STATUS_CURRENT_MODE_INPUT
+} UAVCAN_STATUS_CURRENT_MODE;
 
 typedef enum {
 	KILL_SW_MODE_DISABLED = 0,
@@ -880,6 +941,7 @@ typedef struct {
 	uint8_t uavcan_esc_index;
 	UAVCAN_RAW_MODE uavcan_raw_mode;
 	float uavcan_raw_rpm_max;
+	UAVCAN_STATUS_CURRENT_MODE uavcan_status_current_mode;
 
 	// Application to use
 	app_use app_to_use;
@@ -1070,6 +1132,23 @@ typedef enum {
 	COMM_BMS_GET_BATT_TYPE,
 
 	COMM_LISP_REPL_CMD,
+	COMM_LISP_STREAM_CODE,
+
+	COMM_FILE_LIST,
+	COMM_FILE_READ,
+	COMM_FILE_WRITE,
+	COMM_FILE_MKDIR,
+	COMM_FILE_REMOVE,
+
+	COMM_LOG_START,
+	COMM_LOG_STOP,
+	COMM_LOG_CONFIG_FIELD,
+	COMM_LOG_DATA_F32,
+
+	COMM_SET_APPCONF_NO_STORE,
+	COMM_GET_GNSS,
+
+	COMM_LOG_DATA_F64,
 } COMM_PACKET_ID;
 
 // CAN commands
@@ -1133,8 +1212,25 @@ typedef enum {
 	CAN_PACKET_POLL_ROTOR_POS,
 	CAN_PACKET_NOTIFY_BOOT,
 	CAN_PACKET_STATUS_6,
+	CAN_PACKET_GNSS_TIME,
+	CAN_PACKET_GNSS_LAT,
+	CAN_PACKET_GNSS_LON,
+	CAN_PACKET_GNSS_ALT_SPEED_HDOP,
 	CAN_PACKET_MAKE_ENUM_32_BITS = 0xFFFFFFFF,
 } CAN_PACKET_ID;
+
+typedef struct {
+	double lat;
+	double lon;
+	float height;
+	float speed;
+	float hdop;
+	int32_t ms_today;
+	int16_t yy;
+	int8_t mo;
+	int8_t dd;
+	systime_t last_update;
+} gnss_data;
 
 // Logged fault data
 typedef struct {
@@ -1154,6 +1250,9 @@ typedef struct {
 	int comm_step;
 	float temperature;
 	int drv8301_faults;
+	const char *info_str;
+	int info_argn;
+	float info_args[2];
 } fault_data;
 
 typedef struct {
@@ -1292,7 +1391,6 @@ typedef enum {
 	NRF_PAIR_FAIL
 } NRF_PAIR_RES;
 
-// Orientation data
 typedef struct {
 	float q0;
 	float q1;
@@ -1303,6 +1401,12 @@ typedef struct {
 	float integralFBz;
 	float accMagP;
 	int initialUpdateDone;
+
+	// Parameters
+	float acc_confidence_decay;
+	float kp;
+	float ki;
+	float beta;
 } ATTITUDE_INFO;
 
 // Custom EEPROM variables
@@ -1312,8 +1416,8 @@ typedef union {
 	float as_float;
 } eeprom_var;
 
-#define EEPROM_VARS_HW			64
-#define EEPROM_VARS_CUSTOM		64
+#define EEPROM_VARS_HW			32
+#define EEPROM_VARS_CUSTOM		128
 
 typedef struct {
 	float ah_tot;
@@ -1348,6 +1452,10 @@ typedef struct __attribute__((packed)) {
 
 	uint32_t runtime_init_flag;
 	uint64_t runtime; // Seconds
+
+	// HW-specific data
+	uint32_t hw_config_init_flag;
+	uint8_t hw_config[128];
 } backup_data;
 
 #endif /* DATATYPES_H_ */

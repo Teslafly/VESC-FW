@@ -7,26 +7,10 @@ make
 
 echo "PERFORMING TESTS:"
 
-expected_fails=("test_lisp_code_cps -h 512 test_qq_4.lisp"
-                "test_lisp_code_cps -h 512 test_qq_5.lisp"
-                "test_lisp_code_cps -h 512 test_sumtree_0.lisp"
-                "test_lisp_code_cps -h 512 test_sumtree_1.lisp"
-                "test_lisp_code_cps -h 512 test_sumtree_2.lisp"
-                "test_lisp_code_cps -c -h 512 test_qq_4.lisp"
-                "test_lisp_code_cps -c -h 512 test_qq_5.lisp"
-                "test_lisp_code_cps -c -h 512 test_sumtree_0.lisp"
-                "test_lisp_code_cps -c -h 512 test_sumtree_1.lisp"
-                "test_lisp_code_cps -c -h 512 test_sumtree_2.lisp"
-                "test_lisp_code_cps -h 1024 test_take_iota_0.lisp"
-                "test_lisp_code_cps -c -h 1024 test_take_iota_0.lisp"
+expected_fails=("test_lisp_code_cps -h 1024 test_take_iota_0.lisp"
+                "test_lisp_code_cps -s -h 1024 test_take_iota_0.lisp"
                 "test_lisp_code_cps -h 512 test_take_iota_0.lisp"
-                "test_lisp_code_cps -c -h 512 test_take_iota_0.lisp"
-                "test_lisp_code_cps -h 512 test_array_extensions_0.lisp"
-                "test_lisp_code_cps -c -h 512 test_array_extensions_0.lisp"
-                "test_lisp_code_cps -h 512 test_array_extensions_1.lisp"
-                "test_lisp_code_cps -c -h 512 test_array_extensions_1.lisp"
-                "test_lisp_code_cps -h 512 test_array_extensions_4.lisp"
-                "test_lisp_code_cps -c -h 512 test_array_extensions_4.lisp"
+                "test_lisp_code_cps -s -h 512 test_take_iota_0.lisp"
                )
 
 
@@ -60,7 +44,7 @@ done
 
 #"test_lisp_code_cps_nc"
 for prg in "test_lisp_code_cps" ; do
-    for arg in  "-h 32768" "-c -h 32768" "-h 16384" "-c -h 16384" "-h 8192" "-c -h 8192" "-h 4096" "-c -h 4096" "-h 2048"  "-c -h 2048" "-h 1024" "-c -h 1024" "-h 512" "-c -h 512" ; do
+    for arg in  "-h 32768" "-s -h 32768" "-h 16384" "-s -h 16384" "-h 8192" "-s -h 8192" "-h 4096" "-s -h 4096" "-h 2048"  "-s -h 2048" "-h 1024" "-s -h 1024" "-h 512" "-s -h 512" ; do
         for lisp in *.lisp; do
 
             ./$prg $arg $lisp

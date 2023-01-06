@@ -34,11 +34,11 @@
 
 static lbm_value ext_str_from_n(lbm_value *args, lbm_uint argn) {
   if ((argn != 1 && argn != 2) || !lbm_is_number(args[0])) {
-    return lbm_enc_sym(SYM_EERROR);
+    return ENC_SYM_EERROR;
   }
 
   if (argn == 2 && lbm_type_of(args[1]) != LBM_TYPE_ARRAY) {
-    return lbm_enc_sym(SYM_EERROR);
+    return ENC_SYM_EERROR;
   }
 
   char *format = 0;
@@ -76,7 +76,7 @@ static lbm_value ext_str_from_n(lbm_value *args, lbm_uint argn) {
     ((char*)(arr->data))[len] = '\0';
     return res;
   } else {
-    return lbm_enc_sym(SYM_MERROR);
+    return ENC_SYM_MERROR;
   }
 }
 
@@ -87,7 +87,7 @@ static lbm_value ext_str_merge(lbm_value *args, lbm_uint argn) {
     if (str) {
       len_tot += (int)strlen(str);
     } else {
-      return lbm_enc_sym(SYM_EERROR);
+      return ENC_SYM_EERROR;
     }
   }
 
@@ -101,24 +101,24 @@ static lbm_value ext_str_merge(lbm_value *args, lbm_uint argn) {
     ((char*)(arr->data))[len_tot] = '\0';
     return res;
   } else {
-    return lbm_enc_sym(SYM_MERROR);
+    return ENC_SYM_MERROR;
   }
 }
 
 static lbm_value ext_str_to_i(lbm_value *args, lbm_uint argn) {
   if (argn != 1 && argn != 2) {
-    return lbm_enc_sym(SYM_EERROR);
+    return ENC_SYM_EERROR;
   }
 
   char *str = lbm_dec_str(args[0]);
   if (!str) {
-    return lbm_enc_sym(SYM_EERROR);
+    return ENC_SYM_EERROR;
   }
 
   int base = 0;
   if (argn == 2) {
     if (!lbm_is_number(args[1])) {
-      return lbm_enc_sym(SYM_EERROR);
+      return ENC_SYM_EERROR;
     }
 
     base = lbm_dec_as_i32(args[1]);
@@ -129,12 +129,12 @@ static lbm_value ext_str_to_i(lbm_value *args, lbm_uint argn) {
 
 static lbm_value ext_str_to_f(lbm_value *args, lbm_uint argn) {
   if (argn != 1) {
-    return lbm_enc_sym(SYM_EERROR);
+    return ENC_SYM_EERROR;
   }
 
   char *str = lbm_dec_str(args[0]);
   if (!str) {
-    return lbm_enc_sym(SYM_EERROR);
+    return ENC_SYM_EERROR;
   }
 
   return lbm_enc_float(strtof(str, NULL));
@@ -142,12 +142,12 @@ static lbm_value ext_str_to_f(lbm_value *args, lbm_uint argn) {
 
 static lbm_value ext_str_part(lbm_value *args, lbm_uint argn) {
   if ((argn != 2 && argn != 3) || !lbm_is_number(args[1])) {
-    return lbm_enc_sym(SYM_EERROR);
+    return ENC_SYM_EERROR;
   }
 
   char *str = lbm_dec_str(args[0]);
   if (!str) {
-    return lbm_enc_sym(SYM_EERROR);
+    return ENC_SYM_EERROR;
   }
 
   size_t len = strlen(str);
@@ -155,13 +155,13 @@ static lbm_value ext_str_part(lbm_value *args, lbm_uint argn) {
   uint32_t start = lbm_dec_as_u32(args[1]);
 
   if (start >= len) {
-    return lbm_enc_sym(SYM_EERROR);
+    return ENC_SYM_EERROR;
   }
 
   uint32_t n = (uint32_t)len - start;
   if (argn == 3) {
     if (!lbm_is_number(args[2])) {
-      return lbm_enc_sym(SYM_EERROR);
+      return ENC_SYM_EERROR;
     }
 
     n = MIN(lbm_dec_as_u32(args[2]), n);
@@ -174,18 +174,18 @@ static lbm_value ext_str_part(lbm_value *args, lbm_uint argn) {
     ((char*)(arr->data))[n] = '\0';
     return res;
   } else {
-    return lbm_enc_sym(SYM_MERROR);
+    return ENC_SYM_MERROR;
   }
 }
 
 static lbm_value ext_str_split(lbm_value *args, lbm_uint argn) {
   if (argn != 2) {
-    return lbm_enc_sym(SYM_EERROR);
+    return ENC_SYM_EERROR;
   }
 
   char *str = lbm_dec_str(args[0]);
   if (!str) {
-    return lbm_enc_sym(SYM_EERROR);
+    return ENC_SYM_EERROR;
   }
 
   char *split = lbm_dec_str(args[1]);
@@ -194,12 +194,12 @@ static lbm_value ext_str_split(lbm_value *args, lbm_uint argn) {
     if (lbm_is_number(args[1])) {
       step = MAX(lbm_dec_as_i32(args[1]), 1);
     } else {
-      return lbm_enc_sym(SYM_EERROR);
+      return ENC_SYM_EERROR;
     }
   }
 
   if (step > 0) {
-    lbm_value res = lbm_enc_sym(SYM_NIL);
+    lbm_value res = ENC_SYM_NIL;
     int len = (int)strlen(str);
     for (int i = len / step;i >= 0;i--) {
       int ind_now = i * step;
@@ -219,13 +219,20 @@ static lbm_value ext_str_split(lbm_value *args, lbm_uint argn) {
         ((char*)(arr->data))[step_now] = '\0';
         res = lbm_cons(tok, res);
       } else {
-        return lbm_enc_sym(SYM_MERROR);
+        return ENC_SYM_MERROR;
       }
     }
 
     return res;
+  } else if (!split) {
+    // This case is here to make static analysis happy.
+    // The SA tools does not seem to understand that there
+    // is a relationship between the split and step variables
+    // such that if split is null step will be greater than zero and if
+    // step is zero, split will be non-nil.
+    return ENC_SYM_MERROR;
   } else {
-    lbm_value res = lbm_enc_sym(SYM_NIL);
+    lbm_value res = ENC_SYM_NIL;
     const char *s = str;
     while (*(s += strspn(s, split)) != '\0') {
       size_t len = strcspn(s, split);
@@ -237,7 +244,7 @@ static lbm_value ext_str_split(lbm_value *args, lbm_uint argn) {
         ((char*)(arr->data))[len] = '\0';
         res = lbm_cons(tok, res);
       } else {
-        return lbm_enc_sym(SYM_MERROR);
+        return ENC_SYM_MERROR;
       }
 
       s += len;
@@ -249,29 +256,29 @@ static lbm_value ext_str_split(lbm_value *args, lbm_uint argn) {
 
 static lbm_value ext_str_replace(lbm_value *args, lbm_uint argn) {
   if (argn != 2 && argn != 3) {
-    return lbm_enc_sym(SYM_EERROR);
+    return ENC_SYM_EERROR;
   }
 
   char *orig = lbm_dec_str(args[0]);
   if (!orig) {
-    return lbm_enc_sym(SYM_TERROR);
+    return ENC_SYM_TERROR;
   }
 
   char *rep = lbm_dec_str(args[1]);
   if (!rep) {
-    return lbm_enc_sym(SYM_TERROR);
+    return ENC_SYM_TERROR;
   }
 
   char *with = "";
   if (argn == 3) {
     with = lbm_dec_str(args[2]);
     if (!with) {
-      return lbm_enc_sym(SYM_TERROR);
+      return ENC_SYM_TERROR;
     }
   }
 
   // See https://stackoverflow.com/questions/779875/what-function-is-to-replace-a-substring-from-a-string-in-c
-  char *result; // the return string
+  //char *result; // the return string
   char *ins;    // the next insert point
   char *tmp;    // varies
   int len_rep;  // length of rep (the string to remove)
@@ -291,14 +298,15 @@ static lbm_value ext_str_replace(lbm_value *args, lbm_uint argn) {
   for (count = 0; (tmp = strstr(ins, rep)); ++count) {
     ins = tmp + len_rep;
   }
-  
+
   size_t len_res = strlen(orig) + (size_t)((len_with - len_rep) * count + 1);
   lbm_value lbm_res;
   if (lbm_create_array(&lbm_res, LBM_TYPE_CHAR, len_res)) {
     lbm_array_header_t *arr = (lbm_array_header_t*)lbm_car(lbm_res);
-    tmp = result = (char*)arr->data;
+    //tmp = result = (char*)arr->data;
+    tmp = (char*)arr->data; // result is never accessed so should not be needed.
   } else {
-    return lbm_enc_sym(SYM_MERROR);
+    return ENC_SYM_MERROR;
   }
 
   // first time through the loop, all the variable are set correctly
@@ -320,12 +328,12 @@ static lbm_value ext_str_replace(lbm_value *args, lbm_uint argn) {
 
 static lbm_value ext_str_to_lower(lbm_value *args, lbm_uint argn) {
   if (argn != 1) {
-    return lbm_enc_sym(SYM_EERROR);
+    return ENC_SYM_EERROR;
   }
 
   char *orig = lbm_dec_str(args[0]);
   if (!orig) {
-    return lbm_enc_sym(SYM_TERROR);
+    return ENC_SYM_TERROR;
   }
 
   int len = (int)strlen(orig);
@@ -338,18 +346,18 @@ static lbm_value ext_str_to_lower(lbm_value *args, lbm_uint argn) {
     ((char*)(arr->data))[len] = '\0';
     return lbm_res;
   } else {
-    return lbm_enc_sym(SYM_MERROR);
+    return ENC_SYM_MERROR;
   }
 }
 
 static lbm_value ext_str_to_upper(lbm_value *args, lbm_uint argn) {
   if (argn != 1) {
-    return lbm_enc_sym(SYM_EERROR);
+    return ENC_SYM_EERROR;
   }
 
   char *orig = lbm_dec_str(args[0]);
   if (!orig) {
-    return lbm_enc_sym(SYM_TERROR);
+    return ENC_SYM_TERROR;
   }
 
   int len = (int)strlen(orig);
@@ -362,27 +370,52 @@ static lbm_value ext_str_to_upper(lbm_value *args, lbm_uint argn) {
     ((char*)(arr->data))[len] = '\0';
     return lbm_res;
   } else {
-    return lbm_enc_sym(SYM_MERROR);
+    return ENC_SYM_MERROR;
   }
 }
 
 static lbm_value ext_str_cmp(lbm_value *args, lbm_uint argn) {
   if (argn != 2) {
-    return lbm_enc_sym(SYM_EERROR);
+    return ENC_SYM_EERROR;
   }
 
   char *str1 = lbm_dec_str(args[0]);
   if (!str1) {
-    return lbm_enc_sym(SYM_EERROR);
+    return ENC_SYM_EERROR;
   }
 
   char *str2 = lbm_dec_str(args[1]);
   if (!str2) {
-    return lbm_enc_sym(SYM_EERROR);
+    return ENC_SYM_EERROR;
   }
 
   return lbm_enc_i(strcmp(str1, str2));
 }
+
+static lbm_value ext_str_n_cmp(lbm_value *args, lbm_uint argn) {
+  if (argn != 3) {
+    return ENC_SYM_EERROR;
+  }
+
+  char *str1 = lbm_dec_str(args[0]);
+  if (!str1) {
+    return ENC_SYM_EERROR;
+  }
+
+  char *str2 = lbm_dec_str(args[1]);
+  if (!str2) {
+    return ENC_SYM_EERROR;
+  }
+
+  if (lbm_is_number(args[2])) {
+    int n = lbm_dec_as_i32(args[2]);
+
+    return lbm_enc_i(strncmp(str1, str2, n));
+  }
+  return ENC_SYM_TERROR;
+}
+
+
 
 bool lbm_string_extensions_init(void) {
 
@@ -397,5 +430,6 @@ bool lbm_string_extensions_init(void) {
   res = res && lbm_add_extension("str-to-lower", ext_str_to_lower);
   res = res && lbm_add_extension("str-to-upper", ext_str_to_upper);
   res = res && lbm_add_extension("str-cmp", ext_str_cmp);
+  res = res && lbm_add_extension("str-n-cmp", ext_str_n_cmp);
   return res;
 }

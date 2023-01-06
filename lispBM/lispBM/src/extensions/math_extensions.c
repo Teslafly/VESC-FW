@@ -32,9 +32,9 @@ static bool is_number_all(lbm_value *args, lbm_uint argn) {
 	return true;
 }
 
-#define CHECK_NUMBER_ALL()			if (!is_number_all(args, argn)) {return lbm_enc_sym(SYM_EERROR);}
-#define CHECK_ARGN(n)				if (argn != n) {return lbm_enc_sym(SYM_EERROR);}
-#define CHECK_ARGN_NUMBER(n)		if (argn != n || !is_number_all(args, argn)) {return lbm_enc_sym(SYM_EERROR);}
+#define CHECK_NUMBER_ALL()			if (!is_number_all(args, argn)) {return ENC_SYM_EERROR;}
+#define CHECK_ARGN(n)				if (argn != n) {return ENC_SYM_EERROR;}
+#define CHECK_ARGN_NUMBER(n)		if (argn != n || !is_number_all(args, argn)) {return ENC_SYM_EERROR;}
 
 
 void rotate_vector3(float *input, float *rotation, float *output, bool reverse) {
@@ -142,7 +142,7 @@ static lbm_value ext_deg2radf(lbm_value *args, lbm_uint argn) {
   if (argn == 1) {
     return lbm_enc_float(DEG2RAD_f(lbm_dec_as_float(args[0])));
   } else {
-    lbm_value out_list = lbm_enc_sym(SYM_NIL);
+    lbm_value out_list = ENC_SYM_NIL;
     for (int i = (int)(argn - 1);i >= 0;i--) {
       out_list = lbm_cons(lbm_enc_float(DEG2RAD_f(lbm_dec_as_float(args[i]))), out_list);
     }
@@ -156,7 +156,7 @@ static lbm_value ext_rad2degf(lbm_value *args, lbm_uint argn) {
   if (argn == 1) {
     return lbm_enc_float(RAD2DEG_f(lbm_dec_as_float(args[0])));
   } else {
-    lbm_value out_list = lbm_enc_sym(SYM_NIL);
+    lbm_value out_list = ENC_SYM_NIL;
     for (int i = (int)(argn - 1);i >= 0;i--) {
       out_list = lbm_cons(lbm_enc_float(RAD2DEG_f(lbm_dec_as_float(args[i]))), out_list);
     }
@@ -167,7 +167,7 @@ static lbm_value ext_rad2degf(lbm_value *args, lbm_uint argn) {
 static lbm_value ext_vec3_rotf(lbm_value *args, lbm_uint argn) {
   CHECK_NUMBER_ALL();
   if (argn != 6 && argn != 7) {
-    return lbm_enc_sym(SYM_EERROR);
+    return ENC_SYM_EERROR;
   }
 
   float input[] = {lbm_dec_as_float(args[0]), lbm_dec_as_float(args[1]), lbm_dec_as_float(args[2])};
@@ -181,7 +181,7 @@ static lbm_value ext_vec3_rotf(lbm_value *args, lbm_uint argn) {
 
   rotate_vector3(input, rotation, output, reverse);
 
-  lbm_value out_list = lbm_enc_sym(SYM_NIL);
+  lbm_value out_list = ENC_SYM_NIL;
   out_list = lbm_cons(lbm_enc_float(output[2]), out_list);
   out_list = lbm_cons(lbm_enc_float(output[1]), out_list);
   out_list = lbm_cons(lbm_enc_float(output[0]), out_list);
@@ -192,20 +192,20 @@ static lbm_value ext_vec3_rotf(lbm_value *args, lbm_uint argn) {
 bool lbm_math_extensions_init(void) {
 
   bool res = true;
-  res = res && lbm_add_extension("sinf", ext_sinf);
-  res = res && lbm_add_extension("cosf", ext_cosf);
-  res = res && lbm_add_extension("tanf", ext_tanf);
-  res = res && lbm_add_extension("asinf", ext_asinf);
-  res = res && lbm_add_extension("acosf", ext_acosf);
-  res = res && lbm_add_extension("atanf", ext_atanf);
-  res = res && lbm_add_extension("atan2f", ext_atan2f);
-  res = res && lbm_add_extension("powf", ext_powf);
-  res = res && lbm_add_extension("sqrtf", ext_sqrtf);
-  res = res && lbm_add_extension("logf", ext_logf);
-  res = res && lbm_add_extension("log10f", ext_log10f);
-  res = res && lbm_add_extension("deg2radf", ext_deg2radf);
-  res = res && lbm_add_extension("rad2degf", ext_rad2degf);
-  res = res && lbm_add_extension("vec3-rotf", ext_vec3_rotf);
+  res = res && lbm_add_extension("sin", ext_sinf);
+  res = res && lbm_add_extension("cos", ext_cosf);
+  res = res && lbm_add_extension("tan", ext_tanf);
+  res = res && lbm_add_extension("asin", ext_asinf);
+  res = res && lbm_add_extension("acos", ext_acosf);
+  res = res && lbm_add_extension("atan", ext_atanf);
+  res = res && lbm_add_extension("atan2", ext_atan2f);
+  res = res && lbm_add_extension("pow", ext_powf);
+  res = res && lbm_add_extension("sqrt", ext_sqrtf);
+  res = res && lbm_add_extension("log", ext_logf);
+  res = res && lbm_add_extension("log10", ext_log10f);
+  res = res && lbm_add_extension("deg2rad", ext_deg2radf);
+  res = res && lbm_add_extension("rad2deg", ext_rad2degf);
+  res = res && lbm_add_extension("vec3-rot", ext_vec3_rotf);
 
   return res;
 }

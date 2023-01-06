@@ -18,6 +18,7 @@ no_limits_name = "VESC_default_no_hw_limits.bin"
 default_name = "VESC_default.bin"
 
 # Add directories and targets to the dictionary
+# package_dict["group name diplayed in firmware tab of the vesc tool"] = [['.c filename minus the hw_', 'compiled .bin filename']]
 package_dict = {}
 package_dict["46_o_47"] = [['46', default_name],
                     ['46_33k', 'VESC_33k.bin'],
@@ -35,6 +36,8 @@ package_dict["60_MK4"] = [['60_mk4', default_name],
                     ['60_mk4_no_limits', no_limits_name]]
 package_dict["60_MK5"] = [['60_mk5', default_name],
                     ['60_mk5_no_limits', no_limits_name]]
+package_dict["60_MK6"] = [['60_mk6', default_name],
+                    ['60_mk6_no_limits', no_limits_name]]
 package_dict["DAS_RS"] = [['das_rs', default_name]]
 package_dict["75_300"] = [['75_300', default_name],
                     ['75_300_no_limits', no_limits_name]]
@@ -49,15 +52,25 @@ package_dict["HD60"] = [['hd60', default_name],
 package_dict["HD75"] = [['hd75', default_name],
                     ['hd75_no_limits', no_limits_name]]
 package_dict["A50S_6S"] = [['a50s_6s', default_name]]
+package_dict["A50S_6S_HG"] = [['a50s_6s_hg', default_name]]
 package_dict["A50S_12S"] = [['a50s_12s', default_name]]
-package_dict["A200S_v2.1"] = [['a200s_v2.1', default_name]]
-package_dict["A200S_v2.2"] = [['a200s_v2.2', default_name]]
+package_dict["A50S_12S_HG"] = [['a50s_12s_hg', default_name]]
+package_dict["A200S_V2.1"] = [['a200s_v2.1', default_name]]
+package_dict["A200S_V2.2"] = [['a200s_v2.2', default_name]]
+package_dict["A200S_V3"] = [['a200s_v3', default_name]]
+package_dict["A200S_V4"] = [['a200s_v4', default_name]]
 package_dict["100_250"] = [['100_250', default_name],
                     ['100_250_no_limits', no_limits_name]]
 package_dict["LUNA_BBSHD"] = [['luna_bbshd', default_name]]
+package_dict["LUNA_M600"] = [['luna_m600', default_name]]
+package_dict["LUNA_M600_V2"] = [['luna_m600', default_name]]
+package_dict["LUNA_M600_V2_Rev5"] = [['luna_m600_Rev5', default_name]]
 package_dict["UNITY"] = [['unity', default_name],
                     ['unity_no_limits', no_limits_name]]
-package_dict["Cheap_FOCer_2"] = [['Cheap_FOCer_2', default_name]]
+package_dict["Cheap_FOCer_2"] = [['Cheap_FOCer_2', default_name],
+                    ['Cheap_FOCer_2_no_limits', no_limits_name]]
+package_dict["Cheap_FOCer_2_V09"] = [['Cheap_FOCer_2_V09', default_name],
+                    ['Cheap_FOCer_2_V09_no_limits', no_limits_name]]
 package_dict["STORMCORE_60D"] = [['stormcore_60d', default_name],
                     ['stormcore_60d_no_limits', no_limits_name]]
 package_dict["STORMCORE_60Dxs"] = [['stormcore_60dxs', default_name],
@@ -72,20 +85,65 @@ package_dict["STORMCORE_100DX"] = [['stormcore_100dx', default_name],
                     ['stormcore_100dx_no_limits', no_limits_name]]
 package_dict["STORMCORE_100S"] = [['stormcore_100s', default_name],
                     ['stormcore_100s_no_limits', no_limits_name]]
-package_dict["Little_FOCer"] = [['Little_FOCer', default_name],
-                    ['Little_FOCer_no_limits', no_limits_name]]
+package_dict["Little_FOCer"] = [['Little_FOCer', default_name]]
+package_dict["Little_FOCer_V3"] = [['Little_FOCer_V3', default_name]]
+package_dict["Little_FOCer_V3_1"] = [['Little_FOCer_V3_1', default_name]]
 package_dict["UXV_SR"] = [['uxv_sr', default_name]]
 package_dict["GESC"] = [['gesc', default_name]]
 package_dict["Warrior6"] = [['warrior6', default_name]]
 package_dict["Raiden7"] = [['raiden7', default_name]]
-package_dict["UBOX_SINGLE"] = [['ubox_single', default_name]]
 package_dict["100_500"] = [['100_500', default_name],
                     ['100_500_no_limits', no_limits_name]]
 package_dict["75_600"] = [['75_600', default_name],
                     ['75_600_no_limits', no_limits_name]]
 package_dict["60v2_alva"] = [['60v2_alva', default_name]]
+package_dict["60v2_alva_mk1"] = [['60v2_alva_mk1', default_name]]
+package_dict["60v2_alva_mk2"] = [['60v2_alva_mk2', default_name]]
+package_dict["gp"] = [['gp', default_name]]
 package_dict["60_75"] = [['60_75', default_name],
                     ['60_75_no_limits', no_limits_name]]
+package_dict["60_75_mk2"] = [['60_75_mk2', default_name],
+                    ['60_75_mk2_no_limits', no_limits_name]]
+package_dict["UBOX_SINGLE_75"] = [['ubox_single_75', default_name],
+                                  ['ubox_single_75_no_limits', no_limits_name]]
+package_dict["UBOX_V1_75_MICRO"] = [['ubox_v1_75_micro', default_name],
+                                    ['ubox_v1_75_micro_no_limits', no_limits_name]]
+package_dict["UBOX_V1_75_TYPEC"] = [['ubox_v1_75_typec', default_name],
+                                    ['ubox_v1_75_typec_no_limits', no_limits_name]]
+package_dict["UBOX_V2_75"] = [['ubox_v2_75', default_name],
+                              ['ubox_v2_75_no_limits', no_limits_name]]
+package_dict["UBOX_SINGLE_100"] = [['ubox_single_100', default_name],
+                                   ['ubox_single_100_no_limits', no_limits_name]]
+package_dict["UBOX_SINGLE_80"] = [['ubox_single_80', default_name],
+                                  ['ubox_single_80_no_limits', no_limits_name]]
+package_dict["UBOX_V2_100"] = [['ubox_v2_100', default_name],
+                               ['ubox_v2_100_no_limits', no_limits_name]]
+package_dict["EDU"] = [['edu', default_name],
+                    ['edu_no_limits', no_limits_name]]
+package_dict["75_300_MKIV"] = [['75_300_mkiv', default_name],
+                    ['75_300_mkiv_no_limits', no_limits_name]]
+package_dict["60_MK6_HP"] = [['60_mk6_hp', default_name],
+                    ['60_mk6_hp_no_limits', no_limits_name]]
+package_dict["KA160"] = [['ka160', default_name]]
+package_dict["75_100"] = [['75_100', default_name],
+                    ['75_100_no_limits', no_limits_name]]
+package_dict["75_100_V2"] = [['75_100_V2', default_name],
+                    ['75_100_V2_no_limits', no_limits_name],
+                    ['75_100_V2_0005ohm', 'VESC_0005ohm.bin']]
+package_dict["GO_FOC_DV6_PRO"] = [['go_foc_dv6_pro', default_name],
+                    ['go_foc_dv6_pro_no_limits', no_limits_name]]
+package_dict["GO_FOC_G300"] = [['go_foc_g300', default_name],
+                    ['go_foc_g300_no_limits', no_limits_name]]
+package_dict["GO_FOC_HI200"] = [['go_foc_hi200', default_name],
+                    ['go_foc_hi200_no_limits', no_limits_name]]
+package_dict["GO_FOC_HV200"] = [['go_foc_hv200', default_name],
+                    ['go_foc_hv200_no_limits', no_limits_name]]
+package_dict["GO_FOC_M100"] = [['go_foc_m100', default_name],
+                    ['go_foc_m100_no_limits', no_limits_name]]
+package_dict["SOLO"] = [['solo', default_name],
+                    ['solo_no_limits', no_limits_name]]
+package_dict["FSESC_75_200_ALU"] = [['fsesc_75_200_alu', default_name],
+                    ['fsesc_75_200_alu_no_limits', no_limits_name]]
 
 # This is the firmware stub string
 res_firmwares_string = '        <file>TARGET_DESTINATION_DIRECTORY/TARGET_DESTINATION_FILENAME</file>\n'

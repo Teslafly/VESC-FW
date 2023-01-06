@@ -78,8 +78,6 @@
  * 1, 2			I2C1		Nunchuk, temp on rev 4.5
  * 1, 7			I2C1		Nunchuk, temp on rev 4.5
  * 2, 4			ADC			mcpwm
- * 1, 0			TIM4		WS2811/WS2812 LEDs CH1 (Ch 1)
- * 1, 3			TIM4		WS2811/WS2812 LEDs CH2 (Ch 2)
  *
  */
 
@@ -193,6 +191,8 @@ static THD_FUNCTION(periodic_thread, arg) {
 				break;
 			}
 		}
+	 
+		HW_TRIM_HSI(); // Compensate HSI for temperature
 
 		chThdSleepMilliseconds(10);
 	}
@@ -231,6 +231,7 @@ int main(void) {
 
 	chThdSleepMilliseconds(100);
 
+	mempools_init();
 	events_init();
 	hw_init_gpio();
 	LED_RED_OFF();
@@ -294,8 +295,6 @@ int main(void) {
 	timeout_init();
 	timeout_configure(appconf->timeout_msec, appconf->timeout_brake_current, appconf->kill_sw_mode);
 
-	mempools_free_appconf(appconf);
-
 #if HAS_BLACKMAGIC
 	bm_init();
 #endif
@@ -315,11 +314,15 @@ int main(void) {
 
 #ifdef CAN_ENABLE
 	// Transmit a CAN boot-frame to notify other nodes on the bus about it.
-	comm_can_transmit_eid(
-		app_get_configuration()->controller_id | (CAN_PACKET_NOTIFY_BOOT << 8),
-		(uint8_t *)HW_NAME, (strlen(HW_NAME) <= CAN_FRAME_MAX_PL_SIZE) ?
-		strlen(HW_NAME) : CAN_FRAME_MAX_PL_SIZE);
+	if (appconf->can_mode == CAN_MODE_VESC) {
+		comm_can_transmit_eid(
+				app_get_configuration()->controller_id | (CAN_PACKET_NOTIFY_BOOT << 8),
+				(uint8_t *)HW_NAME, (strlen(HW_NAME) <= CAN_FRAME_MAX_PL_SIZE) ?
+						strlen(HW_NAME) : CAN_FRAME_MAX_PL_SIZE);
+	}
 #endif
+
+	mempools_free_appconf(appconf);
 
 	for(;;) {
 		chThdSleepMilliseconds(10);

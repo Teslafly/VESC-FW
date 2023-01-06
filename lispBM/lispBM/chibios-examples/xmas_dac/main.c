@@ -44,8 +44,8 @@ extension_fptr extension_storage[EXTENSION_STORAGE_SIZE];
 
 lbm_cons_t heap[HEAP_SIZE] __attribute__ ((aligned (8)));
 
-static lbm_tokenizer_string_state_t string_tok_state;
-static lbm_tokenizer_char_stream_t string_tok;
+static lbm_string_channel_state_t string_tok_state;
+static lbm_char_channel_t string_tok;
 
 BaseSequentialStream *chp = NULL;
 
@@ -360,23 +360,6 @@ int main(void) {
     return 1;
   }
 
-  prelude_load(&string_tok_state,
-               &string_tok);
-
-  lbm_cid cid = lbm_load_and_eval_program(&string_tok);
-  chprintf(chp,"whats going on here\n");
-
-  if (!lbm_wait_ctx(cid, WAIT_TIMEOUT)) {
-    chprintf(chp,"Wait for prelude to load timed out\r\n");
-  } else {
-    chprintf(chp,"Prelude loaded!\r\n");
-  }
-  lbm_pause_eval();
-  while(lbm_get_eval_state() != EVAL_CPS_STATE_PAUSED) {
-    chprintf(chp,"pause sleeping\n");
-    sleep_callback(1000);
-  }
-  lbm_continue_eval();
   chprintf(chp,"Lisp REPL started (ChibiOS)!\r\n");
 
   while (1) {
@@ -428,9 +411,9 @@ int main(void) {
       if (done) {
         //lbm_value t;
 
-        lbm_create_char_stream_from_string(&string_tok_state,
-                                              &string_tok,
-                                              file_buffer);
+        lbm_create_string_char_channel(&string_tok_state,
+                                       &string_tok,
+                                       file_buffer);
         lbm_cid cid = lbm_load_and_eval_program(&string_tok);
 
         lbm_continue_eval();
@@ -449,9 +432,9 @@ int main(void) {
         sleep_callback(10);
       }
 
-      lbm_create_char_stream_from_string(&string_tok_state,
-                                            &string_tok,
-                                            str);
+      lbm_create_string_char_channel(&string_tok_state,
+                                     &string_tok,
+                                     str);
 
       lbm_cid cid = lbm_load_and_eval_expression(&string_tok);
 
