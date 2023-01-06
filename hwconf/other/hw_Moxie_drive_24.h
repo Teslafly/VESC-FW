@@ -28,12 +28,9 @@
 #define STM32_HSECLK                        25000000U
 #define STM32_PLLM_VALUE                    25
 
-
 #define HW_HAS_3_SHUNTS
 // #define INVERTED_SHUNT_POLARITY  // not sure
 // #define HW_HAS_PHASE_FILTERS
-
-#define HW_USE_25MHZ_XTAL  // 25mhz vs usual 8mhz mcu crystal
 
 // throws out the standard vesc pinout. 
 // adds specific pins for cruise/brake/reverse instead of repurposing.
