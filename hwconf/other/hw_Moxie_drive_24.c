@@ -26,7 +26,7 @@
 #include "mc_interface.h"
 
 //private functions
-static void terminal_cmd_doublepulse(int argc, const char** argv);
+// static void terminal_cmd_doublepulse(int argc, const char** argv);
 
 // Variables
 static volatile bool i2c_running = false;
@@ -128,16 +128,16 @@ void hw_init_gpio(void) {
 // 		terminal_button_test);
 // #endif
 
-#ifndef HW_HAS_DUAL_MOTORS
-	// from hw_gesc.c
-	//register terminal callbacks
-	//double pulse not possible with dual motor setup
-	terminal_register_command_callback(
-		"double_pulse",
-		"Start a double pulse test",
-		0,
-		terminal_cmd_doublepulse);
-#endif
+// #ifndef HW_HAS_DUAL_MOTORS
+// 	// from hw_gesc.c
+// 	//register terminal callbacks
+// 	//double pulse not possible with dual motor setup
+// 	terminal_register_command_callback(
+// 		"double_pulse",
+// 		"Start a double pulse test",
+// 		0,
+// 		terminal_cmd_doublepulse);
+// #endif
 }
 
 void hw_setup_adc_channels(void) {

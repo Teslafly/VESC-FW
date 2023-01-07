@@ -138,9 +138,10 @@ non volt/curtrent adc channels
  * 17 (X):  IN13	SENS3
  */
 
-#define HW_ADC_CHANNELS			15
+
 #define HW_ADC_INJ_CHANNELS		3
 #define HW_ADC_NBR_CONV			5
+#define HW_ADC_CHANNELS			(HW_ADC_NBR_CONV * 3)
 
 // ADC Indexes
 #define ADC_IND_SENS1			0
