@@ -317,59 +317,60 @@ static void terminal_button_test(int argc, const char **argv) {
 }
 #endif
 
+/*
+static void terminal_cmd_powerstage_selftest_wo_motor(int argc, const char** argv){
+	// must be run with motor unconnected. one of the first tests to run after powering on a new vesc hardware.
+	// toggles the power stage one fet at a time to test voltage sensors
+	// makes sure that:
+	// - current sensors have valid offset.
+	// vin, phase voltage, and current sensors are stable staticly. do not change more than 1-2%
+	// measure mcu vin. is it within 5% of V_REG define? what is 3.0v vs 3.3v %?
+	// - floating phases are not tied to vbat (or gnd?) aka are between 1 and 5 volts ish.
+	// - phases can go low
+	// - voltage sensed when phase is low is very close to 0v. (compare floating with low on)
+	// - make sure other phases do not change state when toggle 1 phase.
+	// then:
+	// - phases can go high
+	// - make sure other phases do not change state when toggle 1 phase.
+	// - phase voltage sensor corrisponsds to correct phase
+	// - sensed phase voltage is within x % of vbat voltage (calculate and retturn percentage)
 
-// static void terminal_cmd_powerstage_selftest_wo_motor(int argc, const char** argv){
-// 	// must be run with motor unconnected. one of the first tests to run after powering on a new vesc hardware.
-// 	// toggles the power stage one fet at a time to test voltage sensors
-// 	// makes sure that:
-// 	// - current sensors have valid offset.
-// 	// vin, phase voltage, and current sensors are stable staticly. do not change more than 1-2%
-// 	// measure mcu vin. is it within 5% of V_REG define? what is 3.0v vs 3.3v %?
-// 	// - floating phases are not tied to vbat (or gnd?) aka are between 1 and 5 volts ish.
-// 	// - phases can go low
-// 	// - voltage sensed when phase is low is very close to 0v. (compare floating with low on)
-// 	// - make sure other phases do not change state when toggle 1 phase.
-// 	// then:
-// 	// - phases can go high
-// 	// - make sure other phases do not change state when toggle 1 phase.
-// 	// - phase voltage sensor corrisponsds to correct phase
-// 	// - sensed phase voltage is within x % of vbat voltage (calculate and retturn percentage)
+
+	// - apply 50% duty cycle at default freq to make sure it doesnt blow up? or is that a job for foc_duty command?
+
+    // can i test low side fets without the phases being connected together?
+	// yes. probably. phases tend to float a few v above gnd beacuse of the bootstrap when not actively pulled down.
+	// can probably measure that voltage.
+
+}
 
 
-// 	// - apply 50% duty cycle at default freq to make sure it doesnt blow up? or is that a job for foc_duty command?
-
-//     // can i test low side fets without the phases being connected together?
-// 	// yes. probably. phases tend to float a few v above gnd beacuse of the bootstrap when not actively pulled down.
-// 	// can probably measure that voltage.
+static void terminal_cmd_powerstage_selftest_w_motor(int argc, const char** argv){
+	// must be ran with motor connected
+	// applies low duty cycle to motor one phase at a time to test current sensors.
+	// 2 phases grounded, 1 phase 1-5% duty cycle. 2 low phase currents should be within 10?%
+	// if phase current sense, phase 3 current should be -1*(phase1+phase2) (within 10%?)
+	// just print accuracy precentages.
+	// sequence:
+	// - zero out current sensors (calcculat offset)
+	// - watch current senssors for a few seconds. make sure arent unstable at 0 current (stay within 1% of zero?)
+	// - 1 phase low. make surte all phases read less than 1% of vin
+	// 	  - repeat for all phases.
+	// - 1 phase high. make sure all phases measure high within 5% of vbatt. 
+	//    - repeat for all phases.
+	// - all phasess low
+	// apply 1% duty cycle to phase for 1 second. get multiple current measurements.
+	// check current measurements? are they insane? (should be less than 10% of abs max current)
+	// compare current measurements. are low sides roughly equal?
+	// are low side currents the right polarity (negative)
+	// if phase sensors, is high side positive polarity and roughly equal to 2 low side phases?
+	// are low sides on right phases. and high side on right phase?
+	// repeat so each phase has been the high side phase.
 
 // }
+*/
 
-// static void terminal_cmd_powerstage_selftest_w_motor(int argc, const char** argv){
-// 	// must be ran with motor connected
-// 	// applies low duty cycle to motor one phase at a time to test current sensors.
-// 	// 2 phases grounded, 1 phase 1-5% duty cycle. 2 low phase currents should be within 10?%
-// 	// if phase current sense, phase 3 current should be -1*(phase1+phase2) (within 10%?)
-// 	// just print accuracy precentages.
-// 	// sequence:
-// 	// - zero out current sensors (calcculat offset)
-// 	// - watch current senssors for a few seconds. make sure arent unstable at 0 current (stay within 1% of zero?)
-// 	// - 1 phase low. make surte all phases read less than 1% of vin
-// 	// 	  - repeat for all phases.
-// 	// - 1 phase high. make sure all phases measure high within 5% of vbatt. 
-// 	//    - repeat for all phases.
-// 	// - all phasess low
-// 	// apply 1% duty cycle to phase for 1 second. get multiple current measurements.
-// 	// check current measurements? are they insane? (should be less than 10% of abs max current)
-// 	// compare current measurements. are low sides roughly equal?
-// 	// are low side currents the right polarity (negative)
-// 	// if phase sensors, is high side positive polarity and roughly equal to 2 low side phases?
-// 	// are low sides on right phases. and high side on right phase?
-// 	// repeat so each phase has been the high side phase.
-
-
-// }
-
-
+/*
 // from hw_gesc.c
 // double puulse test for hardware verification
 static void terminal_cmd_doublepulse(int argc, const char** argv)
@@ -524,3 +525,4 @@ static void terminal_cmd_doublepulse(int argc, const char** argv)
 	commands_printf("Done");
 	return;
 }
+*/
