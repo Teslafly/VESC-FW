@@ -57,12 +57,42 @@
 #define HW_ADC_EXT2_PIN			6
 
 // UART Peripheral
-#define HW_UART_DEV				SD3
-#define HW_UART_GPIO_AF			GPIO_AF_USART3
+#define HW_UART_DEV				SD1
+#define HW_UART_GPIO_AF			GPIO_AF_USART1
 #define HW_UART_TX_PORT			GPIOB
-#define HW_UART_TX_PIN			10
+#define HW_UART_TX_PIN			6
 #define HW_UART_RX_PORT			GPIOB
-#define HW_UART_RX_PIN			11
+#define HW_UART_RX_PIN			7
+// checked
+
+// Permanent UART Peripheral (for NRF52)
+#define HW_UART_P_BAUD			115200
+#define HW_UART_P_DEV			SD4
+#define HW_UART_P_GPIO_AF		GPIO_AF_UART4
+#define HW_UART_P_TX_PORT		GPIOC
+#define HW_UART_P_TX_PIN		10
+#define HW_UART_P_RX_PORT		GPIOC
+#define HW_UART_P_RX_PIN		11
+// checked
+
+// NRF SWD
+// for WT51822 module, use "BLE-Xtal:16M RX:1 TX:2 LED:3" firmware
+#define NRF5x_SWDIO_GPIO		GPIOC
+#define NRF5x_SWDIO_PIN			9
+#define NRF5x_SWCLK_GPIO		GPIOB
+#define NRF5x_SWCLK_PIN			2
+// checked
+
+// // ICU Peripheral for servo decoding
+// #define HW_USE_SERVO_TIM5
+// #define HW_ICU_TIMER			TIM5
+// #define HW_ICU_TIM_CLK_EN()		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE)
+// #define HW_ICU_DEV				ICUD5
+// #define HW_ICU_CHANNEL			ICU_CHANNEL_2 // may have to add some extra definitions here, ch4
+// #define HW_ICU_GPIO_AF			GPIO_AF_TIM5
+// #define HW_ICU_GPIO				GPIOA
+// #define HW_ICU_PIN				3
+// // fixme - on PA3, tim5 ch4
 
 // ICU Peripheral for servo decoding
 #define HW_USE_SERVO_TIM4
@@ -236,15 +266,9 @@
 #endif
 
 // Setting limits
-#ifdef HW60_IS_HP
 #define HW_LIM_CURRENT			-160.0, 160.0
 #define HW_LIM_CURRENT_IN		-160.0, 160.0
 #define HW_LIM_CURRENT_ABS		0.0, 240.0
-#else
-#define HW_LIM_CURRENT			-120.0, 120.0
-#define HW_LIM_CURRENT_IN		-120.0, 120.0
-#define HW_LIM_CURRENT_ABS		0.0, 160.0
-#endif
 #define HW_LIM_VIN				6.0, 57.0
 #define HW_LIM_ERPM				-200e3, 200e3
 #define HW_LIM_DUTY_MIN			0.0, 0.1
