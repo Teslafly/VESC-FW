@@ -26,91 +26,29 @@
 #define HW_MAJOR				0
 #define HW_MINOR				2
 
+
+// 25 mhz crystal
+// #define STM32_HSECLK                        25000000U
+// #define STM32_PLLM_VALUE                    25
+
 // HW properties
 #define HW_HAS_3_SHUNTS
 // #define HW_HAS_PHASE_SHUNTS
+// #define INVERTED_SHUNT_POLARITY  // not sure
 
 
-#define LED_GREEN_ON()			palSetPad(GPIOB, 0)
-#define LED_GREEN_OFF()			palClearPad(GPIOB, 0)
-#define LED_RED_ON()			palSetPad(GPIOB, 1)
-#define LED_RED_OFF()			palClearPad(GPIOB, 1)
+// Macros
+#define LED_GREEN_GPIO			GPIOA
+#define LED_GREEN_PIN			15
+#define LED_RED_GPIO			GPIOD
+#define LED_RED_PIN				2
+// checked
 
-/*
- * ADC Vector
- *
- * 0:	IN0		SENS1
- * 1:	IN1		SENS2
- * 2:	IN2		SENS3
- * 3:	IN10	CURR1
- * 4:	IN11	CURR2
- * 5:	IN12	CURR3
- * 6:	IN5		ADC_EXT1
- * 7:	IN6		ADC_EXT2
- * 8:	IN3		TEMP_PCB
- * 9:	IN14	TEMP_MOTOR
- * 10:	IN15	ADC_EXT3, Shutdown on MK3
- * 11:	IN13	AN_IN
- * 12:	Vrefint
- * 13:	IN0		SENS1
- * 14:	IN1		SENS2
- */
+#define LED_GREEN_ON()			palSetPad(LED_GREEN_GPIO, LED_GREEN_PIN)
+#define LED_GREEN_OFF()			palClearPad(LED_GREEN_GPIO, LED_GREEN_PIN)
+#define LED_RED_ON()			palSetPad(LED_RED_GPIO, LED_RED_PIN)
+#define LED_RED_OFF()			palClearPad(LED_RED_GPIO, LED_RED_PIN)
 
-#define HW_ADC_INJ_CHANNELS		3
-#define HW_ADC_NBR_CONV			5
-#define HW_ADC_CHANNELS			(HW_ADC_NBR_CONV * 3)
-
-// ADC Indexes
-#define ADC_IND_SENS1			3
-#define ADC_IND_SENS2			4
-#define ADC_IND_SENS3			5
-#define ADC_IND_CURR1			0
-#define ADC_IND_CURR2			1
-#define ADC_IND_CURR3			2
-#define ADC_IND_VIN_SENS		11
-#define ADC_IND_EXT				6
-#define ADC_IND_EXT2			7
-#define ADC_IND_TEMP_MOS		8
-#define ADC_IND_TEMP_MOTOR		9
-#define ADC_IND_VREFINT			12
-
-// ----------------------------
-
-// ADC macros and settings
-
-// Component parameters (can be overridden)
-#ifndef V_REG
-#define V_REG					3.3
-#endif
-#ifndef VIN_R1
-#define VIN_R1					39000.0
-#endif
-#ifndef VIN_R2
-#define VIN_R2					2200.0
-#endif
-#ifndef CURRENT_AMP_GAIN
-#define CURRENT_AMP_GAIN		20.0
-#endif
-#ifndef CURRENT_SHUNT_RES
-#ifdef HW60_IS_HP
-#define CURRENT_SHUNT_RES		0.0003
-#else
-#define CURRENT_SHUNT_RES		0.0005
-#endif
-#endif
-
-// Input voltage
-#define GET_INPUT_VOLTAGE()		((V_REG / 4095.0) * (float)ADC_Value[ADC_IND_VIN_SENS] * ((VIN_R1 + VIN_R2) / VIN_R2))
-
-// NTC Termistors
-#define NTC_RES(adc_val)		((4095.0 * 10000.0) / adc_val - 10000.0)
-#define NTC_TEMP(adc_ind)		(1.0 / ((logf(NTC_RES(ADC_Value[adc_ind]) / 10000.0) / 3380.0) + (1.0 / 298.15)) - 273.15)
-
-#define NTC_RES_MOTOR(adc_val)	(10000.0 / ((4095.0 / (float)adc_val) - 1.0)) // Motor temp sensor on low side
-#define NTC_TEMP_MOTOR(beta)	(1.0 / ((logf(NTC_RES_MOTOR(ADC_Value[ADC_IND_TEMP_MOTOR]) / 10000.0) / beta) + (1.0 / 298.15)) - 273.15)
-
-// Voltage on ADC channel
-#define ADC_VOLTS(ch)			((float)ADC_Value[ch] / 4096.0 * V_REG)
 
 // COMM-port ADC GPIOs
 #define HW_ADC_EXT_GPIO			GPIOA
@@ -173,6 +111,104 @@
 #define HW_SPI_PIN_MOSI			7
 #define HW_SPI_PORT_MISO		GPIOA
 #define HW_SPI_PIN_MISO			6
+
+/*
+ * ADC Vector (vesc6)
+ *
+ * 0:	IN0		SENS1
+ * 1:	IN1		SENS2
+ * 2:	IN2		SENS3
+ * 3:	IN10	CURR1
+ * 4:	IN11	CURR2
+ * 5:	IN12	CURR3
+ * 6:	IN5		ADC_EXT1
+ * 7:	IN6		ADC_EXT2
+ * 8:	IN3		TEMP_PCB
+ * 9:	IN14	TEMP_MOTOR
+ * 10:	IN15	ADC_EXT3, Shutdown on MK3
+ * 11:	IN13	AN_IN
+ * 12:	Vrefint
+ * 13:	IN0		SENS1
+ * 14:	IN1		SENS2
+ */
+
+/*
+ * ADC Vector moxie24
+ *  all in#/names correct. apply to correct index
+ *
+ * DMA order|(adc)|adc mux in|signal name|verified (y)
+ * 0  (1):	IN10	SENS1 y
+ * 1  (2):	IN11	SENS2 y
+ * 2  (3):	IN12	SENS3 y
+ * 3  (1):	IN0 	CURR1 y
+ * 4  (2):	IN1 	CURR2 y
+ * 5  (3):	IN2 	CURR3 y
+ *   
+ * 6  (1):	IN4		ADC_EXT1
+ * 7  (2):	IN5		ADC_EXT2
+ * 8  (3):	IN13	AN_IN 
+ * 9  (1):	IN9		TEMP_PCB
+ * 10 (2):	IN15	TEMP_MOTOR
+ * 11 (3):	Vrefint 
+ * 12 (1):	IN8		V_GATE_DRIVER 
+ * 13 (2):	IN14	ADC_EXT3, otherwise reverse button or servo 
+ * 
+ * 13 (X):	IN10	SENS1
+ * 14 (X):	IN11	SENS2
+ * 17 (X):  IN13	SENS3
+ */
+
+#define HW_ADC_INJ_CHANNELS		3
+#define HW_ADC_NBR_CONV			5
+#define HW_ADC_CHANNELS			(HW_ADC_NBR_CONV * 3)
+
+// ADC Indexes
+#define ADC_IND_SENS1			3
+#define ADC_IND_SENS2			4
+#define ADC_IND_SENS3			5
+#define ADC_IND_CURR1			0
+#define ADC_IND_CURR2			1
+#define ADC_IND_CURR3			2
+#define ADC_IND_VIN_SENS		11
+#define ADC_IND_EXT				6
+#define ADC_IND_EXT2			7
+#define ADC_IND_TEMP_MOS		8
+#define ADC_IND_TEMP_MOTOR		9
+#define ADC_IND_VREFINT			12
+
+// ----------------------------
+
+// ADC macros and settings
+
+// Component parameters (can be overridden)
+#ifndef V_REG
+#define V_REG					3.3
+#endif
+#ifndef VIN_R1
+#define VIN_R1					47000.0
+#endif
+#ifndef VIN_R2
+#define VIN_R2					2200.0
+#endif
+#ifndef CURRENT_AMP_GAIN
+#define CURRENT_AMP_GAIN		(13.33 / 1000)  // volts/amp, acs758, 150a bidirectional
+#endif
+#ifndef CURRENT_SHUNT_RES
+#define CURRENT_SHUNT_RES		1 // hall sensor
+#endif
+
+// Input voltage
+#define GET_INPUT_VOLTAGE()		((V_REG / 4095.0) * (float)ADC_Value[ADC_IND_VIN_SENS] * ((VIN_R1 + VIN_R2) / VIN_R2))
+
+// NTC Termistors
+#define NTC_RES(adc_val)		((4095.0 * 10000.0) / adc_val - 10000.0)
+#define NTC_TEMP(adc_ind)		(1.0 / ((logf(NTC_RES(ADC_Value[adc_ind]) / 10000.0) / 3380.0) + (1.0 / 298.15)) - 273.15)
+
+#define NTC_RES_MOTOR(adc_val)	(10000.0 / ((4095.0 / (float)adc_val) - 1.0)) // Motor temp sensor on low side
+#define NTC_TEMP_MOTOR(beta)	(1.0 / ((logf(NTC_RES_MOTOR(ADC_Value[ADC_IND_TEMP_MOTOR]) / 10000.0) / beta) + (1.0 / 298.15)) - 273.15)
+
+// Voltage on ADC channel
+#define ADC_VOLTS(ch)			((float)ADC_Value[ch] / 4096.0 * V_REG)
 
 // Measurement macros
 #define ADC_V_L1				ADC_Value[ADC_IND_SENS1]
