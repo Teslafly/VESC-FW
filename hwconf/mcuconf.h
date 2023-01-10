@@ -53,44 +53,44 @@
 // #endif
 
 // 8M  XTAL default
-#define STM32_NO_INIT						FALSE
-#define STM32_HSI_ENABLED					TRUE
-#define STM32_LSI_ENABLED					TRUE
+	#define STM32_NO_INIT						FALSE
+	#define STM32_HSI_ENABLED					TRUE
+	#define STM32_LSI_ENABLED					TRUE
 #if !defined(STM32_HSECLK)
 	#define STM32_HSE_ENABLED				TRUE
 #endif
-#define STM32_LSE_ENABLED					FALSE
-#define STM32_CLOCK48_REQUIRED				TRUE
-#define STM32_SW							STM32_SW_PLL
+	#define STM32_LSE_ENABLED					FALSE
+	#define STM32_CLOCK48_REQUIRED				TRUE
+	#define STM32_SW							STM32_SW_PLL
 
 #if !defined(STM32_PLLSRC)
 	#define STM32_PLLSRC					STM32_PLLSRC_HSE
-#endif
+		#endif
 #if !defined(STM32_PLLM_VALUE)
-	#define STM32_PLLM_VALUE				8
+		#define STM32_PLLM_VALUE				8
 #endif
-#if !defined(STM32_HSECLK)
+		#if !defined(STM32_HSECLK)
 	#define STM32_HSECLK				    8000000U
-#endif
+		#endif
 
-#define STM32_PLLN_VALUE					336
-#define STM32_PLLP_VALUE					2
-#define STM32_PLLQ_VALUE					7
-#define STM32_HPRE							STM32_HPRE_DIV1
-#define STM32_PPRE1							STM32_PPRE1_DIV4
-#define STM32_PPRE2							STM32_PPRE2_DIV2
-#define STM32_RTCSEL						STM32_RTCSEL_LSI
-#define STM32_RTCPRE_VALUE					8
-#define STM32_MCO1SEL						STM32_MCO1SEL_HSI
-#define STM32_MCO1PRE						STM32_MCO1PRE_DIV1
-#define STM32_MCO2SEL						STM32_MCO2SEL_SYSCLK
-#define STM32_MCO2PRE						STM32_MCO2PRE_DIV5
-#define STM32_I2SSRC						STM32_I2SSRC_CKIN
-#define STM32_PLLI2SN_VALUE					192
-#define STM32_PLLI2SR_VALUE					5
-#define STM32_PVD_ENABLE					TRUE
-#define STM32_PLS							STM32_PLS_LEV6
-#define STM32_BKPRAM_ENABLE					FALSE
+	#define STM32_PLLN_VALUE					336
+	#define STM32_PLLP_VALUE					2
+	#define STM32_PLLQ_VALUE					7
+	#define STM32_HPRE							STM32_HPRE_DIV1
+	#define STM32_PPRE1							STM32_PPRE1_DIV4
+	#define STM32_PPRE2							STM32_PPRE2_DIV2
+	#define STM32_RTCSEL						STM32_RTCSEL_LSI
+	#define STM32_RTCPRE_VALUE					8
+	#define STM32_MCO1SEL						STM32_MCO1SEL_HSI
+	#define STM32_MCO1PRE						STM32_MCO1PRE_DIV1
+	#define STM32_MCO2SEL						STM32_MCO2SEL_SYSCLK
+	#define STM32_MCO2PRE						STM32_MCO2PRE_DIV5
+	#define STM32_I2SSRC						STM32_I2SSRC_CKIN
+	#define STM32_PLLI2SN_VALUE					192
+	#define STM32_PLLI2SR_VALUE					5
+	#define STM32_PVD_ENABLE					TRUE
+	#define STM32_PLS							STM32_PLS_LEV6
+	#define STM32_BKPRAM_ENABLE					FALSE
 
 
 /*
@@ -212,17 +212,11 @@
 #ifdef HW_USE_SERVO_TIM4
 #define STM32_ICU_USE_TIM3                  FALSE
 #define STM32_ICU_USE_TIM4                  TRUE
-#define STM32_ICU_USE_TIM5                  FALSE
-#elif defined(HW_USE_SERVO_TIM5)
-#define STM32_ICU_USE_TIM3                  FALSE
-#define STM32_ICU_USE_TIM4                  FALSE
-#define STM32_ICU_USE_TIM5                  TRUE
-#else // tim3
+#else
 #define STM32_ICU_USE_TIM3                  TRUE
 #define STM32_ICU_USE_TIM4                  FALSE
-#define STM32_ICU_USE_TIM5                  FALSE
 #endif
-
+#define STM32_ICU_USE_TIM5                  FALSE
 #define STM32_ICU_USE_TIM8                  FALSE
 #define STM32_ICU_USE_TIM9                  TRUE
 #define STM32_ICU_TIM1_IRQ_PRIORITY         7
