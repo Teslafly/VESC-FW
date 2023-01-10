@@ -31,27 +31,6 @@
 // Disable hardware limits on configuration parameters
 //#define DISABLE_HW_LIMITS
 
-// /*
-//  * Select only one hardware version, if it is not passed
-//  * as an argument.
-//  */
-// #if !defined(HW_SOURCE) && !defined(HW_HEADER)
-
-// // #define HW_SOURCE "hw_60.c"
-// // #define HW_HEADER "hw_60.h"
-
-// // Mark3 version of HW60 with power switch and separate NRF UART.
-// //#define HW60_IS_MK3
-// //#define HW60_IS_MK4
-// // #define HW60_IS_MK5
-
-
-// #define HW_SOURCE "hw_Moxie_drive_24.c"
-// #define HW_HEADER "hw_Moxie_drive_24.h"
-
-
-// #endif
-
 #if !defined(HW_SOURCE) && !defined(HW_SOURCE_ALT)
 #error "No hardware source file set"
 #endif
