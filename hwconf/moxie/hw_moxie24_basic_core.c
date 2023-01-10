@@ -101,39 +101,56 @@ void hw_init_gpio(void) {
 void hw_setup_adc_channels(void) {
 	uint8_t t_samp = ADC_SampleTime_15Cycles;
 
-	// ADC1 regular channels
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_0, 1, t_samp);      // [0]
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 2, t_samp);     // [3]
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_5, 3, t_samp);      // [6]
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_14, 4, t_samp);     // [9]
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_Vrefint, 5, t_samp);// [12]
+	// adc's are triggeres by mcpwm timer and run through list of regular
+	// conversions and store the results to the ADC_Value[] array using DMA
+	// position in this array is determined by adc number + sample order (zero indexed)
+	// you must make sure that the adc channel io pin is available on that ADC
 
-	// ADC2 regular channels
-	ADC_RegularChannelConfig(ADC2, ADC_Channel_1, 1, t_samp);
-	ADC_RegularChannelConfig(ADC2, ADC_Channel_11, 2, t_samp);
+	// 1st conversion (by all adc's at once)
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_0, 1, t_samp);   // [0] 	PH CURR1
+	ADC_RegularChannelConfig(ADC2, ADC_Channel_1, 1, t_samp);	// [1] 	PH CURR2
+	ADC_RegularChannelConfig(ADC3, ADC_Channel_2, 1, t_samp);	// [2] 	PH CURR3
+
+	// 2nd conversion
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 2, t_samp); 	// [3]	PH SENS1
+	ADC_RegularChannelConfig(ADC2, ADC_Channel_11, 2, t_samp); 	// [4]	PH SENS2
+	ADC_RegularChannelConfig(ADC3, ADC_Channel_12, 2, t_samp); 	// [5]	PH SENS3
+
+	// 3
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_5, 3, t_samp);   // [6]
 	ADC_RegularChannelConfig(ADC2, ADC_Channel_6, 3, t_samp);
-	ADC_RegularChannelConfig(ADC2, ADC_Channel_15, 4, t_samp);
-	ADC_RegularChannelConfig(ADC2, ADC_Channel_0, 5, t_samp);
-
-	// ADC3 regular channels
-	ADC_RegularChannelConfig(ADC3, ADC_Channel_2, 1, t_samp);
-	ADC_RegularChannelConfig(ADC3, ADC_Channel_12, 2, t_samp);
 	ADC_RegularChannelConfig(ADC3, ADC_Channel_3, 3, t_samp);
+
+	// 4
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_14, 4, t_samp);  // [9]
+	ADC_RegularChannelConfig(ADC2, ADC_Channel_15, 4, t_samp);
 	ADC_RegularChannelConfig(ADC3, ADC_Channel_13, 4, t_samp);
+
+	// 5
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_Vrefint, 5, t_samp);// [12]
+	ADC_RegularChannelConfig(ADC2, ADC_Channel_0, 5, t_samp);
 	ADC_RegularChannelConfig(ADC3, ADC_Channel_1, 5, t_samp);
+
+	
+
+
+
+
 
 	// Injected channels - current sensors
 	// ONLY USED FOR BLDC MODE
 	// 3 injected measurements in a row for averaging
-	ADC_InjectedChannelConfig(ADC1, ADC_Channel_10, 1, t_samp);
-	ADC_InjectedChannelConfig(ADC2, ADC_Channel_11, 1, t_samp);
-	ADC_InjectedChannelConfig(ADC3, ADC_Channel_12, 1, t_samp);
-	ADC_InjectedChannelConfig(ADC1, ADC_Channel_10, 2, t_samp);
-	ADC_InjectedChannelConfig(ADC2, ADC_Channel_11, 2, t_samp);
-	ADC_InjectedChannelConfig(ADC3, ADC_Channel_12, 2, t_samp);
-	ADC_InjectedChannelConfig(ADC1, ADC_Channel_10, 3, t_samp);
-	ADC_InjectedChannelConfig(ADC2, ADC_Channel_11, 3, t_samp);
-	ADC_InjectedChannelConfig(ADC3, ADC_Channel_12, 3, t_samp);
+	ADC_InjectedChannelConfig(ADC1, ADC_Channel_0, 1, ADC_SampleTime_15Cycles);  // CURR1
+	ADC_InjectedChannelConfig(ADC1, ADC_Channel_0, 2, ADC_SampleTime_15Cycles);  // CURR1
+	ADC_InjectedChannelConfig(ADC1, ADC_Channel_0, 3, ADC_SampleTime_15Cycles);  // CURR1
+
+	ADC_InjectedChannelConfig(ADC2, ADC_Channel_1, 1, ADC_SampleTime_15Cycles);  // CURR2
+	ADC_InjectedChannelConfig(ADC2, ADC_Channel_1, 2, ADC_SampleTime_15Cycles);  // CURR2
+	ADC_InjectedChannelConfig(ADC2, ADC_Channel_1, 3, ADC_SampleTime_15Cycles);  // CURR2
+
+	ADC_InjectedChannelConfig(ADC3, ADC_Channel_2, 1, ADC_SampleTime_15Cycles);  // CURR3
+	ADC_InjectedChannelConfig(ADC3, ADC_Channel_2, 2, ADC_SampleTime_15Cycles);  // CURR3
+	ADC_InjectedChannelConfig(ADC3, ADC_Channel_2, 3, ADC_SampleTime_15Cycles);  // CURR3
 }
 
 void hw_start_i2c(void) {
