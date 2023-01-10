@@ -44,10 +44,10 @@ void hw_init_gpio(void) {
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
 
 	// LEDs
-	palSetPadMode(GPIOB, 0,
+	palSetPadMode(LED_GREEN_GPIO, LED_GREEN_PIN,
 			PAL_MODE_OUTPUT_PUSHPULL |
 			PAL_STM32_OSPEED_HIGHEST);
-	palSetPadMode(GPIOB, 1,
+	palSetPadMode(LED_RED_GPIO, LED_RED_PIN,
 			PAL_MODE_OUTPUT_PUSHPULL |
 			PAL_STM32_OSPEED_HIGHEST);
 
@@ -78,18 +78,24 @@ void hw_init_gpio(void) {
 	palSetPadMode(HW_HALL_ENC_GPIO3, HW_HALL_ENC_PIN3, PAL_MODE_INPUT_PULLUP);
 
 	// ADC Pins
-	palSetPadMode(GPIOA, 0, PAL_MODE_INPUT_ANALOG);
-	palSetPadMode(GPIOA, 1, PAL_MODE_INPUT_ANALOG);
-	palSetPadMode(GPIOA, 2, PAL_MODE_INPUT_ANALOG);
-	palSetPadMode(GPIOA, 3, PAL_MODE_INPUT_ANALOG);
-	palSetPadMode(GPIOA, 5, PAL_MODE_INPUT_ANALOG);
-	palSetPadMode(GPIOA, 6, PAL_MODE_INPUT_ANALOG);
+	palSetPadMode(GPIOA, 0, PAL_MODE_INPUT_ANALOG); // current 1
+	palSetPadMode(GPIOA, 1, PAL_MODE_INPUT_ANALOG); // current 2
+	palSetPadMode(GPIOA, 2, PAL_MODE_INPUT_ANALOG); // current 3
+	palSetPadMode(GPIOA, 3, PAL_MODE_INPUT_ANALOG); // servo conn
+	palSetPadMode(GPIOA, 4, PAL_MODE_INPUT_ANALOG); // ext1 / throttle
+	palSetPadMode(GPIOA, 5, PAL_MODE_INPUT_ANALOG); // ext2 / regen
+	// palSetPadMode(GPIOA, 6, PAL_MODE_INPUT_ANALOG); // pwm out
 
-	palSetPadMode(GPIOC, 0, PAL_MODE_INPUT_ANALOG);
-	palSetPadMode(GPIOC, 1, PAL_MODE_INPUT_ANALOG);
-	palSetPadMode(GPIOC, 2, PAL_MODE_INPUT_ANALOG);
-	palSetPadMode(GPIOC, 3, PAL_MODE_INPUT_ANALOG);
-	palSetPadMode(GPIOC, 4, PAL_MODE_INPUT_ANALOG);
+	// palSetPadMode(GPIOB, 0, PAL_MODE_INPUT_ANALOG);  // GDRV VSENSE
+	// palSetPadMode(GPIOB, 1, PAL_MODE_INPUT_ANALOG);  // fet temp
+	// palSetPadMode(GPIOB, 5, PAL_MODE_INPUT_ANALOG);  // ext3
+
+	palSetPadMode(GPIOC, 0, PAL_MODE_INPUT_ANALOG); // volt 1
+	palSetPadMode(GPIOC, 1, PAL_MODE_INPUT_ANALOG); // volt 3
+	palSetPadMode(GPIOC, 2, PAL_MODE_INPUT_ANALOG); // volt 3
+	palSetPadMode(GPIOC, 3, PAL_MODE_INPUT_ANALOG); // vbus
+	// palSetPadMode(GPIOC, 4, PAL_MODE_INPUT_ANALOG); // reverse
+	palSetPadMode(GPIOC, 5, PAL_MODE_INPUT_ANALOG); // motor temp
 }
 
 void hw_setup_adc_channels(void) {
@@ -116,7 +122,9 @@ void hw_setup_adc_channels(void) {
 	ADC_RegularChannelConfig(ADC3, ADC_Channel_13, 4, t_samp);
 	ADC_RegularChannelConfig(ADC3, ADC_Channel_1, 5, t_samp);
 
-	// Injected channels
+	// Injected channels - current sensors
+	// ONLY USED FOR BLDC MODE
+	// 3 injected measurements in a row for averaging
 	ADC_InjectedChannelConfig(ADC1, ADC_Channel_10, 1, t_samp);
 	ADC_InjectedChannelConfig(ADC2, ADC_Channel_11, 1, t_samp);
 	ADC_InjectedChannelConfig(ADC3, ADC_Channel_12, 1, t_samp);
