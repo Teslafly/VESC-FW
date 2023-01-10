@@ -87,7 +87,7 @@ void hw_init_gpio(void) {
 	// palSetPadMode(GPIOA, 6, PAL_MODE_INPUT_ANALOG); // pwm out
 
 	// palSetPadMode(GPIOB, 0, PAL_MODE_INPUT_ANALOG);  // GDRV VSENSE
-	// palSetPadMode(GPIOB, 1, PAL_MODE_INPUT_ANALOG);  // fet temp
+	palSetPadMode(GPIOB, 1, PAL_MODE_INPUT_ANALOG);  // fet temp
 	// palSetPadMode(GPIOB, 5, PAL_MODE_INPUT_ANALOG);  // ext3
 
 	palSetPadMode(GPIOC, 0, PAL_MODE_INPUT_ANALOG); // volt 1
