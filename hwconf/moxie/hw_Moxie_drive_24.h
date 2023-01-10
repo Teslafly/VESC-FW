@@ -35,7 +35,7 @@
 // throws out the standard vesc pinout. 
 // adds specific pins for cruise/brake/reverse instead of repurposing.
 // the interface pins are otherwise unaffected.
-#define ADDITIONAL_CONTROL_PINS 
+// #define ADDITIONAL_CONTROL_PINS 
 
 // #define ENABLE_SHUTDOWN_SWITCH           
 
