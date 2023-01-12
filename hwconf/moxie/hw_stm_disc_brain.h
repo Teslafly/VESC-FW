@@ -30,6 +30,15 @@
 //#define HW_HAS_PHASE_FILTERS
 // #define INVERTED_SHUNT_POLARITY
 
+//configure inverted phases:
+// TIM_OCNPolarity_High = low  -> leg off, high -> leg on, (default)
+// TIM_OCNPolarity_Low = high -> leg off, low  -> leg on (inverted output)
+
+#define HW_DEAD_TIME_NSEC		1000.0
+
+//#define inverted_top_fet_driver    // uncomment to invert top (vbat) side fet signal
+#define inverted_bottom_fet_driver // uncomment to invert bottom(gnd) side fet signal
+
 
 // LD4: green LED is a user LED connected to the I/O PD12 
 // LD5: red LED is a user LED connected to the I/O PD14
@@ -328,13 +337,6 @@ n* 17 (3):  IN3		SENS3
 
 // HW-specific functions
 
-//configure inverted phases:
-// TIM_OCNPolarity_High = low  -> leg off, high -> leg on, (default)
-// TIM_OCNPolarity_Low = high -> leg off, low  -> leg on (inverted output)
 
-#define HW_DEAD_TIME_NSEC		1000.0
-
-//#define inverted_top_fet_driver    // uncomment to invert top (vbat) side fet signal
-#define inverted_bottom_fet_driver // uncomment to invert bottom(gnd) side fet signal
 
 #endif /* HW_stmdiscovery_frankentroller */

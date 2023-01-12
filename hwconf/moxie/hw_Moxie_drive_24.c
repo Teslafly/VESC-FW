@@ -98,11 +98,11 @@ void hw_init_gpio(void) {
 	// palSetPadMode(GPIOA, 3, PAL_MODE_INPUT_ANALOG); // servo conn
 	palSetPadMode(GPIOA, 4, PAL_MODE_INPUT_ANALOG); // ext1 / throttle
 	palSetPadMode(GPIOA, 5, PAL_MODE_INPUT_ANALOG); // ext2 / regen
-	// palSetPadMode(GPIOA, 6, PAL_MODE_INPUT_ANALOG); // pwm out
+	// palSetPadMode(GPIOA, 6, PAL_MODE_INPUT_ANALOG); // pwm out 1
+	// palSetPadMode(GPIOA, 7, PAL_MODE_INPUT_ANALOG); // pwm out 2
 
 	palSetPadMode(GPIOB, 0, PAL_MODE_INPUT_ANALOG);  // GDRV VSENSE
 	palSetPadMode(GPIOB, 1, PAL_MODE_INPUT_ANALOG);  // fet temp
-	// palSetPadMode(GPIOB, 5, PAL_MODE_INPUT_ANALOG);  // ext3
 
 	palSetPadMode(GPIOC, 0, PAL_MODE_INPUT_ANALOG); // volt 1
 	palSetPadMode(GPIOC, 1, PAL_MODE_INPUT_ANALOG); // volt 2
@@ -144,26 +144,26 @@ void hw_setup_adc_channels(void) {
 	// regular channel measurements are triggred mid pwm using scan mode + dma in foc mode.
 	// order: phase currents -> phase voltages -> other
 
-	// ADC1 regular channels														// [vector number] signal name
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_0, 2, ADC_SampleTime_15Cycles);		// [0] 	CURR1
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 1, ADC_SampleTime_15Cycles); 	// [3] 	SENS1
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_4, 3, ADC_SampleTime_15Cycles);		// [6]  ADC_EXT1
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_9, 4, ADC_SampleTime_15Cycles);		// [9]	TEMP_PCB
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_8, 5, ADC_SampleTime_15Cycles);	    // [12] V_GATE_DRIVER 
+	// ADC1 regular channels													// [vector number] signal name
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_0, 2, ADC_SampleTime_15Cycles);	// [0] 	CURR1
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 1, ADC_SampleTime_15Cycles); // [3] 	SENS1
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_4, 3, ADC_SampleTime_15Cycles);	// [6]  ADC_EXT1
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_9, 4, ADC_SampleTime_15Cycles);	// [9]	TEMP_PCB
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_8, 5, ADC_SampleTime_15Cycles);	// [12] V_GATE_DRIVER 
 
 	// ADC2 regular channels
 	ADC_RegularChannelConfig(ADC2, ADC_Channel_1, 2, ADC_SampleTime_15Cycles);	// [1]  CURR2
 	ADC_RegularChannelConfig(ADC2, ADC_Channel_11, 1, ADC_SampleTime_15Cycles);	// [4]  SENS2
 	ADC_RegularChannelConfig(ADC2, ADC_Channel_5, 3, ADC_SampleTime_15Cycles);	// [7] 	ADC_EXT2
 	ADC_RegularChannelConfig(ADC2, ADC_Channel_15, 4, ADC_SampleTime_15Cycles);	// [10]	TEMP_MOTOR
-	ADC_RegularChannelConfig(ADC2, ADC_Channel_14, 5, ADC_SampleTime_15Cycles);	// [13] ADC_EXT3
+	ADC_RegularChannelConfig(ADC2, ADC_Channel_14, 5, ADC_SampleTime_15Cycles);	// [13] ADC_EXT3 (reverse sw)
 
 	// ADC3 regular channels
 	ADC_RegularChannelConfig(ADC3, ADC_Channel_2, 2, ADC_SampleTime_15Cycles);	// [2] CURR3
 	ADC_RegularChannelConfig(ADC3, ADC_Channel_12, 1, ADC_SampleTime_15Cycles);	// [5] SENS3
 	ADC_RegularChannelConfig(ADC3, ADC_Channel_13, 3, ADC_SampleTime_15Cycles);	// [8] AN_IN 
 	ADC_RegularChannelConfig(ADC3, ADC_Channel_Vrefint, 4, ADC_SampleTime_15Cycles);// [11] vrefint
-	ADC_RegularChannelConfig(ADC3, ADC_Channel_2, 5, ADC_SampleTime_15Cycles);	// [14] unused
+	ADC_RegularChannelConfig(ADC3, ADC_Channel_3, 5, ADC_SampleTime_15Cycles);	// [14] servo conn
 
 	// Injected channels - current sensors
 	// ONLY USED FOR BLDC MODE

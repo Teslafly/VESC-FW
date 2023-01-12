@@ -102,11 +102,11 @@ void hw_setup_adc_channels(void) {
 	uint8_t t_samp = ADC_SampleTime_15Cycles;
 
 	// adc's are triggeres by mcpwm timer and run through list of regular
-	// conversions and store the results to the ADC_Value[] array using DMA
-	// position in this array is determined by adc number + sample order (zero indexed)
+	// conversions and store the results to the ADC_Value[] array using DMA.
+	// Position in this array is determined by adc number + sample order (zero indexed)
 	// you must make sure that the adc channel io pin is available on that ADC
 
-	// 1st conversion (by all adc's at once)
+	// 1st conversion (by all 3 adc's at once)
 	ADC_RegularChannelConfig(ADC1, ADC_Channel_0, 1, t_samp);   // [0] 	PH CURR1
 	ADC_RegularChannelConfig(ADC2, ADC_Channel_1, 1, t_samp);	// [1] 	PH CURR2
 	ADC_RegularChannelConfig(ADC3, ADC_Channel_2, 1, t_samp);	// [2] 	PH CURR3

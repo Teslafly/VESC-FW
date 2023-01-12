@@ -35,6 +35,7 @@
 #define HW_HAS_3_SHUNTS
 // #define HW_HAS_PHASE_SHUNTS
 // #define INVERTED_SHUNT_POLARITY  // not sure
+#define INVERTED_BOTTOM_DRIVER_INPUT
 
 
 // Macros

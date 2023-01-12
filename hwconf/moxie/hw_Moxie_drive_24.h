@@ -148,15 +148,14 @@ non volt/curtrent adc channels
 #define ADC_IND_CURR1			0
 #define ADC_IND_CURR2			1
 #define ADC_IND_CURR3			2
-#define ADC_IND_SENS1			3 // uh, this is(was) wrong. currents should be indexes 012 (voltages 345)
+#define ADC_IND_SENS1			3 
 #define ADC_IND_SENS2			4
 #define ADC_IND_SENS3			5
-
  
 #define ADC_IND_VIN_SENS		8
 #define ADC_IND_EXT				6
 #define ADC_IND_EXT2			7
-#define ADC_IND_EXT3			13
+// #define ADC_IND_EXT3			13
 #define ADC_IND_SHUTDOWN		13 // ext3
 #define ADC_IND_TEMP_MOS		9
 #define ADC_IND_TEMP_MOTOR		10
@@ -184,8 +183,8 @@ non volt/curtrent adc channels
 #endif
 
 // Input voltage
-// #define GET_INPUT_VOLTAGE()		((V_REG / 4095.0) * (float)ADC_Value[ADC_IND_VIN_SENS] * ((VIN_R1 + VIN_R2) / VIN_R2))
-#define GET_INPUT_VOLTAGE()	 24
+#define GET_INPUT_VOLTAGE()		((V_REG / 4095.0) * (float)ADC_Value[ADC_IND_VIN_SENS] * ((VIN_R1 + VIN_R2) / VIN_R2))
+// #define GET_INPUT_VOLTAGE()	 24
 
 
 
