@@ -300,7 +300,7 @@ n* 17 (3):  IN3		SENS3
 #define READ_HALL3()			palReadPad(HW_HALL_ENC_GPIO3, HW_HALL_ENC_PIN3)
 
 // Override dead time. See the stm32f4 reference manual for calculating this value.
-#define HW_DEAD_TIME_NSEC		1400.0
+// #define HW_DEAD_TIME_NSEC		1400.0
 
 // Default setting overrides
 #ifndef MCCONF_L_MAX_VOLTAGE
