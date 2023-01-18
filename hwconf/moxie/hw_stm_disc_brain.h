@@ -164,19 +164,17 @@ n* 17 (3):  IN3		SENS3
 #ifndef VIN_R2
 #define VIN_R2					1000.0
 #endif
-// #ifndef CURRENT_AMP_GAIN
-// #define CURRENT_AMP_GAIN		20.0
-// #endif
-// #ifndef CURRENT_SHUNT_RES
-// #define CURRENT_SHUNT_RES		(0.0005 / 3.0)
-// #endif
+
+
 # define hall_current_gain         0.020 // v/a, acs756
 // # define hall_current_gain         (13.33 / 1000)  // volts/amp, acs758, 150a bidirectional // at 3.3v, this gives ~124A full scale.
 
-
-
-//#undef FAC_CURRENT
-#define FAC_CURRENT					((V_REG / 4095.0) / (hall_current_gain))
+#ifndef CURRENT_AMP_GAIN
+#define CURRENT_AMP_GAIN		1
+#endif
+#ifndef CURRENT_SHUNT_RES
+#define CURRENT_SHUNT_RES		(hall_current_gain)
+#endif
 
 // Input voltage
 // #define GET_INPUT_VOLTAGE()		((V_REG / 4095.0) * (float)ADC_Value[ADC_IND_VIN_SENS] * 19.7)
@@ -209,10 +207,10 @@ n* 17 (3):  IN3		SENS3
 
 
 // adc app gpio
-#define HW_REVERSE_PORT         GPIOC
-#define HW_REVERSE_PIN          13
-#define HW_BRAKE_PORT           GPIOB
-#define HW_BRAKE_PIN            5
+// #define HW_REVERSE_PORT         GPIOC
+// #define HW_REVERSE_PIN          13
+// #define HW_BRAKE_PORT           GPIOB
+// #define HW_BRAKE_PIN            5
 
 
 
@@ -238,22 +236,32 @@ n* 17 (3):  IN3		SENS3
 #endif
 
 // ICU Peripheral for servo decoding (needs changing)
-#define HW_USE_SERVO_TIM4
-#define HW_ICU_TIMER			TIM4
-#define HW_ICU_TIM_CLK_EN()		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE)
-#define HW_ICU_DEV				ICUD4
-#define HW_ICU_CHANNEL			ICU_CHANNEL_1
-#define HW_ICU_GPIO_AF			GPIO_AF_TIM4
-#define HW_ICU_GPIO				GPIOB
-#define HW_ICU_PIN				6
+#define STM32_ICU_USE_TIM9      TRUE
+#define HW_ICU_TIMER			TIM9
+#define HW_ICU_TIM_CLK_EN()		RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM9, ENABLE)
+#define HW_ICU_DEV				ICUD9
+#define HW_ICU_CHANNEL			ICU_CHANNEL_2
+#define HW_ICU_GPIO_AF			GPIO_AF_TIM9
+#define HW_ICU_GPIO				GPIOA
+#define HW_ICU_PIN				3
+// tested to be working!
+
 
 // I2C Peripheral  (test on moxie drive)
+#define HW_USE_I2CD1
 #define HW_I2C_DEV				I2CD1
 #define HW_I2C_GPIO_AF			GPIO_AF_I2C1
 #define HW_I2C_SCL_PORT			GPIOB
 #define HW_I2C_SCL_PIN			6
 #define HW_I2C_SDA_PORT			GPIOB
 #define HW_I2C_SDA_PIN			7
+
+// #define HW_I2C_DEV				I2CD2
+// #define HW_I2C_GPIO_AF			GPIO_AF_I2C2
+// #define HW_I2C_SCL_PORT			GPIOB
+// #define HW_I2C_SCL_PIN			10
+// #define HW_I2C_SDA_PORT			GPIOB
+// #define HW_I2C_SDA_PIN			11
 
 // Hall/encoder pins  (same on moxie drive)
 #define HW_HALL_ENC_GPIO1		GPIOB
@@ -309,8 +317,8 @@ n* 17 (3):  IN3		SENS3
 #ifndef MCCONF_DEFAULT_MOTOR_TYPE
 #define MCCONF_DEFAULT_MOTOR_TYPE		MOTOR_TYPE_FOC
 #endif
-#ifndef MCCONF_FOC_F_SW
-#define MCCONF_FOC_F_SW					20000.0
+#ifndef MCCONF_FOC_F_ZV
+#define MCCONF_FOC_F_ZV                 20000.0
 #endif
 #ifndef MCCONF_L_MAX_ABS_CURRENT
 #define MCCONF_L_MAX_ABS_CURRENT		200	// The maximum absolute current above which a fault is generated
@@ -333,7 +341,7 @@ n* 17 (3):  IN3		SENS3
 #define HW_LIM_ERPM				-100e3, 100e3
 #define HW_LIM_DUTY_MIN			0.0, 0.1
 #define HW_LIM_DUTY_MAX			0.0, 0.99
-#define HW_LIM_TEMP_FET			-40.0, 90.0
+// #define HW_LIM_TEMP_FET			-40.0, 90.0
 
 // HW-specific functions
 
