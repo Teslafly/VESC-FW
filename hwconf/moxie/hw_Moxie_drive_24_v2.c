@@ -74,6 +74,11 @@ void hw_init_gpio(void) {
 			PAL_STM32_OSPEED_HIGHEST |
 			PAL_STM32_PUDR_FLOATING);
 
+	#ifdef HW_USE_BRK
+		// BRK Fault pin
+		palSetPadMode(BRK_GPIO, BRK_PIN, PAL_MODE_ALTERNATE(GPIO_AF_TIM1));
+	#endif
+
 	// Hall sensors
 	palSetPadMode(HW_HALL_ENC_GPIO1, HW_HALL_ENC_PIN1, PAL_MODE_INPUT_PULLUP);
 	palSetPadMode(HW_HALL_ENC_GPIO2, HW_HALL_ENC_PIN2, PAL_MODE_INPUT_PULLUP);
@@ -144,30 +149,35 @@ void hw_setup_adc_channels(void) {
 	// regular channel measurements are triggred mid pwm using scan mode + dma in foc mode.
 	// order: phase currents -> phase voltages -> other
 
-	// ADC1 regular channels													// [vector number] signal name
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_0, 2, ADC_SampleTime_15Cycles);	// [0] 	CURR1
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 1, ADC_SampleTime_15Cycles); // [3] 	SENS1
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_4, 3, ADC_SampleTime_15Cycles);	// [6]  ADC_EXT1
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_9, 4, ADC_SampleTime_15Cycles);	// [9]	TEMP_PCB
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_8, 5, ADC_SampleTime_15Cycles);	// [12] V_GATE_DRIVER 
+	// adc's are triggeres by mcpwm timer and run through list of regular
+	// conversions and store the results to the ADC_Value[] array using DMA.
+	// Position in this array is determined by adc number + sample order (zero indexed)
+	// you must make sure that the adc channel i/o pin is available on that ADC
 
-	// ADC2 regular channels
-	ADC_RegularChannelConfig(ADC2, ADC_Channel_1, 2, ADC_SampleTime_15Cycles);	// [1]  CURR2
-	ADC_RegularChannelConfig(ADC2, ADC_Channel_11, 1, ADC_SampleTime_15Cycles);	// [4]  SENS2
-	ADC_RegularChannelConfig(ADC2, ADC_Channel_5, 3, ADC_SampleTime_15Cycles);	// [7] 	ADC_EXT2
-	ADC_RegularChannelConfig(ADC2, ADC_Channel_15, 4, ADC_SampleTime_15Cycles);	// [10]	TEMP_MOTOR
-	ADC_RegularChannelConfig(ADC2, ADC_Channel_14, 5, ADC_SampleTime_15Cycles);	// [13] ADC_EXT3 (reverse sw)
-
-	// ADC3 regular channels
+	// 1st conversion (by all 3 adc's at once)									// [vector number] signal name									
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_0, 2, ADC_SampleTime_15Cycles);	// [0] CURR1
+	ADC_RegularChannelConfig(ADC2, ADC_Channel_1, 2, ADC_SampleTime_15Cycles);	// [1] CURR2
 	ADC_RegularChannelConfig(ADC3, ADC_Channel_2, 2, ADC_SampleTime_15Cycles);	// [2] CURR3
-	ADC_RegularChannelConfig(ADC3, ADC_Channel_12, 1, ADC_SampleTime_15Cycles);	// [5] SENS3
-	ADC_RegularChannelConfig(ADC3, ADC_Channel_13, 3, ADC_SampleTime_15Cycles);	// [8] AN_IN 
-	ADC_RegularChannelConfig(ADC3, ADC_Channel_Vrefint, 4, ADC_SampleTime_15Cycles);// [11] vrefint
-	ADC_RegularChannelConfig(ADC3, ADC_Channel_3, 5, ADC_SampleTime_15Cycles);	// [14] servo conn
+	// 2nd conversion
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 1, ADC_SampleTime_15Cycles); // [3] VSENS1
+	ADC_RegularChannelConfig(ADC2, ADC_Channel_11, 1, ADC_SampleTime_15Cycles);	// [4] VSENS2
+	ADC_RegularChannelConfig(ADC3, ADC_Channel_12, 1, ADC_SampleTime_15Cycles);	// [5] VSENS3
+	// 3
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_4, 3, ADC_SampleTime_15Cycles);	// [6] ADC_EXT1
+	ADC_RegularChannelConfig(ADC2, ADC_Channel_5, 3, ADC_SampleTime_15Cycles);	// [7] ADC_EXT2
+	ADC_RegularChannelConfig(ADC3, ADC_Channel_13, 3, ADC_SampleTime_15Cycles);	// [8] AN_IN
+	// 4
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_9, 4, ADC_SampleTime_15Cycles);	// [9] TEMP_PCB
+	ADC_RegularChannelConfig(ADC2, ADC_Channel_15, 4, ADC_SampleTime_15Cycles);	// [10]	TEMP_MOTOR
+	ADC_RegularChannelConfig(ADC3, ADC_Channel_3, 4, ADC_SampleTime_15Cycles);  // [11] Servo pin
+	// 5
+	ADC_RegularChannelConfig(ADC1, ADC_Channel_8, 5, ADC_SampleTime_15Cycles);	// [12] V_GATE_DRIVER
+	ADC_RegularChannelConfig(ADC2, ADC_Channel_14, 5, ADC_SampleTime_15Cycles);	// [13] ADC_EXT3 (reverse sw)
+	ADC_RegularChannelConfig(ADC3, ADC_Channel_Vrefint, 5, ADC_SampleTime_15Cycles); // [14] vrefint
 
-	// Injected channels - current sensors
+	// Injected channels - current sensors only
 	// ONLY USED FOR BLDC MODE
-	// 3 injected measurements in a row for averaging
+	// 3 injected measurements in a row for averaging. averaging does nothing for foc mode.
 	ADC_InjectedChannelConfig(ADC1, ADC_Channel_0, 1, ADC_SampleTime_15Cycles);  // CURR1
 	ADC_InjectedChannelConfig(ADC1, ADC_Channel_0, 2, ADC_SampleTime_15Cycles);  // CURR1
 	ADC_InjectedChannelConfig(ADC1, ADC_Channel_0, 3, ADC_SampleTime_15Cycles);  // CURR1
