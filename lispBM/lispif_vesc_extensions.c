@@ -2136,7 +2136,13 @@ static lbm_value ext_raw_adc_voltage(lbm_value *args, lbm_uint argn) {
 		ofs1 = 0.0; ofs2 = 0.0; ofs3 = 0.0;
 	}
 
-	float Va = 0.0, Vb = 0.0, Vc = 0.0;
+	float Va = 0.0, Vb = 0.0, Vc = 0.0, Vin = 0.0;
+	if (argn == 3 && lbm_dec_as_i32(args[2]) != 0) {
+		Vin = (float)ADC_Value[ADC_IND_VIN_SENS];
+	} else {
+		Vin = GET_INPUT_VOLTAGE();
+	}
+
 	if (motor == 2) {
 #ifdef HW_HAS_DUAL_MOTORS
 		Va = (ADC_VOLTS(ADC_IND_SENS4) - ofs1) * scale;
@@ -2157,6 +2163,7 @@ static lbm_value ext_raw_adc_voltage(lbm_value *args, lbm_uint argn) {
 	case 1: return lbm_enc_float(Va);
 	case 2: return lbm_enc_float(Vb);
 	case 3: return lbm_enc_float(Vc);
+	case 4: return lbm_enc_float(Vin);
 	default: return ENC_SYM_EERROR;
 	}
 }
