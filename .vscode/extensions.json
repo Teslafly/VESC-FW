@@ -1,0 +1,15 @@
+{
+    "recommendations": [
+        
+        "ms-vscode.cpptools-extension-pack",
+        "marus25.cortex-debug",
+        "ms-vscode.makefile-tools",
+        "mhutchie.git-graph",
+        "letmaik.git-tree-compare",
+        "davidanson.vscode-markdownlint",
+        "yzhang.markdown-all-in-one",
+        "bbenoist.qml",
+        "tonka3000.qtvsctools",
+        "yzhang.markdown-all-in-one"
+    ]
+}
