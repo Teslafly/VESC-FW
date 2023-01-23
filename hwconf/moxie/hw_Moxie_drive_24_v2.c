@@ -327,6 +327,52 @@ static void terminal_button_test(int argc, const char **argv) {
 }
 #endif
 
+
+void hw_axiom_setup_dac(void) {
+	// GPIOA clock enable
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+
+	// DAC Periph clock enable
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_DAC, ENABLE);
+
+	// DAC channel 1 & 2 (DAC_OUT1 = PA.4)(DAC_OUT2 = PA.5) configuration
+	palSetPadMode(GPIOA, 4, PAL_MODE_INPUT_ANALOG);
+	palSetPadMode(GPIOA, 5, PAL_MODE_INPUT_ANALOG);
+
+	// Enable both DAC channels with output buffer disabled to achieve rail-to-rail output
+	DAC->CR |= DAC_CR_EN1 | DAC_CR_BOFF1 | DAC_CR_EN2 | DAC_CR_BOFF2;
+
+	// Set DAC channels at 1.65V
+	hw_axiom_DAC1_setdata(0x800);
+	hw_axiom_DAC2_setdata(0x800);
+}
+
+void hw_axiom_DAC1_setdata(uint16_t data) {
+	DAC->DHR12R1 = data;
+}
+
+void hw_axiom_DAC2_setdata(uint16_t data) {
+	DAC->DHR12R2 = data;
+}
+
+void hw_axiom_configure_brownout(uint8_t BOR_level) {
+    /* Get BOR Option Bytes */
+    if((FLASH_OB_GetBOR() & 0x0C) != BOR_level)
+    {
+      /* Unlocks the option bytes block access */
+      FLASH_OB_Unlock();
+
+      /* Select the desired V(BOR) Level -------------------------------------*/
+      FLASH_OB_BORConfig(BOR_level);
+
+      /* Launch the option byte loading */
+      FLASH_OB_Launch();
+
+      /* Locks the option bytes block access */
+      FLASH_OB_Lock();
+    }
+}
+
 /*
 static void terminal_cmd_powerstage_selftest_wo_motor(int argc, const char** argv){
 	// must be run with motor unconnected. one of the first tests to run after powering on a new vesc hardware.
