@@ -205,24 +205,35 @@
 /*
  * ICU driver system settings.
  */
-#define STM32_ICU_USE_TIM1                  FALSE
-#define STM32_ICU_USE_TIM2                  FALSE
-#ifdef HW_USE_SERVO_TIM4
+#define STM32_ICU_USE_TIM1                  FALSE // mcpwm
+#define STM32_ICU_USE_TIM2                  FALSE // systick
+#define STM32_ICU_USE_TIM8                  FALSE // mcpwm
+
+// #ifdef defined(HW_USE_SERVO_TIM3)
+//     #define STM32_ICU_USE_TIM3                  TRUE
+// #endif
+// #ifdef HW_USE_SERVO_TIM4
+//     #define STM32_ICU_USE_TIM4                  TRUE
+// #endif
+// #ifdef defined(HW_USE_SERVO_TIM5)
+//     #define STM32_ICU_USE_TIM5                  TRUE
+// #endif
+// #define STM32_ICU_USE_TIM9                  TRUE
+
+// servo hwconf define turn on needed ICU timer
+#ifndef STM32_ICU_USE_TIM3
     #define STM32_ICU_USE_TIM3                  FALSE
-    #define STM32_ICU_USE_TIM4                  TRUE
-    #define STM32_ICU_USE_TIM5                  FALSE
-#elif defined(HW_USE_SERVO_TIM5)
-    #define STM32_ICU_USE_TIM3                  FALSE
+#endif
+#ifndef STM32_ICU_USE_TIM4
     #define STM32_ICU_USE_TIM4                  FALSE
-    #define STM32_ICU_USE_TIM5                  TRUE
-#else // tim3
-    #define STM32_ICU_USE_TIM3                  TRUE
-    #define STM32_ICU_USE_TIM4                  FALSE
+#endif
+#ifndef STM32_ICU_USE_TIM5   
     #define STM32_ICU_USE_TIM5                  FALSE
 #endif
+#ifndef STM32_ICU_USE_TIM9
+    #define STM32_ICU_USE_TIM9                  FALSE
+#endif
 
-#define STM32_ICU_USE_TIM8                  FALSE
-#define STM32_ICU_USE_TIM9                  TRUE
 #define STM32_ICU_TIM1_IRQ_PRIORITY         7
 #define STM32_ICU_TIM2_IRQ_PRIORITY         7
 #define STM32_ICU_TIM3_IRQ_PRIORITY         7

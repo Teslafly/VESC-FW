@@ -187,6 +187,7 @@
 #define HW_ICU_GPIO				GPIOD
 #define HW_ICU_PIN				12
 #elif defined(ALVA_V0_PPM)
+#define HW_USE_SERVO_TIM3
 #define HW_ICU_TIMER			TIM3
 #define HW_ICU_TIM_CLK_EN()		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE)
 #define HW_ICU_DEV				ICUD3
