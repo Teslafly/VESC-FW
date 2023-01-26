@@ -24,9 +24,10 @@
 
 // Settings
 #define TIMER_HZ					1.4e7
+#define TIMER_GENERAL_PURPOSE       TIM5
 
 void timer_init(void) {
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIMER_GENERAL_PURPOSE, ENABLE);
 	uint16_t PrescalerValue = (uint16_t) ((SYSTEM_CORE_CLOCK / 2) / TIMER_HZ) - 1;
 
 	TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
@@ -34,18 +35,18 @@ void timer_init(void) {
 	TIM_TimeBaseStructure.TIM_Prescaler = PrescalerValue;
 	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
 	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
-	TIM_TimeBaseInit(TIM5, &TIM_TimeBaseStructure);
+	TIM_TimeBaseInit(TIMER_GENERAL_PURPOSE, &TIM_TimeBaseStructure);
 
-	TIM5->CNT = 0;
-	TIM_Cmd(TIM5, ENABLE);
+	TIMER_GENERAL_PURPOSE->CNT = 0;
+	TIM_Cmd(TIMER_GENERAL_PURPOSE, ENABLE);
 }
 
 uint32_t timer_time_now(void) {
-	return TIM5->CNT;
+	return TIMER_GENERAL_PURPOSE->CNT;
 }
 
 float timer_seconds_elapsed_since(uint32_t time) {
-	uint32_t diff = TIM5->CNT - time;
+	uint32_t diff = TIMER_GENERAL_PURPOSE->CNT - time;
 	return (float)diff / (float)TIMER_HZ;
 }
 
@@ -56,7 +57,7 @@ float timer_seconds_elapsed_since(uint32_t time) {
  * Seconds to sleep.
  */
 void timer_sleep(float seconds) {
-	uint32_t start_t = TIM5->CNT;
+	uint32_t start_t = TIMER_GENERAL_PURPOSE->CNT;
 
 	for (;;) {
 		if (timer_seconds_elapsed_since(start_t) >= seconds) {
