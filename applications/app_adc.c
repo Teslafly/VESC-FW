@@ -37,6 +37,24 @@
 #define RPM_FILTER_SAMPLES				8
 #define TC_DIFF_MAX_PASS				60  // TODO: move to app_conf
 
+
+#define PRECONFIGURED_ADC_APP_PINS
+// adc throttle, adc regen, reverse sw, brake switch, drive switch?, cruise control sw,
+// need to change these. 
+#define HW_REVERSE_SWITCH_PORT	 		GPIOA
+#define HW_REVERSE_SWITCH_PIN 			4
+#define HW_BRAKE_SWITCH_PORT 			GPIOB
+#define HW_BRAKE_SWITCH_PIN				3
+#define HW_DRIVE_SWITCH_PORT 			GPIOB	// for drive/neutral/reverse switch
+#define HW_DRIVE_SWITCH_PIN				4
+#define HW_CRUISE_SWITCH_PORT 			GPIOA
+#define HW_CRUISE_SWITCH_PIN 			7
+#define HW_KILL_SWITCH_PORT 			GPIOB
+#define HW_KILL_SWITCH_PIN 				3
+
+
+
+
 #define CTRL_USES_BUTTON(ctrl_type)(\
 		ctrl_type == ADC_CTRL_TYPE_CURRENT_REV_BUTTON || \
 		ctrl_type == ADC_CTRL_TYPE_CURRENT_REV_BUTTON_BRAKE_ADC || \
@@ -61,12 +79,26 @@ static volatile float adc2_override = 0.0;
 static volatile bool use_rx_tx_as_buttons = false;
 static volatile bool stop_now = true;
 static volatile bool is_running = false;
+
+// replace these with config values
+static volatile bool smart_reverse = true; // if smart reverse config enabled, only brake will work until motor has slowed enough and throttle under limit.
+static volatile bool cruise_is_toggle = false;
+
 static volatile bool adc_detached = false;
 static volatile bool buttons_detached = false;
 static volatile bool rev_override = false;
 static volatile bool cc_override = false;
 
 void app_adc_configure(adc_config *conf) {
+
+#ifdef PRECONFIGURED_ADC_APP_PINS
+	if (!buttons_detached) { // is buttons_detached enough? or would you want to gate on any of the above options as well?
+		palSetPadMode(HW_REVERSE_SWITCH_PORT, HW_REVERSE_SWITCH_PIN, PAL_MODE_INPUT_PULLUP);
+		palSetPadMode(HW_BRAKE_SWITCH_PORT, HW_BRAKE_SWITCH_PIN, PAL_MODE_INPUT_PULLUP);
+		palSetPadMode(HW_DRIVE_SWITCH_PORT, HW_DRIVE_SWITCH_PIN, PAL_MODE_INPUT_PULLUP);
+		palSetPadMode(HW_CRUISE_SWITCH_PORT, HW_CRUISE_SWITCH_PIN, PAL_MODE_INPUT_PULLUP);
+	}
+#else
 	if (!buttons_detached && (((conf->buttons >> 0) & 1) || CTRL_USES_BUTTON(conf->ctrl_type))) {
 		if (use_rx_tx_as_buttons) {
 			palSetPadMode(HW_UART_TX_PORT, HW_UART_TX_PIN, PAL_MODE_INPUT_PULLUP);
@@ -75,6 +107,7 @@ void app_adc_configure(adc_config *conf) {
 			palSetPadMode(HW_ICU_GPIO, HW_ICU_PIN, PAL_MODE_INPUT_PULLUP);
 		}
 	}
+#endif
 
 	config = *conf;
 	ms_without_power = 0.0;
@@ -267,6 +300,27 @@ static THD_FUNCTION(adc_thread, arg) {
 		// Read the button pins
 		bool cc_button = false;
 		bool rev_button = false;
+		bool drive_button = false;
+		bool brake_button = false;
+
+#ifdef PRECONFIGURED_ADC_APP_PINS
+		cc_button = !palReadPad(HW_CRUISE_SWITCH_PORT, HW_CRUISE_SWITCH_PIN);
+		if ((config.buttons >> 1) & 1) {
+			cc_button = !cc_button;
+		}
+		rev_button = !palReadPad(HW_REVERSE_SWITCH_PORT, HW_REVERSE_SWITCH_PIN);
+		if ((config.buttons >> 2) & 1) {
+			rev_button = !rev_button;
+		}
+		drive_button = !palReadPad(HW_DRIVE_SWITCH_PORT, HW_DRIVE_SWITCH_PIN);
+		if ((config.buttons >> 3) & 1) {
+			drive_button = !drive_button;
+		}
+		brake_button = !palReadPad(HW_BRAKE_SWITCH_PORT, HW_BRAKE_SWITCH_PIN);
+		if ((config.buttons >> 4) & 1) {
+			brake_button = !brake_button;
+		}
+#else
 		if (use_rx_tx_as_buttons) {
 			cc_button = !palReadPad(HW_UART_TX_PORT, HW_UART_TX_PIN);
 			if ((config.buttons >> 1) & 1) {
@@ -294,6 +348,7 @@ static THD_FUNCTION(adc_thread, arg) {
 				}
 			}
 		}
+#endif
 
 		// Override button values, when used from LISP
 		if (buttons_detached) {
@@ -305,6 +360,7 @@ static THD_FUNCTION(adc_thread, arg) {
 			if ((config.buttons >> 2) & 1) {
 				rev_button = !rev_button;
 			}
+			// need to add drive and brake buttons here
 		}
 
 		if (!((config.buttons >> 0) & 1)) {
