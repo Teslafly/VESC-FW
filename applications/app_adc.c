@@ -38,19 +38,19 @@
 #define TC_DIFF_MAX_PASS				60  // TODO: move to app_conf
 
 
-#define HW_PRECONFIGURED_ADC_APP_PINS
-// adc throttle, adc regen, reverse sw, brake switch, drive switch?, cruise control sw,
-// need to change these. 
-#define HW_REVERSE_SWITCH_PORT	 		GPIOA
-#define HW_REVERSE_SWITCH_PIN 			4
-#define HW_BRAKE_SWITCH_PORT 			GPIOB
-#define HW_BRAKE_SWITCH_PIN				3
-#define HW_DRIVE_SWITCH_PORT 			GPIOB	// for drive/neutral/reverse switch
-#define HW_DRIVE_SWITCH_PIN				4
-#define HW_CRUISE_SWITCH_PORT 			GPIOA
-#define HW_CRUISE_SWITCH_PIN 			7
-#define HW_KILL_SWITCH_PORT 			GPIOB
-#define HW_KILL_SWITCH_PIN 				3
+// #define HW_PRECONFIGURED_ADC_APP_PINS
+// // adc throttle, adc regen, reverse sw, brake switch, drive switch?, cruise control sw,
+// // need to change these. 
+// #define HW_REVERSE_SWITCH_PORT	 		GPIOA
+// #define HW_REVERSE_SWITCH_PIN 			4
+// #define HW_BRAKE_SWITCH_PORT 			GPIOB
+// #define HW_BRAKE_SWITCH_PIN				3
+// #define HW_DRIVE_SWITCH_PORT 			GPIOB	// for drive/neutral/reverse switch
+// #define HW_DRIVE_SWITCH_PIN				4
+// #define HW_CRUISE_SWITCH_PORT 			GPIOA
+// #define HW_CRUISE_SWITCH_PIN 			7
+// #define HW_KILL_SWITCH_PORT 			GPIOB
+// #define HW_KILL_SWITCH_PIN 				3
 
 
 
@@ -83,6 +83,8 @@ static volatile bool is_running = false;
 // replace these with config values
 static volatile bool smart_reverse = true; // if smart reverse config enabled, only brake will work until motor has slowed enough and throttle under limit.
 static volatile bool cruise_is_toggle = true;
+static volatile float smart_reverse_safety_erpm = 300;
+// end config replacements 
 
 static volatile bool adc_detached = false;
 static volatile bool buttons_detached = false;
@@ -373,6 +375,62 @@ static THD_FUNCTION(adc_thread, arg) {
 			continue;
 		}
 
+		static bool in_reverse = false;
+		static bool was_reverse = false;
+		bool brake_only = false;
+
+		// Filter RPM to avoid glitches. used for cruise control and safe reverse
+		static float rpm_filtered = 0.0;
+		UTILS_LP_MOVING_AVG_APPROX(rpm_filtered, mc_interface_get_rpm(), RPM_FILTER_SAMPLES);
+
+		// check reverse button for safety
+		// smart reverse only allows braking until throttle is low and speed is under threshold. 
+		// works for both and drive. will not go into reverse until conditions met. will not go into drive until met.
+
+		// how to make this brake only? also another part down below with rev_button
+
+		// Invert the voltage if the button is pressed
+
+
+		
+		if (!smart_reverse) { // if smart reverse is enabled and in_reverse false goto else. 
+			in_reverse = rev_button;			
+
+		} else{
+			in_reverse = rev_button;
+
+			if (rev_button != was_reverse)	{
+				was_reverse = rev_button;
+				brake_only = true;
+			}
+
+			if (fabsf(rpm_filtered) < smart_reverse_safety_erpm && pwr < 0.001) {
+				brake_only = false; // allow drive 
+			}
+			
+
+			// additional logic:
+			// if motor is turning in correct direction for reverse/not reverse than cancel brake only.
+			// need to test with motor inverted and not inverted setting.
+
+
+			// if (rev_button) {}
+			// brake_only = true;
+			// do reverse safety check check and 
+			// set in_reverse to true for next loop
+
+			// rpm_filtered // this is signed. may be inverted. 
+			// need to make absolute or account for motor direction setting.
+
+
+		}
+
+		// }else{
+		// 	in_reverse = false; // reset when button released. need to handle intermittent button?
+		// 	// prevent is_reverse from being cleared until absolute speed is 
+		// }
+
+
 		switch (config.ctrl_type) {
 		case ADC_CTRL_TYPE_CURRENT_REV_CENTER:
 		case ADC_CTRL_TYPE_CURRENT_REV_BUTTON_BRAKE_CENTER:
@@ -542,18 +600,7 @@ static THD_FUNCTION(adc_thread, arg) {
 		// static bool was_pid = false;
 		static bool in_cruise_control = false;
 
-		// Filter RPM to avoid glitches. used for cruise control and safe reverse
-		static float rpm_filtered = 0.0;
-		UTILS_LP_MOVING_AVG_APPROX(rpm_filtered, mc_interface_get_rpm(), RPM_FILTER_SAMPLES);
-
 		// Cruise control
-		if (cc_button){
-			in_cruise_control = true;
-		}else if (!cruise_is_toggle){
-			// stop when button not pressed if not toggle
-			in_cruise_control = false;	
-		}
-
 		if (cruise_is_toggle) {
 			// todo, stop cruise control when button pressed second time.
 			if (cc_button){ // should be if cc button went from low to high
@@ -590,11 +637,8 @@ static THD_FUNCTION(adc_thread, arg) {
 					}
 				}
 			}
-
 			continue;
 		}
-
-		
 
 		// Find lowest RPM (for traction control)
 		float rpm_local = mc_interface_get_rpm();
@@ -641,6 +685,9 @@ static THD_FUNCTION(adc_thread, arg) {
 					}
 				}
 			} else {
+				if (!brake_only) {
+					current_rel = 0;
+				}
 				float current_out = current_rel;
 				bool is_reverse = false;
 				if (current_out < 0.0) {
