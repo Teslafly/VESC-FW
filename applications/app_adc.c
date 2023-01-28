@@ -38,7 +38,7 @@
 #define TC_DIFF_MAX_PASS				60  // TODO: move to app_conf
 
 
-#define PRECONFIGURED_ADC_APP_PINS
+#define HW_PRECONFIGURED_ADC_APP_PINS
 // adc throttle, adc regen, reverse sw, brake switch, drive switch?, cruise control sw,
 // need to change these. 
 #define HW_REVERSE_SWITCH_PORT	 		GPIOA
@@ -82,7 +82,7 @@ static volatile bool is_running = false;
 
 // replace these with config values
 static volatile bool smart_reverse = true; // if smart reverse config enabled, only brake will work until motor has slowed enough and throttle under limit.
-static volatile bool cruise_is_toggle = false;
+static volatile bool cruise_is_toggle = true;
 
 static volatile bool adc_detached = false;
 static volatile bool buttons_detached = false;
@@ -91,7 +91,7 @@ static volatile bool cc_override = false;
 
 void app_adc_configure(adc_config *conf) {
 
-#ifdef PRECONFIGURED_ADC_APP_PINS
+#ifdef HW_PRECONFIGURED_ADC_APP_PINS
 	if (!buttons_detached) { // is buttons_detached enough? or would you want to gate on any of the above options as well?
 		palSetPadMode(HW_REVERSE_SWITCH_PORT, HW_REVERSE_SWITCH_PIN, PAL_MODE_INPUT_PULLUP);
 		palSetPadMode(HW_BRAKE_SWITCH_PORT, HW_BRAKE_SWITCH_PIN, PAL_MODE_INPUT_PULLUP);
@@ -303,7 +303,7 @@ static THD_FUNCTION(adc_thread, arg) {
 		bool drive_button = false;
 		bool brake_button = false;
 
-#ifdef PRECONFIGURED_ADC_APP_PINS
+#ifdef HW_PRECONFIGURED_ADC_APP_PINS
 		cc_button = !palReadPad(HW_CRUISE_SWITCH_PORT, HW_CRUISE_SWITCH_PIN);
 		if ((config.buttons >> 1) & 1) {
 			cc_button = !cc_button;
@@ -539,17 +539,40 @@ static THD_FUNCTION(adc_thread, arg) {
 		timeout_reset();
 
 		// If c is pressed and no throttle is used, maintain the current speed with PID control
-		static bool was_pid = false;
+		// static bool was_pid = false;
+		static bool in_cruise_control = false;
 
-		// Filter RPM to avoid glitches
+		// Filter RPM to avoid glitches. used for cruise control and safe reverse
 		static float rpm_filtered = 0.0;
 		UTILS_LP_MOVING_AVG_APPROX(rpm_filtered, mc_interface_get_rpm(), RPM_FILTER_SAMPLES);
 
-		if (current_mode && cc_button && fabsf(pwr) < 0.001) {
+		// Cruise control
+		if (cc_button){
+			in_cruise_control = true;
+		}else if (!cruise_is_toggle){
+			// stop when button not pressed if not toggle
+			in_cruise_control = false;	
+		}
+
+		if (cruise_is_toggle) {
+			// todo, stop cruise control when button pressed second time.
+			if (cc_button){ // should be if cc button went from low to high
+				in_cruise_control = true;
+			}
+		} else { // need to hold cruise button
+			in_cruise_control = cc_button;
+		}
+
+		// stop cruise control if checks not met
+		if (brake_button || !(fabsf(pwr) < 0.001) || !current_mode) {
+			in_cruise_control = false;
+		}		
+		
+		if (in_cruise_control) {
 			static float pid_rpm = 0.0;
 
-			if (!was_pid) {
-				was_pid = true;
+			if (!in_cruise_control) {
+				in_cruise_control = true;
 				pid_rpm = rpm_filtered;
 			}
 
@@ -571,7 +594,7 @@ static THD_FUNCTION(adc_thread, arg) {
 			continue;
 		}
 
-		was_pid = false;
+		
 
 		// Find lowest RPM (for traction control)
 		float rpm_local = mc_interface_get_rpm();
