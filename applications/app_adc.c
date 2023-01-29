@@ -84,6 +84,7 @@ static volatile bool is_running = false;
 static volatile bool smart_reverse = true; // if smart reverse config enabled, only brake will work until motor has slowed enough and throttle under limit.
 static volatile bool cruise_is_toggle = true;
 static volatile float smart_reverse_safety_erpm = 300;
+static volatile float smart_reverse_safety_throttle = 0.001; // set to 1 (100%) to disable this check.
 // end config replacements 
 
 static volatile bool adc_detached = false;
@@ -375,9 +376,8 @@ static THD_FUNCTION(adc_thread, arg) {
 			continue;
 		}
 
-		static bool in_reverse = false;
 		static bool was_reverse = false;
-		bool brake_only = false;
+		static bool brake_only = false;
 
 		// Filter RPM to avoid glitches. used for cruise control and safe reverse
 		static float rpm_filtered = 0.0;
@@ -389,46 +389,32 @@ static THD_FUNCTION(adc_thread, arg) {
 
 		// how to make this brake only? also another part down below with rev_button
 
-		// Invert the voltage if the button is pressed
-
-
-		
 		if (!smart_reverse) { // if smart reverse is enabled and in_reverse false goto else. 
-			in_reverse = rev_button;			
+			brake_only = false;
 
-		} else{
-			in_reverse = rev_button;
-
-			if (rev_button != was_reverse)	{
+		} else {
+			if (was_reverse != rev_button)	{
 				was_reverse = rev_button;
 				brake_only = true;
 			}
 
-			if (fabsf(rpm_filtered) < smart_reverse_safety_erpm && pwr < 0.001) {
-				brake_only = false; // allow drive 
+			if (pwr < smart_reverse_safety_throttle) {
+				if ((!rev_button && -rpm_filtered < smart_reverse_safety_erpm) ||
+					(rev_button && rpm_filtered < smart_reverse_safety_erpm)) {
+						// allow drive when throttle is zero and motor erpm is less 
+						// than threshold in opposite direction of travel.
+						brake_only = false;
+				}
 			}
 			
-
 			// additional logic:
 			// if motor is turning in correct direction for reverse/not reverse than cancel brake only.
 			// need to test with motor inverted and not inverted setting.
 
-
-			// if (rev_button) {}
-			// brake_only = true;
-			// do reverse safety check check and 
-			// set in_reverse to true for next loop
-
-			// rpm_filtered // this is signed. may be inverted. 
-			// need to make absolute or account for motor direction setting.
-
-
+			// if you switch from drive to reverse while moving at high speed, forward needs to not work. (brake does)
+			// but if you switch back to forward, forward needs to work again.
+			// but if you are moving backwards, then forward should not work until reach low speed.
 		}
-
-		// }else{
-		// 	in_reverse = false; // reset when button released. need to handle intermittent button?
-		// 	// prevent is_reverse from being cleared until absolute speed is 
-		// }
 
 
 		switch (config.ctrl_type) {
@@ -685,9 +671,10 @@ static THD_FUNCTION(adc_thread, arg) {
 					}
 				}
 			} else {
-				if (!brake_only) {
-					current_rel = 0;
+				if (brake_only) {
+					current_rel = 0.0;
 				}
+
 				float current_out = current_rel;
 				bool is_reverse = false;
 				if (current_out < 0.0) {
