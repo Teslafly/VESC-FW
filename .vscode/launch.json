@@ -11,7 +11,7 @@
             "type": "cortex-debug",
             "cwd": "${workspaceRoot}",
             // "executable": "${workspaceRoot}/build/BLDC_4_ChibiOS.elf",
-            "executable": "${workspaceRoot}/build/Moxie_drive_24/Moxie_drive_24.elf",
+            "executable": "${workspaceRoot}/build/60_mk4/60_mk4.elf",
             "servertype": "openocd",
             "device": "stm32f4x",
             "svdFile": ".vscode/STM32F407.svd",
@@ -23,7 +23,7 @@
                 "preLaunchTask": "build"
             },
             "windows": {
-                "armToolchainPath": "${workspaceRoot}/tools/gcc-arm-none-eabi-7-2018-q2-update/bin",
+                "armToolchainPath": "${workspaceRoot}/tools/gcc-arm-none-eabi-10.3-2021.10/bin",
                 "preLaunchTask": "build"
             },
             

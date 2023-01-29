@@ -5,20 +5,20 @@
             "binaryPath": "${workspaceRoot}\\build\\60_mk4\\60_mk4.elf",
             "binaryArgs": []
         },
-        {
-            "cwd": "${workspaceRoot}/build/100_250",
-            "binaryPath": "${workspaceRoot}build\\100_250\\100_250.elf",
-            "binaryArgs": []
-        },
-        {
-            "cwd": "${workspaceRoot}/build/Moxie_drive_24",
-            "binaryPath": "${workspaceRoot}\\build\\Moxie_drive_24\\Moxie_drive_24.elf",
-            "binaryArgs": []
-        },
-        {
-            "cwd": "c:/dev/teslafly_bldc_dev/build/60_mk4",
-            "binaryPath": "c:\\dev\\teslafly_bldc_dev\\build\\60_mk4\\60_mk4.elf",
-            "binaryArgs": []
-        }
+        // {
+        //     "cwd": "${workspaceRoot}/build/100_250",
+        //     "binaryPath": "${workspaceRoot}build\\100_250\\100_250.elf",
+        //     "binaryArgs": []
+        // },
+        // {
+        //     "cwd": "${workspaceRoot}/build/Moxie_drive_24",
+        //     "binaryPath": "${workspaceRoot}\\build\\Moxie_drive_24\\Moxie_drive_24.elf",
+        //     "binaryArgs": []
+        // },
+        // {
+        //     "cwd": "c:/dev/teslafly_bldc_dev/build/60_mk4",
+        //     "binaryPath": "c:\\dev\\teslafly_bldc_dev\\build\\60_mk4\\60_mk4.elf",
+        //     "binaryArgs": []
+        // }
     ]
 }
