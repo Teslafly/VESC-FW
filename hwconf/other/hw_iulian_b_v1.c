@@ -75,6 +75,11 @@ void hw_init_gpio(void) {
 	palSetPadMode(HW_HALL_ENC_GPIO2, HW_HALL_ENC_PIN2, PAL_MODE_INPUT_PULLUP);
 	palSetPadMode(HW_HALL_ENC_GPIO3, HW_HALL_ENC_PIN3, PAL_MODE_INPUT_PULLUP);
 
+#ifdef HW_USE_BRK
+	// BRK Fault pin
+	palSetPadMode(BRK_GPIO, BRK_PIN, PAL_MODE_ALTERNATE(GPIO_AF_TIM1));
+#endif
+
 	// Phase filters
 	palSetPadMode(PHASE_FILTER_GPIO, PHASE_FILTER_PIN,
 			PAL_MODE_OUTPUT_PUSHPULL |

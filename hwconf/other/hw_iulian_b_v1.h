@@ -26,13 +26,13 @@
 #define HW_HAS_3_SHUNTS
 #define HW_HAS_PHASE_SHUNTS
 #define HW_HAS_PHASE_FILTERS
+#define HW_USE_BRK
 
 // Macros
 #define LED_GREEN_GPIO			GPIOB
 #define LED_GREEN_PIN			5
 #define LED_RED_GPIO			GPIOB
 #define LED_RED_PIN				7
-
 
 #define LED_GREEN_ON()			palSetPad(LED_GREEN_GPIO, LED_GREEN_PIN)
 #define LED_GREEN_OFF()			palClearPad(LED_GREEN_GPIO, LED_GREEN_PIN)
@@ -52,6 +52,11 @@
 
 #define CURRENT_FILTER_ON()		palSetPad(GPIOD, 2)
 #define CURRENT_FILTER_OFF()	palClearPad(GPIOD, 2)
+
+// #define HW_USE_BRK
+// Normally high. fault when brk pin low.
+#define BRK_GPIO                GPIOB
+#define BRK_PIN                    12
 
 /*
  * ADC Vector
