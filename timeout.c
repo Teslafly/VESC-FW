@@ -209,6 +209,16 @@ static THD_FUNCTION(timeout_thread, arg) {
 			kill_sw = ADC_VOLTS(ADC_IND_EXT2) > 1.65;
 			break;
 
+#ifdef HW_KILL_SWITCH_PORT // will default to nothing if not defined.
+		case KILL_SW_MODE_CUSTOM_LOW:
+			kill_sw = !palReadPad(HW_KILL_SWITCH_PORT, HW_KILL_SWITCH_PIN);
+			break;
+
+		case KILL_SW_MODE_CUSTOM_HIGH:
+			kill_sw = palReadPad(HW_KILL_SWITCH_PORT, HW_KILL_SWITCH_PIN);
+			break;
+#endif
+
 		default:
 			break;
 		}
