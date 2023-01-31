@@ -145,6 +145,21 @@
 #define HW_ADC_EXT2_GPIO		GPIOA
 #define HW_ADC_EXT2_PIN			6
 
+// adc app pin overrides. Hw will always use these pins regardless of hw uart mode
+#define HW_PRECONFIGURED_ADC_APP_PINS
+#define HW_REVERSE_SWITCH_PORT	 		GPIOB // rx (PB11) (or PA4)
+#define HW_REVERSE_SWITCH_PIN 			11
+#define HW_BRAKE_SWITCH_PORT 			GPIOB // sw 4 (PB3)
+#define HW_BRAKE_SWITCH_PIN				3
+#define HW_DRIVE_SWITCH_PORT 			GPIOB // for drive/neutral/reverse switch
+#define HW_DRIVE_SWITCH_PIN				4
+#define HW_CRUISE_SWITCH_PORT 			GPIOB // tx (PB10) (or PA7)
+#define HW_CRUISE_SWITCH_PIN 			10
+
+// hw
+// #define HW_KILL_SWITCH_PORT 			GPIOA // adc2 (PA6)
+// #define HW_KILL_SWITCH_PIN 				6
+
 // UART Peripheral (used for adc app switches only)
 #define HW_UART_DEV				SD3
 #define HW_UART_GPIO_AF			GPIO_AF_USART3
