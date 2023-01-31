@@ -243,7 +243,12 @@ static void timer_reinit(int f_zv) {
 	// external fault signal. PWM outputs remain disabled until MCU is reset.
 	// software will catch the BRK flag to report the fault code
 	TIM_BDTRInitStructure.TIM_Break = TIM_Break_Enable;
-	TIM_BDTRInitStructure.TIM_BreakPolarity = TIM_BreakPolarity_Low;
+
+	#ifdef HW_BRK_POLARITY_HIGH 
+		TIM_BDTRInitStructure.TIM_BreakPolarity = TIM_BreakPolarity_High; // brk pin asseerted when high
+	#else		
+		TIM_BDTRInitStructure.TIM_BreakPolarity = TIM_BreakPolarity_Low; // hw fault when brk pin low (normally high)
+	#endif
 #else
 	TIM_BDTRInitStructure.TIM_Break = TIM_Break_Disable;
 	TIM_BDTRInitStructure.TIM_BreakPolarity = TIM_BreakPolarity_High;
