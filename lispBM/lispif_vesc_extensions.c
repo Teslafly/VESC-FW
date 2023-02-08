@@ -3003,6 +3003,81 @@ static lbm_value ext_conf_measure_res(lbm_value *args, lbm_uint argn) {
 	return ENC_SYM_TRUE;
 }
 
+// copied from measure_res above. 
+// typedef struct {
+// 	float current;
+// 	int samples;
+// 	lbm_cid id; // what is this parameter exactly?
+// } measure_ind_args;
+
+// static void measure_ind_task(void *arg) {
+// 	measure_ind_args *a = (measure_ind_args*)arg;
+// 	float ind = -1.0;
+// 	// int fault = mcpwm_foc_measure_resistance(a->current, a->samples, true, &res);
+	
+// 	int fault = mcpwm_foc_measure_inductance_current(a->current, a->samples, 0, ld_lq_diff, l);
+// 	/**
+//  * Measure the motor inductance with short voltage pulses. The difference from the
+//  * other function is that this one will aim for a specific measurement current. It
+//  * will also use an appropriate switching frequency.
+//  *
+//  * @param curr_goal
+//  * The measurement current to aim for.
+//  *
+//  * @param samples
+//  * The number of samples to average over.
+//  *
+//  * @param *curr
+//  * The current that was used for this measurement.
+//  *
+//  * @inductance
+//  * The average d and q axis inductance in uH.
+//  *
+//  * @return
+//  * The fault code
+//  */
+
+// 	lispif_lock_lbm();
+// 	if (pause_gc(5, 1000)) {
+// 		lbm_unblock_ctx(a->id, lbm_enc_float(res));
+// 	} else {
+// 		lbm_unblock_ctx(a->id, ENC_SYM_EERROR);
+// 	}
+
+// 	lbm_continue_eval();
+// 	lispif_unlock_lbm();
+// }
+
+// // measure inductance of motor @ current
+// static lbm_value ext_conf_measure_ind(lbm_value *args, lbm_uint argn) {
+// 	// arg1:
+// 	// arg2: 
+// 	if (argn != 1 && argn != 2) {
+// 		lbm_set_error_reason((char*)lbm_error_str_num_args);
+// 		return ENC_SYM_EERROR;
+// 	}
+
+// 	LBM_CHECK_NUMBER_ALL();
+
+// 	if (mc_interface_get_configuration()->motor_type != MOTOR_TYPE_FOC) {
+// 		return ENC_SYM_EERROR;
+// 	}
+
+// 	static measure_res_args a;
+// 	a.current = lbm_dec_as_float(args[0]);
+
+// 	// do we really need to average?
+// 	a.samples = 100;
+// 	if (argn == 2) {
+// 		a.samples = lbm_dec_as_u32(args[1]);
+// 	}
+// 	a.id = lbm_get_current_cid();
+
+// 	worker_execute(measure_res_task, &a);
+// 	lbm_block_ctx_from_extension();
+// 	return ENC_SYM_TRUE;
+// }
+
 static lbm_value make_list(int num, ...) {
 	va_list arguments;
 	va_start (arguments, num);
@@ -3854,6 +3929,7 @@ void lispif_load_vesc_extensions(void) {
 	lbm_add_extension("conf-detect-foc", ext_conf_detect_foc);
 	lbm_add_extension("conf-set-pid-offset", ext_conf_set_pid_offset);
 	lbm_add_extension("conf-measure-res", ext_conf_measure_res);
+	lbm_add_extension("conf-measure-ind", ext_conf_measure_ind);
 
 	// Macro expanders
 	lbm_add_extension("me-defun", ext_me_defun);
