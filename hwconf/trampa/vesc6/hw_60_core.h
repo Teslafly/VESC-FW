@@ -306,6 +306,22 @@
 #define NRF_PIN_MISO			2
 #endif
 
+
+// adc app pin overrides. Hw will always use these pins regardless of hw uart mode
+#define HW_PRECONFIGURED_ADC_APP_PINS
+#define HW_REVERSE_SWITCH_PORT	 		GPIOB // rx (PB11) (or PA4)
+#define HW_REVERSE_SWITCH_PIN 			10
+#define HW_BRAKE_SWITCH_PORT 			GPIOA // sw 4 (PB3)
+#define HW_BRAKE_SWITCH_PIN				6
+// #define HW_DRIVE_SWITCH_PORT 			GPIOB // for drive/neutral/reverse switch
+// #define HW_DRIVE_SWITCH_PIN				4
+#define HW_CRUISE_SWITCH_PORT 			GPIOB // tx (PB10) (or PA7)
+#define HW_CRUISE_SWITCH_PIN 			11
+
+// hw
+// #define HW_KILL_SWITCH_PORT 			GPIOA // adc2 (PA6)
+// #define HW_KILL_SWITCH_PIN 				6
+
 // SPI pins
 #if !defined(HW60_IS_MK5) && !defined(HW60_IS_MK6)
 #define HW_SPI_DEV				SPID1
