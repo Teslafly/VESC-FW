@@ -49,6 +49,7 @@
 #include "firmware_metadata.h"
 #include "log.h"
 #include "buffer.h"
+#include "crc.h"
 
 #include <math.h>
 #include <ctype.h>
@@ -433,20 +434,11 @@ static bool is_symbol_true_false(lbm_value v) {
 	return res;
 }
 
-static bool pause_gc(uint32_t num_free, int timeout_cnt) {
-	lbm_pause_eval_with_gc(num_free);
-	while (lbm_get_eval_state() != EVAL_CPS_STATE_PAUSED && timeout_cnt > 0) {
-		chThdSleep(1);
-		timeout_cnt--;
-	}
-	return timeout_cnt > 0;
-}
-
 // Various commands
 
 static lbm_value ext_print(lbm_value *args, lbm_uint argn) {
 	const int str_len = 256;
-	char *print_val_buffer = lbm_malloc(str_len);
+	char *print_val_buffer = lbm_malloc_reserve(str_len);
 	if (!print_val_buffer) {
 		return ENC_SYM_MERROR;
 	}
@@ -965,7 +957,7 @@ static lbm_value ext_eeprom_store_i(lbm_value *args, lbm_uint argn) {
 	}
 
 	eeprom_var v;
-	v.as_i32 = lbm_dec_as_float(args[1]);
+	v.as_i32 = lbm_dec_as_i32(args[1]);
 	return conf_general_store_eeprom_var_custom(&v, addr) ? ENC_SYM_TRUE : ENC_SYM_NIL;
 }
 
@@ -1954,6 +1946,8 @@ static lbm_value ext_raw_adc_current(lbm_value *args, lbm_uint argn) {
 
 	volatile float ofs1, ofs2, ofs3;
 	mcpwm_foc_get_current_offsets(&ofs1, &ofs2, &ofs3, motor == 2);
+	float ph1, ph2, ph3;
+	mcpwm_foc_get_currents_adc(&ph1, &ph2, &ph3, motor == 2);
 	float scale = FAC_CURRENT;
 
 	if (argn == 3 && lbm_dec_as_i32(args[2]) != 0) {
@@ -1961,26 +1955,11 @@ static lbm_value ext_raw_adc_current(lbm_value *args, lbm_uint argn) {
 		ofs1 = 0.0; ofs2 = 0.0; ofs3 = 0.0;
 	}
 
-	if (motor == 1) {
-		switch(phase) {
-		case 1: return lbm_enc_float(((float)GET_CURRENT1() - ofs1) * scale);
-		case 2: return lbm_enc_float(((float)GET_CURRENT2() - ofs2) * scale);
-		case 3: return lbm_enc_float(((float)GET_CURRENT3() - ofs3) * scale);
-		default: return ENC_SYM_EERROR;
-		}
-	} else if (motor == 2) {
-#ifdef HW_HAS_DUAL_MOTORS
-		switch(phase) {
-		case 1: return lbm_enc_float(((float)GET_CURRENT1_M2() - ofs1) * scale);
-		case 2: return lbm_enc_float(((float)GET_CURRENT2_M2() - ofs2) * scale);
-		case 3: return lbm_enc_float(((float)GET_CURRENT3_M2() - ofs3) * scale);
-		default: return ENC_SYM_EERROR;
-		}
-#else
-		return ENC_SYM_EERROR;
-#endif
-	} else {
-		return ENC_SYM_EERROR;
+	switch(phase) {
+	case 1: return lbm_enc_float((ph1 - ofs1) * scale);
+	case 2: return lbm_enc_float((ph2 - ofs2) * scale);
+	case 3: return lbm_enc_float((ph3 - ofs3) * scale);
+	default: return ENC_SYM_EERROR;
 	}
 }
 
@@ -2901,18 +2880,14 @@ typedef struct {
 
 static void detect_task(void *arg) {
 	detect_args *a = (detect_args*)arg;
+	int restart_cnt = lispif_get_restart_cnt();
+
 	int res = conf_general_detect_apply_all_foc_can(a->detect_can, a->max_power_loss,
 			a->min_current_in, a->max_current_in, a->openloop_rpm, a->sl_erpm, NULL);
 
-	lispif_lock_lbm();
-	if (pause_gc(5, 1000)) {
-		lbm_unblock_ctx(a->id, lbm_enc_i(res));
-	} else {
-		lbm_unblock_ctx(a->id, ENC_SYM_EERROR);
+	if (restart_cnt == lispif_get_restart_cnt()) {
+		lbm_unblock_ctx_unboxed(a->id, lbm_enc_i(res));
 	}
-
-	lbm_continue_eval();
-	lispif_unlock_lbm();
 }
 
 static lbm_value ext_conf_detect_foc(lbm_value *args, lbm_uint argn) {
@@ -2925,8 +2900,8 @@ static lbm_value ext_conf_detect_foc(lbm_value *args, lbm_uint argn) {
 	a.openloop_rpm = lbm_dec_as_float(args[4]);
 	a.sl_erpm = lbm_dec_as_float(args[5]);
 	a.id = lbm_get_current_cid();
-	worker_execute(detect_task, &a);
 	lbm_block_ctx_from_extension();
+	worker_execute(detect_task, &a);
 	return ENC_SYM_TRUE;
 }
 
@@ -2963,19 +2938,32 @@ typedef struct {
 } measure_res_args;
 
 static void measure_res_task(void *arg) {
+	int restart_cnt = lispif_get_restart_cnt();
+
 	measure_res_args *a = (measure_res_args*)arg;
 	float res = -1.0;
 	mcpwm_foc_measure_resistance(a->current, a->samples, true, &res);
 
-	lispif_lock_lbm();
-	if (pause_gc(5, 1000)) {
-		lbm_unblock_ctx(a->id, lbm_enc_float(res));
-	} else {
-		lbm_unblock_ctx(a->id, ENC_SYM_EERROR);
+	if (restart_cnt != lispif_get_restart_cnt()) {
+		return;
 	}
 
-	lbm_continue_eval();
-	lispif_unlock_lbm();
+	lbm_flat_value_t v;
+	bool ok = false;
+
+	if (lbm_start_flatten(&v, 10)) {
+		f_float(&v, res);
+		lbm_finish_flatten(&v);
+		if (lbm_unblock_ctx(a->id, &v)) {
+			ok = true;
+		} else {
+			lbm_free(v.buf);
+		}
+	}
+
+	if (!ok) {
+		lbm_unblock_ctx_unboxed(a->id, ENC_SYM_NIL);
+	}
 }
 
 static lbm_value ext_conf_measure_res(lbm_value *args, lbm_uint argn) {
@@ -2998,8 +2986,8 @@ static lbm_value ext_conf_measure_res(lbm_value *args, lbm_uint argn) {
 	}
 	a.id = lbm_get_current_cid();
 
-	worker_execute(measure_res_task, &a);
 	lbm_block_ctx_from_extension();
+	worker_execute(measure_res_task, &a);
 	return ENC_SYM_TRUE;
 }
 
@@ -3660,22 +3648,32 @@ static THD_FUNCTION(event_thread, arg) {
 	for (;;) {
 		if (icu_width_done && event_icu_width_en) {
 			icu_width_done = false;
-			lbm_event_t e = {0};
-			e.type = LBM_EVENT_SYM_INT_INT;
-			e.sym = sym_event_icu_width;
-			e.i = icu_last_width;
-			e.i2 = icu_last_period;
-			lbm_event(e, NULL, 0);
+
+			lbm_flat_value_t v;
+			if (lbm_start_flatten(&v, 30)) {
+				f_cons(&v);
+				f_sym(&v, sym_event_icu_width);
+				f_cons(&v);
+				f_i(&v, icu_last_width);
+				f_i(&v, icu_last_period);
+				lbm_finish_flatten(&v);
+				lbm_event(&v);
+			}
 		}
 
 		if (icu_period_done && event_icu_period_en) {
 			icu_period_done = false;
-			lbm_event_t e = {0};
-			e.type = LBM_EVENT_SYM_INT_INT;
-			e.sym = sym_event_icu_period;
-			e.i = icu_last_width;
-			e.i2 = icu_last_period;
-			lbm_event(e, NULL, 0);
+
+			lbm_flat_value_t v;
+			if (lbm_start_flatten(&v, 30)) {
+				f_cons(&v);
+				f_sym(&v, sym_event_icu_period);
+				f_cons(&v);
+				f_i(&v, icu_last_width);
+				f_i(&v, icu_last_period);
+				lbm_finish_flatten(&v);
+				lbm_event(&v);
+			}
 		}
 
 		chThdSleepMilliseconds(1);
@@ -3731,6 +3729,31 @@ static lbm_value ext_icu_width(lbm_value *args, lbm_uint argn) {
 static lbm_value ext_icu_period(lbm_value *args, lbm_uint argn) {
 	(void)args; (void)argn;
 	return lbm_enc_i(icu_last_period);
+}
+
+static lbm_value ext_crc16(lbm_value *args, lbm_uint argn) {
+	if ((argn != 1 && argn != 2) || !lbm_is_array(args[0])) {
+		return ENC_SYM_TERROR;
+	}
+
+	lbm_array_header_t *array = (lbm_array_header_t *)lbm_car(args[0]);
+	if (array->elt_type != LBM_TYPE_BYTE) {
+		return ENC_SYM_TERROR;
+	}
+
+	unsigned int len = array->size;
+	if (argn == 2) {
+		if (!lbm_is_number(args[1])) {
+			return ENC_SYM_TERROR;
+		}
+
+		len = lbm_dec_as_u32(args[1]);
+		if (len > array->size) {
+			len = array->size;
+		}
+	}
+
+	return lbm_enc_i(crc16((uint8_t*)array->data, len));
 }
 
 void lispif_load_vesc_extensions(void) {
@@ -3803,6 +3826,7 @@ void lispif_load_vesc_extensions(void) {
 	lbm_add_extension("icu-start", ext_icu_start);
 	lbm_add_extension("icu-width", ext_icu_width);
 	lbm_add_extension("icu-period", ext_icu_period);
+	lbm_add_extension("crc16", ext_crc16);
 
 	// APP commands
 	lbm_add_extension("app-adc-detach", ext_app_adc_detach);
@@ -3995,11 +4019,18 @@ void lispif_process_can(uint32_t can_id, uint8_t *data8, int len, bool is_ext) {
 		return;
 	}
 
-	lbm_event_t e = {0};
-	e.type = LBM_EVENT_SYM_INT_ARRAY;
-	e.sym = is_ext ? sym_event_can_eid : sym_event_can_sid;
-	e.i = can_id;
-	lbm_event(e, data8, len);
+	lbm_flat_value_t v;
+	if (lbm_start_flatten(&v, 50 + len)) {
+		f_cons(&v);
+		f_sym(&v, is_ext ? sym_event_can_eid : sym_event_can_sid);
+		f_cons(&v);
+		f_i32(&v, can_id);
+		f_lbm_array(&v, len, LBM_TYPE_BYTE, data8);
+		lbm_finish_flatten(&v);
+		if (!lbm_event(&v)) {
+			lbm_free(v.buf);
+		}
+	}
 }
 
 void lispif_process_custom_app_data(unsigned char *data, unsigned int len) {
@@ -4007,10 +4038,16 @@ void lispif_process_custom_app_data(unsigned char *data, unsigned int len) {
 		return;
 	}
 
-	lbm_event_t e = {0};
-	e.type = LBM_EVENT_SYM_ARRAY;
-	e.sym = sym_event_data_rx;
-	lbm_event(e, data, len);
+	lbm_flat_value_t v;
+	if (lbm_start_flatten(&v, 30 + len)) {
+		f_cons(&v);
+		f_sym(&v, sym_event_data_rx);
+		f_lbm_array(&v, len, LBM_TYPE_BYTE, data);
+		lbm_finish_flatten(&v);
+		if (!lbm_event(&v)) {
+			lbm_free(v.buf);
+		}
+	}
 }
 
 void lispif_process_shutdown(void) {
@@ -4018,10 +4055,12 @@ void lispif_process_shutdown(void) {
 		return;
 	}
 
-	lbm_event_t e = {0};
-	e.type = LBM_EVENT_SYM;
-	e.sym = sym_event_shutdown;
-	lbm_event(e, NULL, 0);
+	lbm_flat_value_t v;
+	if (lbm_start_flatten(&v, 10)) {
+		f_sym(&v, sym_event_shutdown);
+		lbm_finish_flatten(&v);
+		lbm_event(&v);
+	}
 }
 
 void lispif_set_ext_load_callback(void (*p_func)(void)) {

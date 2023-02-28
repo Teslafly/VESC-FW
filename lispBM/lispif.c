@@ -55,6 +55,7 @@ static bool lisp_thd_running = false;
 static mutex_t lbm_mutex;
 
 static int repl_cid = -1;
+static int restart_cnt = 0;
 
 // Private functions
 static uint32_t timestamp_callback(void);
@@ -73,23 +74,16 @@ void lispif_init(void) {
 	chMtxObjectInit(&lbm_mutex);
 }
 
+int lispif_get_restart_cnt(void) {
+	return restart_cnt;
+}
+
 void lispif_lock_lbm(void) {
 	chMtxLock(&lbm_mutex);
 }
 
 void lispif_unlock_lbm(void) {
 	chMtxUnlock(&lbm_mutex);
-}
-
-static void ctx_cb(eval_context_t *ctx, void *arg1, void *arg2) {
-	if (arg2 != NULL) {
-		lbm_print_value((char*)arg2, 40, ctx->r);
-	}
-
-	if (arg1 != NULL) {
-		float *res = (float*)arg1;
-		*res = 100.0 * (float)ctx->K.max_sp / 256.0;
-	}
 }
 
 static void print_ctx_info(eval_context_t *ctx, void *arg1, void *arg2) {
@@ -150,11 +144,9 @@ void lispif_process_cmd(unsigned char *data, unsigned int len,
 
 
 	case COMM_LISP_GET_STATS: {
-
 		float cpu_use = 0.0;
 		float heap_use = 0.0;
 		float mem_use = 0.0;
-		float stack_use = 0.0;
 
 		static systime_t time_last = 0;
 		if (eval_tp) {
@@ -170,7 +162,6 @@ void lispif_process_cmd(unsigned char *data, unsigned int len,
 		}
 
 		mem_use = 100.0 * (float)(lbm_memory_num_words() - lbm_memory_num_free()) / (float)lbm_memory_num_words();
-		lbm_running_iterator(ctx_cb, &stack_use, NULL);
 
 		uint8_t *send_buffer_global = mempools_get_packet_buffer();
 		int32_t ind = 0;
@@ -179,9 +170,11 @@ void lispif_process_cmd(unsigned char *data, unsigned int len,
 		buffer_append_float16(send_buffer_global, cpu_use, 1e2, &ind);
 		buffer_append_float16(send_buffer_global, heap_use, 1e2, &ind);
 		buffer_append_float16(send_buffer_global, mem_use, 1e2, &ind);
-		buffer_append_float16(send_buffer_global, stack_use, 1e2, &ind);
 
-		// Result. Currently unused.
+		// Stack. Currently unused
+		buffer_append_float16(send_buffer_global, 0, 1e2, &ind);
+
+		// Result. Currently unused
 		send_buffer_global[ind++] = '\0';
 
 		lbm_value curr = *lbm_get_env_ptr();
@@ -526,6 +519,8 @@ static void done_callback(eval_context_t *ctx) {
 
 bool lispif_restart(bool print, bool load_code) {
 	bool res = false;
+
+	restart_cnt++;
 
 	lispif_stop_lib();
 
