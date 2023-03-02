@@ -3019,17 +3019,18 @@ static void measure_inductance_task(void *arg) {
 
 	measure_ind_args *a = (measure_ind_args*)arg;
 	float lq, ld_lq_diff, real_measurement_current = -1.0;
-	int fault = mcpwm_foc_measure_inductance_current(a->current, a->samples, &real_measurement_current, &ld_lq_diff, &lq);
-
-	if (restart_cnt != lispif_get_restart_cnt()) {
-		return;
-	}
+	int fault = -1;
 
 	lbm_flat_value_t v;
 	bool ok = false;
+	if (lbm_start_flatten(&v, 50)) {
+		fault = mcpwm_foc_measure_inductance_current(a->current, a->samples, &real_measurement_current, &ld_lq_diff, &lq);
+		if (restart_cnt != lispif_get_restart_cnt()) {
+			lbm_finish_flatten(&v);
+			return;
+		}
 
-	if (lbm_start_flatten(&v, 10)) {
-		// f_i(&v, fault);
+		f_i(&v, fault);
 		f_float(&v, real_measurement_current);
 		f_float(&v, ld_lq_diff);
 		f_float(&v, lq);
@@ -3041,9 +3042,6 @@ static void measure_inductance_task(void *arg) {
 		}
 	}
 
-	if(fault != 0){
-		ok = false;
-	}
 	if (!ok) {
 		lbm_unblock_ctx_unboxed(a->id, ENC_SYM_NIL);
 	}
