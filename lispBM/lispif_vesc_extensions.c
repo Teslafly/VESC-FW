@@ -3044,7 +3044,6 @@ static void measure_inductance_task(void *arg) {
 	if(fault != 0){
 		ok = false;
 	}
-
 	if (!ok) {
 		lbm_unblock_ctx_unboxed(a->id, ENC_SYM_NIL);
 	}
@@ -3080,6 +3079,7 @@ static lbm_value ext_conf_measure_ind(lbm_value *args, lbm_uint argn) {
 }
 
 
+// non flatpack works properly
 
 // static lbm_value ext_conf_measure_ind(lbm_value *args, lbm_uint argn) {
 // 	// arg0: measurement current
