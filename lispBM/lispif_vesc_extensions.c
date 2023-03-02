@@ -3009,79 +3009,77 @@ static lbm_value ext_conf_measure_res(lbm_value *args, lbm_uint argn) {
 }
 
 // copied from measure_res above. 
-// typedef struct {
-// 	float current;
-// 	int samples;
-// 	lbm_cid id; // what is this parameter exactly?
-// } measure_ind_args;
+typedef struct {
+	float current;
+	int samples;
+	lbm_cid id;
+} measure_ind_args;
 
-// static void measure_ind_task(void *arg) {
-// 	measure_ind_args *a = (measure_ind_args*)arg;
-// 	float ind = -1.0;
-// 	// int fault = mcpwm_foc_measure_resistance(a->current, a->samples, true, &res);
+static void measure_inductance_task(void *arg) {
+	int restart_cnt = lispif_get_restart_cnt();
+
+	measure_ind_args *a = (measure_ind_args*)arg;
+	float lq = -1.0;
+	float ld_lq_diff = -1.0;
+	float real_measurement_current = -1.0;
+	// int fault = mcpwm_foc_measure_resistance(a->current, a->samples, true, &res);
 	
-// 	int fault = mcpwm_foc_measure_inductance_current(a->current, a->samples, 0, ld_lq_diff, l);
-// 	/**
-//  * Measure the motor inductance with short voltage pulses. The difference from the
-//  * other function is that this one will aim for a specific measurement current. It
-//  * will also use an appropriate switching frequency.
-//  *
-//  * @param curr_goal
-//  * The measurement current to aim for.
-//  *
-//  * @param samples
-//  * The number of samples to average over.
-//  *
-//  * @param *curr
-//  * The current that was used for this measurement.
-//  *
-//  * @inductance
-//  * The average d and q axis inductance in uH.
-//  *
-//  * @return
-//  * The fault code
-//  */
+	int fault = mcpwm_foc_measure_inductance_current(a->current, a->samples, &real_measurement_current, &ld_lq_diff, &lq);
 
-// 	lispif_lock_lbm();
-// 	if (pause_gc(5, 1000)) {
-// 		lbm_unblock_ctx(a->id, lbm_enc_float(res));
-// 	} else {
-// 		lbm_unblock_ctx(a->id, ENC_SYM_EERROR);
-// 	}
+	if (restart_cnt != lispif_get_restart_cnt()) {
+		return;
+	}
 
-// 	lbm_continue_eval();
-// 	lispif_unlock_lbm();
-// }
+	lbm_flat_value_t v;
+	bool ok = false;
 
-// // measure inductance of motor @ current
-// static lbm_value ext_conf_measure_ind(lbm_value *args, lbm_uint argn) {
-// 	// arg1:
-// 	// arg2: 
-// 	if (argn != 1 && argn != 2) {
-// 		lbm_set_error_reason((char*)lbm_error_str_num_args);
-// 		return ENC_SYM_EERROR;
-// 	}
+	// todo, return all 3 values (current, both inductance values) as a tupule or something.
+	if (lbm_start_flatten(&v, 10)) {
+		f_float(&v, lq);
+		lbm_finish_flatten(&v);
+		if (lbm_unblock_ctx(a->id, &v)) {
+			ok = true;
+		} else {
+			lbm_free(v.buf);
+		}
+	}
 
-// 	LBM_CHECK_NUMBER_ALL();
+	if(fault != 0){
+		ok = false;
+	}
 
-// 	if (mc_interface_get_configuration()->motor_type != MOTOR_TYPE_FOC) {
-// 		return ENC_SYM_EERROR;
-// 	}
+	if (!ok) {
+		lbm_unblock_ctx_unboxed(a->id, ENC_SYM_NIL);
+	}
+}
 
-// 	static measure_res_args a;
-// 	a.current = lbm_dec_as_float(args[0]);
+// measure inductance of motor @ current
+static lbm_value ext_conf_measure_ind(lbm_value *args, lbm_uint argn) {
+	// arg0: measurement current
+	// arg1: sample number. should note to default to 100. can be omitted
+	if (argn != 1 && argn != 2) {
+		lbm_set_error_reason((char*)lbm_error_str_num_args);
+		return ENC_SYM_EERROR;
+	}
 
-// 	// do we really need to average?
-// 	a.samples = 100;
-// 	if (argn == 2) {
-// 		a.samples = lbm_dec_as_u32(args[1]);
-// 	}
-// 	a.id = lbm_get_current_cid();
+	LBM_CHECK_NUMBER_ALL();
 
-// 	worker_execute(measure_res_task, &a);
-// 	lbm_block_ctx_from_extension();
-// 	return ENC_SYM_TRUE;
-// }
+	if (mc_interface_get_configuration()->motor_type != MOTOR_TYPE_FOC) {
+		return ENC_SYM_EERROR;
+	}
+
+	static measure_ind_args a;
+	a.current = lbm_dec_as_float(args[0]);
+	a.samples = 100;
+	if (argn == 2) {
+		a.samples = lbm_dec_as_u32(args[1]);
+	}
+	a.id = lbm_get_current_cid();
+
+	worker_execute(measure_inductance_task, &a);
+	lbm_block_ctx_from_extension();
+	return ENC_SYM_TRUE;
+}
 
 static lbm_value make_list(int num, ...) {
 	va_list arguments;
