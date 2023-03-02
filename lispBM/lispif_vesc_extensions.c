@@ -3044,8 +3044,8 @@ static void measure_inductance_task(void *arg) {
 			f_float(&v, ld_lq_diff);
 			f_cons(&v);
 			f_float(&v, real_measurement_current);
+			f_sym(&v, SYM_NIL);
 		}
-		f_sym(&v, SYM_NIL);
 		
 		lbm_finish_flatten(&v);
 		if (lbm_unblock_ctx(a->id, &v)) {
