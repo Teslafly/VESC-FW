@@ -3019,7 +3019,7 @@ static void measure_inductance_task(void *arg) {
 
 	measure_ind_args *a = (measure_ind_args*)arg;
 	float lq, ld_lq_diff, real_measurement_current = -1.0;
-	int fault = -1;
+	int fault;
 
 	lbm_flat_value_t v;
 	bool ok = false;
@@ -3030,7 +3030,7 @@ static void measure_inductance_task(void *arg) {
 			return;
 		}
 
-		f_i(&v, fault);
+		// f_i(&v, fault);
 		f_float(&v, real_measurement_current);
 		f_float(&v, ld_lq_diff);
 		f_float(&v, lq);
