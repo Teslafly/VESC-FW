@@ -3031,11 +3031,12 @@ static void measure_inductance_task(void *arg) {
 			return;
 		}
 
-		fault = 2;
+		if(a->current == 3){ // inject fault sometimes
+			fault = 2;
+		}
 
 		if (fault != 0) {
-			lbm_set_error_reason("inductance measurement failed");
-			f_sym(&v, SYM_EERROR);
+			f_i(&v, fault);
 		} else {
 			f_cons(&v);
 			f_float(&v, ld_lq_avg);
@@ -3043,11 +3044,9 @@ static void measure_inductance_task(void *arg) {
 			f_float(&v, ld_lq_diff);
 			f_cons(&v);
 			f_float(&v, real_measurement_current);
-			// f_cons(&v);
-			// f_i(&v, fault);
-			f_sym(&v, SYM_NIL);
 		}
-
+		f_sym(&v, SYM_NIL);
+		
 		lbm_finish_flatten(&v);
 		if (lbm_unblock_ctx(a->id, &v)) {
 			ok = true;
