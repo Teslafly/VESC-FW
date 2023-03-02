@@ -3018,35 +3018,35 @@ static void measure_inductance_task(void *arg) {
 	int restart_cnt = lispif_get_restart_cnt();
 
 	measure_ind_args *a = (measure_ind_args*)arg;
-	float lq, ld_lq_diff, real_measurement_current = -1.0;
+	float ld_lq_avg, ld_lq_diff, real_measurement_current = -1.0;
 	int fault;
 
 	lbm_flat_value_t v;
 	bool ok = false;
-	if (lbm_start_flatten(&v, 50)) {
-		fault = mcpwm_foc_measure_inductance_current(a->current, a->samples, &real_measurement_current, &ld_lq_diff, &lq);
+	if (lbm_start_flatten(&v, 25)) {
+		fault = mcpwm_foc_measure_inductance_current(a->current, a->samples, &real_measurement_current, &ld_lq_diff, &ld_lq_avg);
 		if (restart_cnt != lispif_get_restart_cnt()) {
+			f_sym(&v, ENC_SYM_EERROR);
 			lbm_finish_flatten(&v);
 			return;
 		}
 
+		// fault = 2;
+
 		f_cons(&v);
-		f_float(&v, lq);
+		f_float(&v, ld_lq_avg);
 		f_cons(&v);
 		f_float(&v, ld_lq_diff);
 		f_cons(&v);
 		f_float(&v, real_measurement_current);
-		f_cons(&v);
-		f_i(&v, fault);
+		// f_cons(&v);
+		// f_i(&v, fault);
 		f_sym(&v, SYM_NIL);
 
-		// float values[3] = lq, ld_lq_diff, real_measurement_current;
-		// f_float(&v, values);
-
-		// f_i(&v, fault);
-		// f_float(&v, real_measurement_current);
-		// f_float(&v, ld_lq_diff);
-		// f_float(&v, lq);
+		if (fault != 0) {
+			lbm_set_error_reason("inductance measurement fault:");
+			f_sym(&v, ENC_SYM_EERROR);
+		}
 		
 		lbm_finish_flatten(&v);
 		if (lbm_unblock_ctx(a->id, &v)) {
@@ -3064,8 +3064,8 @@ static void measure_inductance_task(void *arg) {
 // measure inductance of motor @ current
 static lbm_value ext_conf_measure_ind(lbm_value *args, lbm_uint argn) {
 	// arg0: measurement current
-	// arg1: sample number. can be omitted
-	// returns: ({lq} {ld_lq_diff} {actual_measurement_current} fault-code)
+	// arg1: sample number. optional
+	// returns: ({ld_lq_avg} {ld_lq_diff} {actual_measurement_current} fault-code)
 	if (argn != 1 && argn != 2) {
 		lbm_set_error_reason((char*)lbm_error_str_num_args);
 		return ENC_SYM_EERROR;
