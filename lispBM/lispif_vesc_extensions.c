@@ -3035,7 +3035,7 @@ static void measure_inductance_task(void *arg) {
 
 		if (fault != 0) {
 			lbm_set_error_reason("inductance measurement failed");
-			f_sym(&v, ENC_SYM_EERROR);
+			f_sym(&v, SYM_EERROR);
 		} else {
 			f_cons(&v);
 			f_float(&v, ld_lq_avg);
