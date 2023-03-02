@@ -3030,10 +3030,24 @@ static void measure_inductance_task(void *arg) {
 			return;
 		}
 
-		// f_i(&v, fault);
-		f_float(&v, real_measurement_current);
-		f_float(&v, ld_lq_diff);
+		f_cons(&v);
 		f_float(&v, lq);
+		f_cons(&v);
+		f_float(&v, ld_lq_diff);
+		f_cons(&v);
+		f_float(&v, real_measurement_current);
+		f_cons(&v);
+		f_i(&v, fault);
+		f_sym(&v, SYM_NIL);
+
+		// float values[3] = lq, ld_lq_diff, real_measurement_current;
+		// f_float(&v, values);
+
+		// f_i(&v, fault);
+		// f_float(&v, real_measurement_current);
+		// f_float(&v, ld_lq_diff);
+		// f_float(&v, lq);
+		
 		lbm_finish_flatten(&v);
 		if (lbm_unblock_ctx(a->id, &v)) {
 			ok = true;
