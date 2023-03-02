@@ -3008,7 +3008,6 @@ static lbm_value ext_conf_measure_res(lbm_value *args, lbm_uint argn) {
 	return ENC_SYM_TRUE;
 }
 
-// copied from measure_res above. 
 typedef struct {
 	float current;
 	int samples;
@@ -3019,11 +3018,7 @@ static void measure_inductance_task(void *arg) {
 	int restart_cnt = lispif_get_restart_cnt();
 
 	measure_ind_args *a = (measure_ind_args*)arg;
-	float lq = -1.0;
-	float ld_lq_diff = -1.0;
-	float real_measurement_current = -1.0;
-	// int fault = mcpwm_foc_measure_resistance(a->current, a->samples, true, &res);
-	
+	float lq, ld_lq_diff, real_measurement_current = -1.0;
 	int fault = mcpwm_foc_measure_inductance_current(a->current, a->samples, &real_measurement_current, &ld_lq_diff, &lq);
 
 	if (restart_cnt != lispif_get_restart_cnt()) {
@@ -3033,8 +3028,10 @@ static void measure_inductance_task(void *arg) {
 	lbm_flat_value_t v;
 	bool ok = false;
 
-	// todo, return all 3 values (current, both inductance values) as a tupule or something.
 	if (lbm_start_flatten(&v, 10)) {
+		// f_i(&v, fault);
+		f_float(&v, real_measurement_current);
+		f_float(&v, ld_lq_diff);
 		f_float(&v, lq);
 		lbm_finish_flatten(&v);
 		if (lbm_unblock_ctx(a->id, &v)) {
@@ -3056,7 +3053,8 @@ static void measure_inductance_task(void *arg) {
 // measure inductance of motor @ current
 static lbm_value ext_conf_measure_ind(lbm_value *args, lbm_uint argn) {
 	// arg0: measurement current
-	// arg1: sample number. should note to default to 100. can be omitted
+	// arg1: sample number. can be omitted
+	// returns: ({lq} {ld_lq_diff} {actual_measurement_current} fault-code)
 	if (argn != 1 && argn != 2) {
 		lbm_set_error_reason((char*)lbm_error_str_num_args);
 		return ENC_SYM_EERROR;
@@ -3080,6 +3078,62 @@ static lbm_value ext_conf_measure_ind(lbm_value *args, lbm_uint argn) {
 	lbm_block_ctx_from_extension();
 	return ENC_SYM_TRUE;
 }
+
+
+
+// static lbm_value ext_conf_measure_ind(lbm_value *args, lbm_uint argn) {
+// 	// arg0: measurement current
+// 	// arg1: sample number. can be omitted
+// 	// returns: ({lq} {ld_lq_diff} {actual_measurement_current} fault-code)
+// 	if (argn != 1 && argn != 2) {
+// 		lbm_set_error_reason((char*)lbm_error_str_num_args);
+// 		return ENC_SYM_EERROR;
+// 	}
+// 	LBM_CHECK_NUMBER_ALL();
+// 	if (mc_interface_get_configuration()->motor_type != MOTOR_TYPE_FOC) {
+// 		return ENC_SYM_EERROR;
+// 	}
+// 	int restart_cnt = lispif_get_restart_cnt();
+
+// 	float current = lbm_dec_as_float(args[0]);
+// 	int samples = 100;
+// 	if (argn == 2) {
+// 		samples = lbm_dec_as_u32(args[1]);
+// 	}
+	
+// 	float lq, ld_lq_diff, real_measurement_current = -1.0;
+// 	int fault = mcpwm_foc_measure_inductance_current(current, samples, &real_measurement_current, &ld_lq_diff, &lq);
+
+// 	if (restart_cnt != lispif_get_restart_cnt()) {
+// 		return ENC_SYM_EERROR; // probably not the right error
+// 	}
+// 	// if (fault != 0) {
+// 	// 	return;
+// 	// }
+
+// 	lbm_value inductance_data = ENC_SYM_NIL;
+// 	inductance_data = lbm_cons(lbm_enc_i(fault), inductance_data);
+// 	inductance_data = lbm_cons(lbm_enc_float(real_measurement_current), inductance_data);
+// 	inductance_data = lbm_cons(lbm_enc_float(ld_lq_diff), inductance_data);
+// 	inductance_data = lbm_cons(lbm_enc_float(lq), inductance_data);
+
+// 	return inductance_data;
+
+// 	// lbm_flat_value_t v;
+// 	// if (lbm_start_flatten(&v, 10)) {
+// 	// 	f_float(&v, real_measurement_current);
+// 	// 	f_float(&v, ld_lq_diff);
+// 	// 	f_float(&v, lq);
+// 	// 	lbm_finish_flatten(&v);
+// 	// 	if (lbm_unblock_ctx(a->id, &v)) {
+// 	// 		ok = true;
+// 	// 	} else {
+// 	// 		lbm_free(v.buf);
+// 	// 	}
+// 	// }
+// }
+
+
 
 static lbm_value make_list(int num, ...) {
 	va_list arguments;
