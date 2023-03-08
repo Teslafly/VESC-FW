@@ -3064,7 +3064,7 @@ static lbm_value ext_conf_measure_ind(lbm_value *args, lbm_uint argn) {
 	// measure inductance of motor @ current
 	// arg0: measurement current
 	// arg1: sample number. optional
-	// returns: ({ld_lq_avg} {ld_lq_diff} {actual_measurement_current} fault-code)
+	// returns: ({ld_lq_avg} {ld_lq_diff} {actual_measurement_current}) or (fault-code)
 	if (argn != 1 && argn != 2) {
 		lbm_set_error_reason((char*)lbm_error_str_num_args);
 		return ENC_SYM_EERROR;
