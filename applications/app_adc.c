@@ -65,8 +65,19 @@ static volatile bool adc_detached = false;
 static volatile bool buttons_detached = false;
 static volatile bool rev_override = false;
 static volatile bool cc_override = false;
+static volatile bool brake_override = false;
 
 void app_adc_configure(adc_config *conf) {
+
+#ifdef HW_PRECONFIGURED_ADC_APP_PINS
+	if (!buttons_detached) { // is buttons_detached enough? or would you want to gate on any of the above options as well?
+		palSetPadMode(HW_REVERSE_SWITCH_PORT, HW_REVERSE_SWITCH_PIN, PAL_MODE_INPUT_PULLUP);
+#ifdef HW_BRAKE_SWITCH_PORT
+		palSetPadMode(HW_BRAKE_SWITCH_PORT, HW_BRAKE_SWITCH_PIN, PAL_MODE_INPUT_PULLUP);
+#endif
+		palSetPadMode(HW_CRUISE_SWITCH_PORT, HW_CRUISE_SWITCH_PIN, PAL_MODE_INPUT_PULLUP);
+	}
+#else
 	if (!buttons_detached && (((conf->buttons >> 0) & 1) || CTRL_USES_BUTTON(conf->ctrl_type))) {
 		if (use_rx_tx_as_buttons) {
 			palSetPadMode(HW_UART_TX_PORT, HW_UART_TX_PIN, PAL_MODE_INPUT_PULLUP);
@@ -75,6 +86,7 @@ void app_adc_configure(adc_config *conf) {
 			palSetPadMode(HW_ICU_GPIO, HW_ICU_PIN, PAL_MODE_INPUT_PULLUP);
 		}
 	}
+#endif
 
 	config = *conf;
 	ms_without_power = 0.0;
@@ -149,6 +161,9 @@ void app_adc_cc_override(bool state){
 	cc_override = state;
 }
 
+void app_adc_brake_override(bool state){
+	brake_override = state;
+}
 
 static THD_FUNCTION(adc_thread, arg) {
 	(void)arg;
@@ -267,6 +282,24 @@ static THD_FUNCTION(adc_thread, arg) {
 		// Read the button pins
 		bool cc_button = false;
 		bool rev_button = false;
+		bool brake_button = false;
+
+#ifdef HW_PRECONFIGURED_ADC_APP_PINS
+		cc_button = !palReadPad(HW_CRUISE_SWITCH_PORT, HW_CRUISE_SWITCH_PIN);
+		if ((config.buttons >> 1) & 1) {
+			cc_button = !cc_button;
+		}
+		rev_button = !palReadPad(HW_REVERSE_SWITCH_PORT, HW_REVERSE_SWITCH_PIN);
+		if ((config.buttons >> 2) & 1) {
+			rev_button = !rev_button;
+		}
+	#ifdef HW_BRAKE_SWITCH_PORT
+		brake_button = !palReadPad(HW_BRAKE_SWITCH_PORT, HW_BRAKE_SWITCH_PIN);
+		if ((config.buttons >> 4) & 1) {
+			brake_button = !brake_button;
+		}
+	#endif
+#else
 		if (use_rx_tx_as_buttons) {
 			cc_button = !palReadPad(HW_UART_TX_PORT, HW_UART_TX_PIN);
 			if ((config.buttons >> 1) & 1) {
@@ -294,16 +327,21 @@ static THD_FUNCTION(adc_thread, arg) {
 				}
 			}
 		}
+#endif
 
 		// Override button values, when used from LISP
 		if (buttons_detached) {
 			cc_button = cc_override;
 			rev_button = rev_override;
+			brake_button = brake_override;
 			if ((config.buttons >> 1) & 1) {
 				cc_button = !cc_button;
 			}
 			if ((config.buttons >> 2) & 1) {
 				rev_button = !rev_button;
+			}
+			if ((config.buttons >> 3) & 1) {
+				brake_button = !brake_button;
 			}
 		}
 

@@ -182,6 +182,18 @@
 #define HW_ADC_EXT2_GPIO		GPIOA
 #define HW_ADC_EXT2_PIN			6
 
+// hardcoded adc app pins that won't override uart port or ppm inputs
+// #define HW_PRECONFIGURED_ADC_APP_PINS
+// #define HW_CRUISE_SWITCH_PORT 			GPIOA
+// #define HW_CRUISE_SWITCH_PIN 			14
+// #define HW_REVERSE_SWITCH_PORT	 		GPIOA
+// #define HW_REVERSE_SWITCH_PIN 			13
+// #define HW_BRAKE_SWITCH_PORT 			GPIOB // not implemented yet
+// #define HW_BRAKE_SWITCH_PIN				3
+
+// #define HW_KILL_SWITCH_PORT 			GPIOB
+// #define HW_KILL_SWITCH_PIN 				3
+
 // UART Peripheral
 #define HW_UART_DEV				SD3
 #define HW_UART_GPIO_AF			GPIO_AF_USART3
