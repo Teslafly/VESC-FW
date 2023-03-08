@@ -209,16 +209,18 @@
 #define STM32_ICU_USE_TIM2                  FALSE // systick
 #define STM32_ICU_USE_TIM8                  FALSE // mcpwm
 
-// #ifdef defined(HW_USE_SERVO_TIM3)
-//     #define STM32_ICU_USE_TIM3                  TRUE
-// #endif
-// #ifdef HW_USE_SERVO_TIM4
-//     #define STM32_ICU_USE_TIM4                  TRUE
-// #endif
-// #ifdef defined(HW_USE_SERVO_TIM5)
-//     #define STM32_ICU_USE_TIM5                  TRUE
-// #endif
-// #define STM32_ICU_USE_TIM9                  TRUE
+#ifdef HW_USE_SERVO_TIM3
+    #define STM32_ICU_USE_TIM3                  TRUE
+#endif
+#ifdef HW_USE_SERVO_TIM4
+    #define STM32_ICU_USE_TIM4                  TRUE
+#endif
+#ifdef HW_USE_SERVO_TIM5
+    #define STM32_ICU_USE_TIM5                  TRUE
+#endif
+#ifdef HW_USE_SERVO_TIM9
+    #define STM32_ICU_USE_TIM9                  TRUE
+#endif
 
 // servo hwconf define turn on needed ICU timer
 #ifndef STM32_ICU_USE_TIM3
