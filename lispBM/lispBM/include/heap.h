@@ -20,6 +20,7 @@
 #define HEAP_H_
 
 #include <string.h>
+#include <stdarg.h>
 
 #include "lbm_types.h"
 #include "symrepr.h"
@@ -87,7 +88,7 @@ value 4: 0000 0018
 
 Means bits 0,1,2 will always be empty in a valid address.
 
-Cons cells also need to be have room for 2 pointers. So each allocated cell from
+Cons cells also need to be have room for 2 pointers. So each ted cell from
 memory should be 8bytes.
 
 Things that needs to be represented within these bits:
@@ -310,7 +311,14 @@ lbm_value lbm_heap_allocate_cell(lbm_type type);
 lbm_value lbm_heap_allocate_list(unsigned int n);
 /** Allocate a list of n heap-cells and initialize the values.
  * \pram ls The result list is passed through this ptr.
- * \param m The length of list to allocate.
+ * \param n The length of list to allocate.
+ * \param valist The values in a va_list to initialize the list with.
+ * \return True of False depending on success of allocation.
+ */
+bool lbm_heap_allocate_list_init_va(lbm_value *ls, unsigned int n, va_list valist);
+/** Allocate a list of n heap-cells and initialize the values.
+ * \pram ls The result list is passed through this ptr.
+ * \param n The length of list to allocate.
  * \param ... The values to initialize the list with.
  * \return True of False depending on success of allocation.
  */
@@ -557,6 +565,11 @@ int lbm_lift_array(lbm_value *value, char *data, lbm_type type, lbm_uint num_elt
  * \param arr Array value.
  */
 int lbm_heap_explicit_free_array(lbm_value arr);
+/** Query the size in bytes of an lbm_type.
+ * \param t Type
+ * \return Size in bytes of type or 0 if the type represents a composite.
+ */
+lbm_uint lbm_size_of(lbm_type t);
 
 /** Query the type information of a value.
  *
@@ -738,12 +751,6 @@ static inline bool lbm_is_char(lbm_value x) {
 static inline bool lbm_is_special(lbm_value symrep) {
   return ((lbm_type_of(symrep) == LBM_TYPE_SYMBOL) &&
           (lbm_dec_sym(symrep) < SPECIAL_SYMBOLS_END));
-}
-
-static inline bool lbm_is_fundamental(lbm_value symrep) {
-  return ((lbm_type_of(symrep) == LBM_TYPE_SYMBOL)  &&
-          (lbm_dec_sym(symrep) >= FUNDAMENTALS_START) &&
-          (lbm_dec_sym(symrep) <= FUNDAMENTALS_END));
 }
 
 static inline bool lbm_is_closure(lbm_value exp) {
