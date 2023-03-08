@@ -23,11 +23,16 @@
 #include "stm32f4xx_conf.h"
 
 // Settings
-#define TIMER_HZ					1.4e7
-#define TIMER_GENERAL_PURPOSE       TIM5
+#define TIMER_HZ						1.4e7
+
+#ifndef TIMER_GENERAL_PURPOSE
+#define TIMER_GENERAL_PURPOSE       	TIM5
+#define TIMER_GENERAL_PURPOSE_CLK_EN() 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE)
+#endif
+
 
 void timer_init(void) {
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIMER_GENERAL_PURPOSE, ENABLE);
+	TIMER_GENERAL_PURPOSE_CLK_EN();
 	uint16_t PrescalerValue = (uint16_t) ((SYSTEM_CORE_CLOCK / 2) / TIMER_HZ) - 1;
 
 	TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
