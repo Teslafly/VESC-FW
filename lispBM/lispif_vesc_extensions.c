@@ -3060,8 +3060,8 @@ static void measure_inductance_task(void *arg) {
 	}
 }
 
-// measure inductance of motor @ current
 static lbm_value ext_conf_measure_ind(lbm_value *args, lbm_uint argn) {
+	// measure inductance of motor @ current
 	// arg0: measurement current
 	// arg1: sample number. optional
 	// returns: ({ld_lq_avg} {ld_lq_diff} {actual_measurement_current} fault-code)
@@ -3083,6 +3083,10 @@ static lbm_value ext_conf_measure_ind(lbm_value *args, lbm_uint argn) {
 		a.samples = lbm_dec_as_u32(args[1]);
 	}
 	a.id = lbm_get_current_cid();
+
+	if (mc_interface_get_configuration()->l_current_max < a.current) {
+		return ENC_SYM_EERROR;
+	}
 
 	worker_execute(measure_inductance_task, &a);
 	lbm_block_ctx_from_extension();
