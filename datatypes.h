@@ -23,6 +23,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "ch.h"
+#include "hal.h"
+// #include "pal_lld.h"
 
 // Data types
 typedef enum {
@@ -1149,6 +1151,7 @@ typedef enum {
 	COMM_GET_GNSS,
 
 	COMM_LOG_DATA_F64,
+	COMM_GET_ADDITIONAL_CONFIG_INFORMATION,
 } COMM_PACKET_ID;
 
 // CAN commands
@@ -1457,5 +1460,14 @@ typedef struct __attribute__((packed)) {
 	uint32_t hw_config_init_flag;
 	uint8_t hw_config[128];
 } backup_data;
+
+
+// eventually need to move to datatypes.h
+typedef struct {
+	char pin_name[15]; // 15 charecters enough? "IO10/reverse" = 12 chars
+	// stm32_gpio_t *gpio_port;
+	uint8_t gpio_pin;
+	uint8_t gpio_adc_index; // if no adc.
+} io_pin_definition;
 
 #endif /* DATATYPES_H_ */

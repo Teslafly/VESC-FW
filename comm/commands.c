@@ -1676,6 +1676,44 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 		}
 		break;
 
+	case COMM_GET_ADDITIONAL_CONFIG_INFORMATION:
+
+		const io_pin_definition io_list[]= {
+		// {
+		// 	char [15] pin_name; 
+		// 	stm32_gpio_t gpio_port;
+		// 	int gpio_pin;
+		// 	int gpio_adc_index = -1; // if no adc.
+		// },
+			{
+				"io2", 			// name. 15 chars max
+				// GPIOB,			// io port
+				1, 				// port pin #
+				-1, 			// adc index. -1 = no adc.
+			},
+			{
+				"io2", 			// name. 15 chars max
+				// GPIOB,			// io port
+				2, 				// port pin #
+				4, 				// adc index. -1 = no adc.
+			},
+		};
+
+		
+		// switch (data[1?]) // get different data (digital vs adc io for example), based on switch?
+
+		int32_t ind = 0;
+		uint8_t send_buffer[sizeof(io_list)*16 + 10]; 
+
+		for (int i = sizeof(io_list); i > 0; i--)  {
+			strcpy((char*)(send_buffer + ind), io_list[i].pin_name);
+			ind += strlen(io_list[i].pin_name) + 1;
+			strcpy((char*)(send_buffer + ind), ",");
+			ind += strlen(",") + 1;
+		}
+
+		reply_func(send_buffer, ind);
+
 	default:
 		break;
 	}
