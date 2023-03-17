@@ -1678,6 +1678,13 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 
 	case COMM_GET_ADDITIONAL_CONFIG_INFORMATION:
 
+		// typedef struct {
+		// 	char pin_name[15]; // 15 charecters enough? "IO10/reverse" = 12 chars
+		// 	// stm32_gpio_t *gpio_port;
+		// 	uint8_t gpio_pin;
+		// 	uint8_t gpio_adc_index; // if no adc.
+		// } io_pin_definition;
+
 		const io_pin_definition io_list[]= {
 		// {
 		// 	char [15] pin_name; 
@@ -1686,16 +1693,16 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 		// 	int gpio_adc_index = -1; // if no adc.
 		// },
 			{
-				"io2", 			// name. 15 chars max
+				"digital_io1", 			// name. 15 chars max
 				// GPIOB,			// io port
 				1, 				// port pin #
 				-1, 			// adc index. -1 = no adc.
 			},
 			{
-				"io2", 			// name. 15 chars max
+				"digital_io2", 			// name. 15 chars max
 				// GPIOB,			// io port
 				2, 				// port pin #
-				4, 				// adc index. -1 = no adc.
+				4, 				// adc index.
 			},
 		};
 
