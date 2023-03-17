@@ -29,8 +29,8 @@
 #define HW_USE_BRK
 
 // Macros
-#define LED_GREEN_GPIO			GPIOB
-#define LED_GREEN_PIN			5
+#define LED_GREEN_GPIO			GPIOC
+#define LED_GREEN_PIN			15
 #define LED_RED_GPIO			GPIOB
 #define LED_RED_PIN				7
 
@@ -41,20 +41,21 @@
 
 #define PHASE_FILTER_GPIO		GPIOC
 #define PHASE_FILTER_PIN		9
-
 #define PHASE_FILTER_ON()		palSetPad(PHASE_FILTER_GPIO, PHASE_FILTER_PIN)
 #define PHASE_FILTER_OFF()		palClearPad(PHASE_FILTER_GPIO, PHASE_FILTER_PIN)
+
+#define CURRENT_FILTER_GPIO     GPIOD
+#define CURRENT_FILTER_PIN      2
+#define CURRENT_FILTER_ON()		palSetPad(CURRENT_FILTER_GPIO, CURRENT_FILTER_PIN)
+#define CURRENT_FILTER_OFF()	palClearPad(CURRENT_FILTER_GPIO, CURRENT_FILTER_PIN)
 
 #define AUX_GPIO				GPIOC
 #define AUX_PIN					12
 #define AUX_ON()				palSetPad(AUX_GPIO, AUX_PIN)
 #define AUX_OFF()				palClearPad(AUX_GPIO, AUX_PIN)
 
-#define CURRENT_FILTER_ON()		palSetPad(GPIOD, 2)
-#define CURRENT_FILTER_OFF()	palClearPad(GPIOD, 2)
-
-// #define HW_USE_BRK
 // Normally high. fault when brk pin low.
+#define HW_USE_BRK
 #define BRK_GPIO                GPIOB
 #define BRK_PIN                    12
 
@@ -149,9 +150,9 @@
 #define HW_PRECONFIGURED_ADC_APP_PINS
 #define HW_REVERSE_SWITCH_PORT	 		GPIOB // rx (PB11) (or PA4)
 #define HW_REVERSE_SWITCH_PIN 			11
-// #define HW_BRAKE_SWITCH_PORT 			GPIOB // sw 4 (PB3)
-// #define HW_BRAKE_SWITCH_PIN				3
-// #define HW_DRIVE_SWITCH_PORT 			GPIOB // for drive/neutral/reverse switch
+// #define HW_BRAKE_SWITCH_PORT 			GPIOA // sw 4 (PB3)
+// #define HW_BRAKE_SWITCH_PIN				4
+// #define HW_DRIVE_SWITCH_PORT 			GPIOA // for drive/neutral/reverse switch
 // #define HW_DRIVE_SWITCH_PIN				4
 #define HW_CRUISE_SWITCH_PORT 			GPIOB // tx (PB10) (or PA7)
 #define HW_CRUISE_SWITCH_PIN 			10

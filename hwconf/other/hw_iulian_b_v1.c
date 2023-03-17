@@ -86,11 +86,10 @@ void hw_init_gpio(void) {
 			PAL_STM32_OSPEED_HIGHEST);
 	PHASE_FILTER_OFF();
 
-		// Current filter
-	palSetPadMode(GPIOD, 2,
+	// Current filter
+	palSetPadMode(CURRENT_FILTER_GPIO, CURRENT_FILTER_PIN,
 			PAL_MODE_OUTPUT_PUSHPULL |
 			PAL_STM32_OSPEED_HIGHEST);
-
 	CURRENT_FILTER_OFF();
 
 	// AUX pin
