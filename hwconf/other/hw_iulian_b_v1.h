@@ -149,10 +149,10 @@
 #define HW_PRECONFIGURED_ADC_APP_PINS
 #define HW_REVERSE_SWITCH_PORT	 		GPIOB // rx (PB11) (or PA4)
 #define HW_REVERSE_SWITCH_PIN 			11
-#define HW_BRAKE_SWITCH_PORT 			GPIOB // sw 4 (PB3)
-#define HW_BRAKE_SWITCH_PIN				3
-#define HW_DRIVE_SWITCH_PORT 			GPIOB // for drive/neutral/reverse switch
-#define HW_DRIVE_SWITCH_PIN				4
+// #define HW_BRAKE_SWITCH_PORT 			GPIOB // sw 4 (PB3)
+// #define HW_BRAKE_SWITCH_PIN				3
+// #define HW_DRIVE_SWITCH_PORT 			GPIOB // for drive/neutral/reverse switch
+// #define HW_DRIVE_SWITCH_PIN				4
 #define HW_CRUISE_SWITCH_PORT 			GPIOB // tx (PB10) (or PA7)
 #define HW_CRUISE_SWITCH_PIN 			10
 
@@ -213,17 +213,32 @@
 #define HW_ENC_TIM_ISR_CH		TIM3_IRQn
 #define HW_ENC_TIM_ISR_VEC		TIM3_IRQHandler
 
+// Resolver interface pins
+#define AD2S1205_SAMPLE_GPIO	GPIOC
+#define AD2S1205_SAMPLE_PIN		14
+#define AD2S1205_RDVEL_GPIO     GPIOB
+#define AD2S1205_RDVEL_PIN      5
+
 // SPI pins
 #define HW_SPI_DEV				SPID1
 #define HW_SPI_GPIO_AF			GPIO_AF_SPI1
-#define HW_SPI_PORT_NSS			GPIOA
-#define HW_SPI_PIN_NSS			4
-#define HW_SPI_PORT_SCK			GPIOA
-#define HW_SPI_PIN_SCK			5
-#define HW_SPI_PORT_MOSI		GPIOA
-#define HW_SPI_PIN_MOSI			7
-#define HW_SPI_PORT_MISO		GPIOA
-#define HW_SPI_PIN_MISO			6
+#define HW_SPI_PORT_NSS			GPIOC
+#define HW_SPI_PIN_NSS			13
+#define HW_SPI_PORT_SCK			GPIOB
+#define HW_SPI_PIN_SCK			3
+#define HW_SPI_PORT_MOSI		GPIOB
+#define HW_SPI_PIN_MOSI			5
+#define HW_SPI_PORT_MISO		GPIOB
+#define HW_SPI_PIN_MISO			4
+
+#define AS504x_NSS_PORT		    GPIOC
+#define AS504x_NSS_PIN		    13
+#define AS504x_NSS_PORT_NSS		GPIOB
+#define AS504x_SCK_PIN			3
+#define AS504x_MOSI_PORT		GPIOB
+#define AS504x_MOSI_PIN		    5
+#define AS504x_MISO_PORT		GPIOB
+#define AS504x_MISO_PIN		    4
 
 // Measurement macros
 #define ADC_V_L1				ADC_Value[ADC_IND_SENS1]

@@ -97,7 +97,7 @@ void app_adc_configure(adc_config *conf) {
 #ifdef HW_PRECONFIGURED_ADC_APP_PINS
 	if (!buttons_detached) { // is buttons_detached enough? or would you want to gate on any of the above options as well?
 		palSetPadMode(HW_REVERSE_SWITCH_PORT, HW_REVERSE_SWITCH_PIN, PAL_MODE_INPUT_PULLUP);
-		palSetPadMode(HW_BRAKE_SWITCH_PORT, HW_BRAKE_SWITCH_PIN, PAL_MODE_INPUT_PULLUP);
+		// palSetPadMode(HW_BRAKE_SWITCH_PORT, HW_BRAKE_SWITCH_PIN, PAL_MODE_INPUT_PULLUP);
 		// palSetPadMode(HW_DRIVE_SWITCH_PORT, HW_DRIVE_SWITCH_PIN, PAL_MODE_INPUT_PULLUP);
 		palSetPadMode(HW_CRUISE_SWITCH_PORT, HW_CRUISE_SWITCH_PIN, PAL_MODE_INPUT_PULLUP);
 	}
@@ -319,10 +319,10 @@ static THD_FUNCTION(adc_thread, arg) {
 		// if ((config.buttons >> 3) & 1) {
 		// 	drive_button = !drive_button;
 		// }
-		brake_button = !palReadPad(HW_BRAKE_SWITCH_PORT, HW_BRAKE_SWITCH_PIN);
-		if ((config.buttons >> 4) & 1) {
-			brake_button = !brake_button;
-		}
+		// brake_button = !palReadPad(HW_BRAKE_SWITCH_PORT, HW_BRAKE_SWITCH_PIN);
+		// if ((config.buttons >> 4) & 1) {
+		// 	brake_button = !brake_button;
+		// }
 #else
 		if (use_rx_tx_as_buttons) {
 			cc_button = !palReadPad(HW_UART_TX_PORT, HW_UART_TX_PIN);
