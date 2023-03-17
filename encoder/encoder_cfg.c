@@ -38,7 +38,7 @@ static THD_WORKING_AREA(encoder_thread_wa, 256);
 
 AS504x_config_t encoder_cfg_as504x = {
 		{
-				AS504x_NSS_PORT, AS504x_NSS_PIN, // nss
+				AS504x_NSS_PORT, AS504x_NSS_PIN, // cs
 				AS504x_SCK_PORT, AS504x_SCK_PIN, // sck
 #ifdef AS504x_MOSI_PORT
 				AS504x_MOSI_PORT, AS504x_MOSI_PIN, 	 // mosi
@@ -54,10 +54,10 @@ AS504x_config_t encoder_cfg_as504x = {
 
 AD2S1205_config_t encoder_cfg_ad2s1205 = {
 		{ // BB_SPI
-				HW_HALL_ENC_GPIO3, HW_HALL_ENC_PIN3,
-				HW_HALL_ENC_GPIO1, HW_HALL_ENC_PIN1,
+				AD2S1205_NSS_PORT, AD2S1205_NSS_PIN, // cs
+				AD2S1205_SCK_PORT, AD2S1205_SCK_PIN, // sck
 				0, 0,
-				HW_HALL_ENC_GPIO2, HW_HALL_ENC_PIN2,
+				AD2S1205_MISO_PORT, AD2S1205_MISO_PIN, // miso
 				{{NULL, NULL}, NULL, NULL} // Mutex
 		},
 		{0},

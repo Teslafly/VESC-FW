@@ -41,6 +41,25 @@
 #define AS504x_MISO_PIN		    HW_HALL_ENC_PIN2
 #endif
 
+#ifndef AD2S1205_NSS_PORT
+#define AD2S1205_NSS_PORT	    HW_HALL_ENC_GPIO3
+#endif
+#ifndef AD2S1205_NSS_PIN
+#define AD2S1205_NSS_PIN	    HW_HALL_ENC_PIN3
+#endif
+#ifndef AD2S1205_SCK_PORT
+#define AD2S1205_SCK_PORT    	HW_HALL_ENC_GPIO1
+#endif
+#ifndef AD2S1205_SCK_PIN
+#define AD2S1205_SCK_PIN	    HW_HALL_ENC_PIN1
+#endif
+#ifndef AD2S1205_MISO_PORT
+#define AD2S1205_MISO_PORT		HW_HALL_ENC_GPIO2
+#endif
+#ifndef AD2S1205_MISO_PIN
+#define AD2S1205_MISO_PIN		HW_HALL_ENC_PIN2
+#endif
+
 
 // Global encoder configurations
 extern ABI_config_t encoder_cfg_ABI;
