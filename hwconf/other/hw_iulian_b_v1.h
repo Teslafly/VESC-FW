@@ -294,6 +294,16 @@
 #endif
 
 
+// sensor port mode. 
+#ifndef MCCONF_M_SENSOR_PORT_MODE
+#define MCCONF_M_SENSOR_PORT_MODE		SENSOR_PORT_MODE_AD2S1205 // resolver
+#endif
+
+// #ifndef MCCONF_M_SENSOR_PORT_MODE
+// #define MCCONF_M_SENSOR_PORT_MODE		SENSOR_PORT_MODE_AS5047_SPI // remote AS5047 hall encoder
+// #endif
+
+
 #ifndef MCCONF_L_WATT_MAX
 #define MCCONF_L_WATT_MAX                1500000.0    // Maximum wattage output
 #endif
