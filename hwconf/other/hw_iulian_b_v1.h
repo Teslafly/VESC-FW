@@ -192,9 +192,9 @@
 #define HW_I2C_DEV				I2CD2
 #define HW_I2C_GPIO_AF			GPIO_AF_I2C2
 #define HW_I2C_SCL_PORT			GPIOB
-#define HW_I2C_SCL_PIN			10
-#define HW_I2C_SDA_PORT			GPIOB
-#define HW_I2C_SDA_PIN			11
+#define HW_I2C_SCL_PIN			2
+#define HW_I2C_SDA_PORT			GPIOA
+#define HW_I2C_SDA_PIN			15
 
 // Hall/encoder pins
 #define HW_HALL_ENC_GPIO1		GPIOC
