@@ -197,10 +197,10 @@
 #define HW_I2C_SDA_PIN			11
 
 // IMU
-#define BMI160_SDA_GPIO           GPIOB
-#define BMI160_SDA_PIN            2
-#define BMI160_SCL_GPIO           GPIOA
-#define BMI160_SCL_PIN            15
+#define BMI160_SDA_GPIO           GPIOA
+#define BMI160_SDA_PIN            15
+#define BMI160_SCL_GPIO           GPIOB
+#define BMI160_SCL_PIN            2
 //#define IMU_FLIP
 //#define IMU_ROT_180
 
