@@ -196,6 +196,14 @@
 #define HW_I2C_SDA_PORT			GPIOB
 #define HW_I2C_SDA_PIN			11
 
+// IMU
+#define BMI160_SDA_GPIO           GPIOA
+#define BMI160_SDA_PIN            15
+#define BMI160_SCL_GPIO           GPIOB
+#define BMI160_SCL_PIN            2
+//#define IMU_FLIP
+//#define IMU_ROT_180
+
 // Hall/encoder pins
 #define HW_HALL_ENC_GPIO1		GPIOC
 #define HW_HALL_ENC_PIN1		6
@@ -265,7 +273,7 @@
 #define READ_HALL3()			palReadPad(HW_HALL_ENC_GPIO3, HW_HALL_ENC_PIN3)
 
 // Override dead time. See the stm32f4 reference manual for calculating this value.
-#define HW_DEAD_TIME_NSEC		1000.0
+#define HW_DEAD_TIME_NSEC		1500.0
 
 // Default setting overrides
 #ifndef MCCONF_L_MIN_VOLTAGE
