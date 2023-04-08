@@ -141,9 +141,14 @@ void spi_bb_transfer_16(
 			}
 
 			palSetPad(s->sck_gpio, s->sck_pin);
-			// spi_bb_delay_short();
+			spi_bb_delay_short();
 			spi_bb_delay();
 
+			palClearPad(s->sck_gpio, s->sck_pin);
+			// spi_bb_delay_short();			
+			spi_bb_delay();
+
+			// sample at end of low edge.
 			int samples = 0;
 			samples += palReadPad(s->miso_gpio, s->miso_pin);
 			__NOP();
@@ -159,11 +164,6 @@ void spi_bb_transfer_16(
 			if (samples > 2) {
 				receive |= 1;
 			}
-
-			palClearPad(s->sck_gpio, s->sck_pin);
-			spi_bb_delay_short();			
-			spi_bb_delay();
-			// spi_bb_delay();
 		}
 
 		if (in_buf) {
