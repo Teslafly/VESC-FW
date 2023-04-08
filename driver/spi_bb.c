@@ -115,6 +115,7 @@ void spi_bb_transfer_8(
 			}
 
 			spi_bb_delay();
+
 		}
 
 		if (in_buf) {
@@ -140,7 +141,8 @@ void spi_bb_transfer_16(
 			}
 
 			palSetPad(s->sck_gpio, s->sck_pin);
-			spi_bb_delay_short();
+			// spi_bb_delay_short();
+			spi_bb_delay();
 
 			int samples = 0;
 			samples += palReadPad(s->miso_gpio, s->miso_pin);
@@ -159,7 +161,9 @@ void spi_bb_transfer_16(
 			}
 
 			palClearPad(s->sck_gpio, s->sck_pin);
-			spi_bb_delay_short();
+			spi_bb_delay_short();			
+			spi_bb_delay();
+			// spi_bb_delay();
 		}
 
 		if (in_buf) {

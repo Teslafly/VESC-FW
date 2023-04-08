@@ -89,6 +89,12 @@ void enc_as504x_routine(AS504x_config_t *cfg) {
 	// if MOSI is defined, use diagnostics
 	if (cfg->sw_spi.mosi_gpio != 0) {
 		spi_bb_begin(&(cfg->sw_spi));
+		spi_bb_delay();
+		spi_bb_delay();
+		spi_bb_delay();
+		spi_bb_delay();
+		spi_bb_delay();
+		spi_bb_delay();
 		spi_bb_transfer_16(&(cfg->sw_spi), 0, 0, 1);
 		spi_bb_end(&(cfg->sw_spi));
 
