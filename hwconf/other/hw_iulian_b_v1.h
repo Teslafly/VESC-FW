@@ -235,12 +235,15 @@
 #define HW_SPI_PIN_MISO			4
 
 // hw specific AS504x pins
+#define AS504x_angle_read_only
 #define AS504x_NSS_PORT		    HW_SPI_PORT_NSS
 #define AS504x_NSS_PIN		    HW_SPI_PIN_NSS
 #define AS504x_SCK_PORT		    HW_SPI_PORT_SCK
 #define AS504x_SCK_PIN			HW_SPI_PIN_SCK
-#define AS504x_MOSI_PORT		HW_SPI_PORT_MOSI
-#define AS504x_MOSI_PIN		    HW_SPI_PIN_MOSI
+#ifndef AS504x_angle_read_only
+    #define AS504x_MOSI_PORT		HW_SPI_PORT_MOSI
+    #define AS504x_MOSI_PIN		    HW_SPI_PIN_MOSI
+#endif
 #define AS504x_MISO_PORT		HW_SPI_PORT_MISO
 #define AS504x_MISO_PIN		    HW_SPI_PIN_MISO
 
