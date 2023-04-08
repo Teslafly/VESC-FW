@@ -91,6 +91,13 @@ bool encoder_init(volatile mc_configuration *conf) {
 			return false;
 		}
 
+#ifdef AS504x_angle_read_only
+		palSetPadMode(HW_SPI_PORT_MOSI, HW_SPI_PIN_MOSI,
+				PAL_MODE_OUTPUT_PUSHPULL |
+				PAL_STM32_OSPEED_HIGHEST);
+		palSetPad(HW_SPI_PORT_MOSI, HW_SPI_PIN_MOSI);
+#endif 
+
 		m_encoder_type_now = ENCODER_TYPE_AS504x;
 		timer_start(routine_rate_10k);
 
