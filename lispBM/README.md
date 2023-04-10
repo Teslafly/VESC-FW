@@ -116,6 +116,22 @@ Get angle from selected encoder in degrees.
 
 ---
 
+#### set-encoder
+
+| Platforms | Firmware |
+|---|---|
+| ESC | 6.05+ |
+
+```clj
+(set-encoder degrees)
+```
+
+Set the encoder position in degrees. This command only has an effect in the ABI and custom encoder modes. In ABI mode the encoder position is updated and the index is set to found and in custom encoder more the encoder position is updated (unless a native library provides custom encoder support).
+
+When using an ABI-encoder this is useful if a position can be derived before the index pulse is found.
+
+---
+
 #### get-encoder-error-rate
 
 | Platforms | Firmware |
@@ -635,7 +651,10 @@ Several app-inputs can be detached from the external interfaces and overridden f
 ;        - 1 ADC1/2
 ;        - 2 Buttons
 ;        - 3 ADC1/2 + Buttons
-; state : Only when mode 1/2/3/4 - 1 detaches periperial from APP, 0 attaches peripherial to APP 
+; state : Only used when mode is not 0. State 1, 2 or 3 detaches the peripheral and
+;         state 0 attaches peripheral. For the ADC, 1 means detach both ADCs, 2 means
+;         detach ADC1 only and 3 means detach ADC2 only. For the buttons state
+;         1, 2 and 3 mean the same thing, namely detach.
 ```
 
 Detaches a peripherial from the APP ADC
@@ -651,7 +670,7 @@ Detaches a peripherial from the APP ADC
 ```clj
 (app-adc-override mode value)
 ; Where
-; mode : Select periperial to override
+; mode : Select peripheral to override
 ;        - 0 ADC1
 ;        - 1 ADC2
 ;        - 2 Reverse button
@@ -917,6 +936,9 @@ Use the motor to play a beep sound at frequency freq for time seconds using volt
 
 ### Motor Get Commands
 
+**Note**  
+If the optional optFilter-argument is 1 in the commands below the result will be the average since that function was called the last time. That is also how the plots are filtered in VESC Tool. Polling realtime data in VESC Tool at the same time will affect the averaging as it uses the same integrator. This function was added in firmware 6.05.
+
 ---
 
 #### get-current
@@ -926,7 +948,7 @@ Use the motor to play a beep sound at frequency freq for time seconds using volt
 | ESC | 6.00+ |
 
 ```clj
-(get-current)
+(get-current optFilter)
 ```
 
 Get motor current. Positive means that current is flowing into the motor and negative means that current is flowing out of the motor (regenerative braking).
@@ -954,7 +976,7 @@ Get directional current. Positive for torque in the forward direction and negati
 | ESC | 6.00+ |
 
 ```clj
-(get-current-in)
+(get-current-in optFilter)
 ```
 
 ---
@@ -966,7 +988,7 @@ Get directional current. Positive for torque in the forward direction and negati
 | ESC | 6.00+ |
 
 ```clj
-(get-id)
+(get-id optFilter)
 ```
 
 Get FOC d-axis current.
@@ -980,7 +1002,7 @@ Get FOC d-axis current.
 | ESC | 6.00+ |
 
 ```clj
-(get-iq)
+(get-iq optFilter)
 ```
 
 Get FOC q-axis current.
@@ -994,7 +1016,7 @@ Get FOC q-axis current.
 | ESC | 6.00+ |
 
 ```clj
-(get-vd)
+(get-vd optFilter)
 ```
 
 Get FOC d-axis voltage.
@@ -1008,7 +1030,7 @@ Get FOC d-axis voltage.
 | ESC | 6.00+ |
 
 ```clj
-(get-vq)
+(get-vq optFilter)
 ```
 
 Get FOC q-axis voltage.
@@ -2443,7 +2465,7 @@ Start input capture on the PPM-pin with timer frequency freqHz hertz and polarit
 (icu-width)
 ```
 
-Get the width of the last captured pulse.
+Get the width of the last captured pulse. The unit is timer ticks, which depends on the freqHz you pick when running icu-start. E.g. if freqHz is 1000000 (1 MHz) the unit will be one microsecond.
 
 ---
 
@@ -2457,7 +2479,7 @@ Get the width of the last captured pulse.
 (icu-period)
 ```
 
-Get the period of the last captured pulse.
+Get the period of the last captured pulse. The unit is timer ticks, which depends on the freqHz you pick when running icu-start. E.g. if freqHz is 1000000 (1 MHz) the unit will be one microsecond.
 
 ---
 
@@ -2994,6 +3016,36 @@ Shorthand macro for defining a function. Example:
 (define f (lambda (x)
     (print x)
 ))
+```
+
+---
+
+#### defunret
+
+| Platforms | Firmware |
+|---|---|
+| ESC, Express | 6.05+ |
+
+```clj
+(defunret (args) body)
+```
+
+Same as defun, but allows returning at any point. This one has a bit more overhead than defun as it uses call-cc internally, which is why both exist.
+
+```clj
+(defunret test (a b) {
+        (if (> a b)
+            (return (+ a 5))
+        )
+        
+        (+ a b)
+})
+
+(test 2 2)
+> 4
+
+(test 3 2)
+> 8
 ```
 
 ---

@@ -35,6 +35,7 @@
 
 #include "lbm_custom_type.h"
 #include "lbm_channel.h"
+#include "lbm_version.h"
 
 #define EVAL_CPS_STACK_SIZE 256
 #define GC_STACK_SIZE 256
@@ -43,11 +44,19 @@
 #define VARIABLE_STORAGE_SIZE 256
 #define WAIT_TIMEOUT 2500
 #define STR_SIZE 1024
+#define CONSTANT_MEMORY_SIZE 32*1024
 
 lbm_uint gc_stack_storage[GC_STACK_SIZE];
 lbm_uint print_stack_storage[PRINT_STACK_SIZE];
 extension_fptr extension_storage[EXTENSION_STORAGE_SIZE];
 lbm_value variable_storage[VARIABLE_STORAGE_SIZE];
+lbm_uint constants_memory[CONSTANT_MEMORY_SIZE];
+
+bool const_heap_write(lbm_uint ix, lbm_uint w) {
+  if (ix >= CONSTANT_MEMORY_SIZE) return false;
+  constants_memory[ix] = w;
+  return true;
+}
 
 static volatile bool allow_print = true;
 
@@ -334,18 +343,8 @@ lbm_value ext_print(lbm_value *args, lbm_uint argn) {
 
     if (lbm_is_ptr(t) && lbm_type_of(t) == LBM_TYPE_ARRAY) {
       lbm_array_header_t *array = (lbm_array_header_t *)lbm_car(t);
-      switch (array->elt_type){
-      case LBM_TYPE_CHAR: {
-        char *data = (char*)array->data;
-        printf("%s", data);
-        break;
-      }
-      default:
-        return lbm_enc_sym(SYM_NIL);
-        break;
-      }
-    } else if (lbm_type_of(t) == LBM_TYPE_CHAR) {
-      printf("%c", lbm_dec_char(t));
+      char *data = (char*)array->data;
+      printf("%s", data);
     } else {
       lbm_print_value(output, 1024, t);
       printf("%s", output);
@@ -391,7 +390,7 @@ lbm_value ext_unflatten(lbm_value *args, lbm_uint argn) {
     f_cons(&v); 
     f_u64(&v, 0xFFFF0000FFFF0000);
     f_cons(&v);
-    f_lbm_array(&v, 12, LBM_TYPE_CHAR, (uint8_t*)array);
+    f_lbm_array(&v, 12, (uint8_t*)array);
     f_sym(&v, SYM_NIL);
     f_sym(&v, SYM_TRUE);
     lbm_finish_flatten(&v);
@@ -565,6 +564,8 @@ int main(int argc, char **argv) {
   unsigned int heap_size = 2048;
   lbm_cons_t *heap_storage = NULL;
 
+  lbm_const_heap_t const_heap;
+
   for (int i = 0; i < 1024; i ++) {
     char_array[i] = (char)i;
     word_array[i] = (lbm_uint)i;
@@ -592,6 +593,14 @@ int main(int argc, char **argv) {
     return 0;
   }
 
+  if (!lbm_const_heap_init(const_heap_write,
+                           &const_heap,constants_memory,
+                           CONSTANT_MEMORY_SIZE)) {
+    return 0;
+  } else {
+    printf("Constants memory initialized\n");
+  }
+  
   lbm_set_ctx_done_callback(done_callback);
   lbm_set_timestamp_us_callback(timestamp_callback);
   lbm_set_usleep_callback(sleep_callback);
@@ -637,12 +646,6 @@ int main(int argc, char **argv) {
   else
     printf("Error adding extension.\n");
 
-  res = lbm_add_extension("range", ext_range);
-  if (res)
-    printf("Extension added.\n");
-  else
-    printf("Error adding extension.\n");
-
   res = lbm_add_extension("custom", ext_custom);
   if (res)
     printf("Extension added.\n");
@@ -668,7 +671,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  printf("Lisp REPL started!\n");
+  printf("Lisp REPL started! (LBM Version: %u.%u.%u)\n", LBM_MAJOR_VERSION, LBM_MINOR_VERSION, LBM_PATCH_VERSION);
   printf("Type :quit to exit.\n");
   printf("     :info for statistics.\n");
   printf("     :load [filename] to load lisp source.\n");
