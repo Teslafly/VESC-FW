@@ -1,5 +1,21 @@
+### 6.05
+#### TBD
+* LispBM:
+	* Support for var in progn.
+	* Support for curly brackets instead of progn.
+	* Added set and setq.
+	* Added defunret.
+	* Added support for detaching only one of the ADCs.
+	* Added set-encoder.
+	* Support for moving code and data to flash.
+	* Incremental read of uploaded code.
+	* Removed array types other than byte arrays.
+	* Added more position extensions.
+* Hall sensors: smooth transition to sensorless.
+* Added soft regen cutoff. See https://github.com/vedderb/vesc_tool/pull/310
+
 ### 6.02
-#### Released TBD
+#### 2023-03-12
 * LispBM:
 	* Bug fixes.
 	* Added floor, ceil, round.
@@ -7,6 +23,16 @@
 	* Added adc_ctrl_type setting.
 	* Added app_is_disabled.
 	* Added ICU-driver.
+	* Inductance measurement support.
+	* Rewrite of the event system.
+	* Added canget-vin
+	* Added hw-type sysinfo.
+	* Added crc16-extension.
+* IMU filtering changes and new defaults.
+* Increased hall sensor switch hysteresis.
+* Added and updated hardware configs.
+* Systime overflow fix.
+* Some can-command fixes.
 
 ---
 

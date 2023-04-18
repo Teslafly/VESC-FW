@@ -27,11 +27,37 @@ extern "C" {
 /** LBM major version */
 #define LBM_MAJOR_VERSION 0
 /** LBM minor version */
-#define LBM_MINOR_VERSION 7
+#define LBM_MINOR_VERSION 11
 /** LBM patch revision */
-#define LBM_PATCH_VERSION 1
+#define LBM_PATCH_VERSION 0
 
 /*! \page changelog Changelog
+
+Apr 4 2023: Version 0.11.0
+  - Incremental read evaluates expressions as soon as possible while reading.
+  - move-to-flash for storing constant parts of program in flash.
+  - All arrays are now byte-arrays. [type-X 1 2 3]-syntax removed.
+
+Mar 19 2023: Version 0.10.0
+  - Added deconstructive let bindings with optional dont-care fields.
+  - Added (var x (....)) for local bindings in progn.
+  - Added setq
+  - Curly brackets { .... } syntax as sugar over progn.
+
+Feb 18 2023: Version 0.9.0
+  - Arrays in flat_value are stored verbatim, not as ptr.
+  - Mutex locking granularity changed in multiple places.
+
+Feb 10 2023: Version 0.8.1
+  - Flat representation of heap values added.
+  - Added queue locking to GC
+  - As an experiment blocked contexts are unblocked by the evaluator in a safe state.
+
+Jan 28 2023: Version 0.8.0
+  - Changed return value of define from being the bound symbol to
+    being the value.
+  - Many of the more general extensions from Benjamin's BLDC repository
+    has moved into the LispBM source code.
 
 Dec 11: Version 0.7.1
   - Changes to heap_allocate_cell for readability and perhaps performance.

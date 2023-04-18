@@ -24,10 +24,12 @@ int32_t confgenerator_serialize_mcconf(uint8_t *buffer, const mc_configuration *
 	buffer_append_float16(buffer, conf->l_erpm_start, 10000, &ind);
 	buffer_append_float32_auto(buffer, conf->l_max_erpm_fbrake, &ind);
 	buffer_append_float32_auto(buffer, conf->l_max_erpm_fbrake_cc, &ind);
-	buffer_append_float32_auto(buffer, conf->l_min_vin, &ind);
-	buffer_append_float32_auto(buffer, conf->l_max_vin, &ind);
-	buffer_append_float32_auto(buffer, conf->l_battery_cut_start, &ind);
-	buffer_append_float32_auto(buffer, conf->l_battery_cut_end, &ind);
+	buffer_append_float16(buffer, conf->l_min_vin, 10, &ind);
+	buffer_append_float16(buffer, conf->l_max_vin, 10, &ind);
+	buffer_append_float16(buffer, conf->l_battery_cut_start, 10, &ind);
+	buffer_append_float16(buffer, conf->l_battery_cut_end, 10, &ind);
+	buffer_append_float16(buffer, conf->l_battery_regen_cut_start, 10, &ind);
+	buffer_append_float16(buffer, conf->l_battery_regen_cut_end, 10, &ind);
 	buffer[ind++] = conf->l_slow_abs_current;
 	buffer_append_float16(buffer, conf->l_temp_fet_start, 10, &ind);
 	buffer_append_float16(buffer, conf->l_temp_fet_end, 10, &ind);
@@ -97,6 +99,7 @@ int32_t confgenerator_serialize_mcconf(uint8_t *buffer, const mc_configuration *
 	buffer[ind++] = (uint8_t)conf->foc_hall_table[6];
 	buffer[ind++] = (uint8_t)conf->foc_hall_table[7];
 	buffer_append_float32_auto(buffer, conf->foc_hall_interp_erpm, &ind);
+	buffer_append_float32_auto(buffer, conf->foc_sl_erpm_start, &ind);
 	buffer_append_float32_auto(buffer, conf->foc_sl_erpm, &ind);
 	buffer[ind++] = conf->foc_sample_v0_v7;
 	buffer[ind++] = conf->foc_sample_high_current;
@@ -421,10 +424,12 @@ bool confgenerator_deserialize_mcconf(const uint8_t *buffer, mc_configuration *c
 	conf->l_erpm_start = buffer_get_float16(buffer, 10000, &ind);
 	conf->l_max_erpm_fbrake = buffer_get_float32_auto(buffer, &ind);
 	conf->l_max_erpm_fbrake_cc = buffer_get_float32_auto(buffer, &ind);
-	conf->l_min_vin = buffer_get_float32_auto(buffer, &ind);
-	conf->l_max_vin = buffer_get_float32_auto(buffer, &ind);
-	conf->l_battery_cut_start = buffer_get_float32_auto(buffer, &ind);
-	conf->l_battery_cut_end = buffer_get_float32_auto(buffer, &ind);
+	conf->l_min_vin = buffer_get_float16(buffer, 10, &ind);
+	conf->l_max_vin = buffer_get_float16(buffer, 10, &ind);
+	conf->l_battery_cut_start = buffer_get_float16(buffer, 10, &ind);
+	conf->l_battery_cut_end = buffer_get_float16(buffer, 10, &ind);
+	conf->l_battery_regen_cut_start = buffer_get_float16(buffer, 10, &ind);
+	conf->l_battery_regen_cut_end = buffer_get_float16(buffer, 10, &ind);
 	conf->l_slow_abs_current = buffer[ind++];
 	conf->l_temp_fet_start = buffer_get_float16(buffer, 10, &ind);
 	conf->l_temp_fet_end = buffer_get_float16(buffer, 10, &ind);
@@ -494,6 +499,7 @@ bool confgenerator_deserialize_mcconf(const uint8_t *buffer, mc_configuration *c
 	conf->foc_hall_table[6] = buffer[ind++];
 	conf->foc_hall_table[7] = buffer[ind++];
 	conf->foc_hall_interp_erpm = buffer_get_float32_auto(buffer, &ind);
+	conf->foc_sl_erpm_start = buffer_get_float32_auto(buffer, &ind);
 	conf->foc_sl_erpm = buffer_get_float32_auto(buffer, &ind);
 	conf->foc_sample_v0_v7 = buffer[ind++];
 	conf->foc_sample_high_current = buffer[ind++];
@@ -818,6 +824,8 @@ void confgenerator_set_defaults_mcconf(mc_configuration *conf) {
 	conf->l_max_vin = MCCONF_L_MAX_VOLTAGE;
 	conf->l_battery_cut_start = MCCONF_L_BATTERY_CUT_START;
 	conf->l_battery_cut_end = MCCONF_L_BATTERY_CUT_END;
+	conf->l_battery_regen_cut_start = MCCONF_L_BATTERY_REGEN_CUT_START;
+	conf->l_battery_regen_cut_end = MCCONF_L_BATTERY_REGEN_CUT_END;
 	conf->l_slow_abs_current = MCCONF_L_SLOW_ABS_OVERCURRENT;
 	conf->l_temp_fet_start = MCCONF_L_LIM_TEMP_FET_START;
 	conf->l_temp_fet_end = MCCONF_L_LIM_TEMP_FET_END;
@@ -887,6 +895,7 @@ void confgenerator_set_defaults_mcconf(mc_configuration *conf) {
 	conf->foc_hall_table[6] = MCCONF_FOC_HALL_TAB_6;
 	conf->foc_hall_table[7] = MCCONF_FOC_HALL_TAB_7;
 	conf->foc_hall_interp_erpm = MCCONF_FOC_HALL_INTERP_ERPM;
+	conf->foc_sl_erpm_start = MCCONF_FOC_SL_ERPM_START;
 	conf->foc_sl_erpm = MCCONF_FOC_SL_ERPM;
 	conf->foc_sample_v0_v7 = MCCONF_FOC_SAMPLE_V0_V7;
 	conf->foc_sample_high_current = MCCONF_FOC_SAMPLE_HIGH_CURRENT;

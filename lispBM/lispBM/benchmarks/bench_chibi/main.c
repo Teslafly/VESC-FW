@@ -137,14 +137,7 @@ lbm_value ext_print(lbm_value *args, lbm_uint argn) {
 
     if (lbm_is_ptr(t) && lbm_type_of(t) == LBM_TYPE_ARRAY) {
       lbm_array_header_t *array = (lbm_array_header_t *)lbm_car(t);
-      switch (array->elt_type){
-      case LBM_TYPE_CHAR:
-        chprintf(chp,"%s", (char*)array + 8);
-        break;
-      default:
-        return lbm_enc_sym(SYM_NIL);
-        break;
-      }
+      chprintf(chp,"%s", (char*)array + 8);
     } else if (lbm_type_of(t) == LBM_TYPE_CHAR) {
       if (lbm_dec_char(t) =='\n') {
         chprintf(chp, "\r\n");
@@ -293,17 +286,7 @@ int main(void) {
     } else if (strncmp(str, ":ctxs", 5) == 0) {
       lbm_running_iterator(print_ctx_info, "RUNNABLE", NULL);
       lbm_blocked_iterator(print_ctx_info, "BLOCKED", NULL);
-      lbm_done_iterator   (print_ctx_info, "DONE", NULL);
-    } else if (strncmp(str, ":wait", 5) == 0) {
-      int id = atoi(str + 5);
-      bool exists = false;
-      lbm_done_iterator(ctx_exists, (void*)&id, (void*)&exists);
-      if (exists) {
-        if (!lbm_wait_ctx((lbm_cid)id, WAIT_TIMEOUT)) {
-          printf("Wait timed out\n");
-        }
-      }
-    } else if (strncmp(str, ":pause", 6) == 0) {
+    }  else if (strncmp(str, ":pause", 6) == 0) {
       lbm_pause_eval();
       while(lbm_get_eval_state() != EVAL_CPS_STATE_PAUSED) {
         sleep_callback(10);

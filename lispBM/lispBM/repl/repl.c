@@ -27,12 +27,15 @@
 #include <ctype.h>
 
 #include "lispbm.h"
+#include "lbm_flat_value.h"
 #include "extensions/array_extensions.h"
 #include "extensions/string_extensions.h"
 #include "extensions/math_extensions.h"
+#include "extensions/runtime_extensions.h"
 
 #include "lbm_custom_type.h"
 #include "lbm_channel.h"
+#include "lbm_version.h"
 
 #define EVAL_CPS_STACK_SIZE 256
 #define GC_STACK_SIZE 256
@@ -41,11 +44,19 @@
 #define VARIABLE_STORAGE_SIZE 256
 #define WAIT_TIMEOUT 2500
 #define STR_SIZE 1024
+#define CONSTANT_MEMORY_SIZE 32*1024
 
 lbm_uint gc_stack_storage[GC_STACK_SIZE];
 lbm_uint print_stack_storage[PRINT_STACK_SIZE];
 extension_fptr extension_storage[EXTENSION_STORAGE_SIZE];
 lbm_value variable_storage[VARIABLE_STORAGE_SIZE];
+lbm_uint constants_memory[CONSTANT_MEMORY_SIZE];
+
+bool const_heap_write(lbm_uint ix, lbm_uint w) {
+  if (ix >= CONSTANT_MEMORY_SIZE) return false;
+  constants_memory[ix] = w;
+  return true;
+}
 
 static volatile bool allow_print = true;
 
@@ -332,18 +343,8 @@ lbm_value ext_print(lbm_value *args, lbm_uint argn) {
 
     if (lbm_is_ptr(t) && lbm_type_of(t) == LBM_TYPE_ARRAY) {
       lbm_array_header_t *array = (lbm_array_header_t *)lbm_car(t);
-      switch (array->elt_type){
-      case LBM_TYPE_CHAR: {
-        char *data = (char*)array->data;
-        printf("%s", data);
-        break;
-      }
-      default:
-        return lbm_enc_sym(SYM_NIL);
-        break;
-      }
-    } else if (lbm_type_of(t) == LBM_TYPE_CHAR) {
-      printf("%c", lbm_dec_char(t));
+      char *data = (char*)array->data;
+      printf("%s", data);
     } else {
       lbm_print_value(output, 1024, t);
       printf("%s", output);
@@ -352,6 +353,56 @@ lbm_value ext_print(lbm_value *args, lbm_uint argn) {
   printf("\n");
   new_prompt();
   return lbm_enc_sym(SYM_TRUE);
+}
+
+lbm_value ext_unflatten(lbm_value *args, lbm_uint argn) {
+  (void) args;
+  (void) argn;
+
+  char *array = lbm_malloc(12);
+  array[0] = 'h';
+  array[1] = 'e';
+  array[2] = 'l';
+  array[3] = 'l';
+  array[4] = 'o';
+  array[5] = ' ';
+  array[6] = 'w';
+  array[7] = 'o';
+  array[8] = 'r';
+  array[9] = 'l';
+  array[10] = 'd';
+  array[11] = 0;
+    
+  
+  lbm_flat_value_t v;
+  
+  if (lbm_start_flatten(&v, 100)) {
+    //  ((1 2 3 {3.000000} {51539607556} "hello world") . t)    
+    f_cons(&v);
+    f_cons(&v); 
+    f_i(&v, 1);
+    f_cons(&v); 
+    f_i(&v, 2);
+    f_cons(&v); 
+    f_i(&v, 3);
+    f_cons(&v); 
+    f_float(&v, 3.14f);
+    f_cons(&v); 
+    f_u64(&v, 0xFFFF0000FFFF0000);
+    f_cons(&v);
+    f_lbm_array(&v, 12, (uint8_t*)array);
+    f_sym(&v, SYM_NIL);
+    f_sym(&v, SYM_TRUE);
+    lbm_finish_flatten(&v);
+    
+    
+    v.buf_pos = 0;
+    lbm_value res;
+    lbm_unflatten_value(&v, &res);
+    return res; 
+  } else {
+    return ENC_SYM_NIL;
+  }
 }
 
 char output[128];
@@ -396,10 +447,12 @@ static lbm_value ext_custom(lbm_value *args, lbm_uint argn) {
 static lbm_value ext_event(lbm_value *args, lbm_uint argn) {
 
   if (argn != 1 || !lbm_is_symbol(args[0])) return ENC_SYM_EERROR;
-  lbm_event_t e;
-  e.type = LBM_EVENT_SYM;
-  e.sym = lbm_dec_sym(args[0]);
-  if (lbm_event(e, NULL, 0)) {
+
+  lbm_flat_value_t v;
+  if (lbm_start_flatten(&v,5)) {
+    f_sym(&v, lbm_dec_sym(args[0]));
+    lbm_finish_flatten(&v);
+    lbm_event(&v);
     return ENC_SYM_TRUE;
   }
   return ENC_SYM_NIL;
@@ -511,6 +564,8 @@ int main(int argc, char **argv) {
   unsigned int heap_size = 2048;
   lbm_cons_t *heap_storage = NULL;
 
+  lbm_const_heap_t const_heap;
+
   for (int i = 0; i < 1024; i ++) {
     char_array[i] = (char)i;
     word_array[i] = (lbm_uint)i;
@@ -538,6 +593,14 @@ int main(int argc, char **argv) {
     return 0;
   }
 
+  if (!lbm_const_heap_init(const_heap_write,
+                           &const_heap,constants_memory,
+                           CONSTANT_MEMORY_SIZE)) {
+    return 0;
+  } else {
+    printf("Constants memory initialized\n");
+  }
+  
   lbm_set_ctx_done_callback(done_callback);
   lbm_set_timestamp_us_callback(timestamp_callback);
   lbm_set_usleep_callback(sleep_callback);
@@ -565,6 +628,12 @@ int main(int argc, char **argv) {
     printf("Loading math extensions failed\n");
   }
 
+  if (lbm_runtime_extensions_init(false)) {
+    printf("Runtime extensions loaded\n");
+  } else {
+    printf("Loading runtime extensions failed\n");
+  }
+
   res = lbm_add_extension("block", ext_block);
   if (res)
     printf("Extension added.\n");
@@ -572,12 +641,6 @@ int main(int argc, char **argv) {
     printf("Error adding extension.\n");
 
   res = lbm_add_extension("print", ext_print);
-  if (res)
-    printf("Extension added.\n");
-  else
-    printf("Error adding extension.\n");
-
-  res = lbm_add_extension("range", ext_range);
   if (res)
     printf("Extension added.\n");
   else
@@ -595,6 +658,12 @@ int main(int argc, char **argv) {
   else
     printf("Error adding extension.\n");
 
+  res = lbm_add_extension("unflatten", ext_unflatten);
+  if (res)
+    printf("Extension added.\n");
+  else
+    printf("Error adding extension.\n");
+
 
   /* Start evaluator thread */
   if (pthread_create(&lispbm_thd, NULL, eval_thd_wrapper, NULL)) {
@@ -602,7 +671,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  printf("Lisp REPL started!\n");
+  printf("Lisp REPL started! (LBM Version: %u.%u.%u)\n", LBM_MAJOR_VERSION, LBM_MINOR_VERSION, LBM_PATCH_VERSION);
   printf("Type :quit to exit.\n");
   printf("     :info for statistics.\n");
   printf("     :load [filename] to load lisp source.\n");
@@ -672,7 +741,7 @@ int main(int argc, char **argv) {
           sleep_callback(10);
         }
 
-        lbm_cid cid = lbm_load_and_eval_program(&string_tok);
+        lbm_cid cid = lbm_load_and_eval_program_incremental(&string_tok);
         r->str = file_str;
         r->cid = cid;
         add_reading(r);
@@ -702,12 +771,7 @@ int main(int argc, char **argv) {
       printf("****** Sleeping contexts *****\n");
       lbm_sleeping_iterator(print_ctx_info, NULL, NULL);
       free(str);
-    } else if (strncmp(str, ":unblock", 8) == 0) {
-      int id = atoi(str + 8);
-      printf("Unblocking: %d\n", id);
-      lbm_unblock_ctx(id, lbm_enc_i(42));
-      free(str);
-    } else if (n >= 5 && strncmp(str, ":quit", 5) == 0) {
+    }  else if (n >= 5 && strncmp(str, ":quit", 5) == 0) {
       free(str);
       break;
     } else if (strncmp(str, ":symbols", 8) == 0) {

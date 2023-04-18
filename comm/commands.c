@@ -180,6 +180,10 @@ void commands_unregister_reply_func(void(*reply_func)(unsigned char *data, unsig
 	}
 }
 
+static void send_func_dummy(unsigned char *data, unsigned int len) {
+	(void)data; (void)len;
+}
+
 /**
  * Process a received buffer with commands and data.
  *
@@ -212,9 +216,8 @@ void commands_process_packet(unsigned char *data, unsigned int len,
 	}
 
 	// Avoid calling invalid function pointer if it is null.
-	// commands_send_packet will make the check.
-	if (!reply_func) {
-		reply_func = commands_send_packet;
+	if (!reply_func && packet_id != COMM_LISP_REPL_CMD) {
+		reply_func = send_func_dummy;
 	}
 
 	if (!send_func_can_fwd) {
@@ -1870,6 +1873,8 @@ void commands_apply_mcconf_hw_limits(mc_configuration *mcconf) {
     } else {
     	utils_truncate_number_int(&mcconf->m_hall_extra_samples, 0, 10);
     }
+
+    utils_truncate_number_abs(&mcconf->foc_sl_erpm_start, mcconf->foc_sl_erpm * 0.9);
 
 #ifndef DISABLE_HW_LIMITS
 

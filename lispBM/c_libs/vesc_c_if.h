@@ -169,6 +169,12 @@ typedef int32_t  lbm_int;
 typedef float    lbm_float;
 
 typedef struct {
+	uint8_t *buf;
+	size_t   buf_size;
+	uint32_t buf_pos;
+} lbm_flat_value_t;
+
+typedef struct {
 	lbm_type elt_type;        /// Type of elements: VAL_TYPE_FLOAT, U, I or CHAR
 	lbm_uint size;            /// Number of elements
 	lbm_uint *data;           /// pointer to lbm_memory array or C array.
@@ -289,7 +295,7 @@ typedef struct {
 	// LBM
 	load_extension_fptr lbm_add_extension;
 	void (*lbm_block_ctx_from_extension)(void);
-	bool (*lbm_unblock_ctx)(lbm_cid, lbm_value);
+	bool (*lbm_unblock_ctx)(lbm_cid, lbm_flat_value_t*);
 	lbm_cid (*lbm_get_current_cid)(void);
 	int (*lbm_set_error_reason)(char *str);
 	void (*lbm_pause_eval_with_gc)(uint32_t num_free);
@@ -576,6 +582,34 @@ typedef struct {
 	bool (*read_nvm)(uint8_t *v, unsigned int len, unsigned int address);
 	bool (*write_nvm)(uint8_t *v, unsigned int len, unsigned int address);
 	bool (*wipe_nvm)(void);
+
+	// FOC
+	float (*foc_get_id)(void);
+	float (*foc_get_iq)(void);
+	float (*foc_get_vd)(void);
+	float (*foc_get_vq)(void);
+	void (*foc_set_openloop_current)(float current, float rpm);
+	void (*foc_set_openloop_phase)(float current, float phase);
+	void (*foc_set_openloop_duty)(float dutyCycle, float rpm);
+	void (*foc_set_openloop_duty_phase)(float dutyCycle, float phase);
+
+	// Flat values
+	bool (*lbm_start_flatten)(lbm_flat_value_t *v, size_t buffer_size);
+	bool (*lbm_finish_flatten)(lbm_flat_value_t *v);
+	bool (*f_cons)(lbm_flat_value_t *v);
+	bool (*f_sym)(lbm_flat_value_t *v, lbm_uint sym);
+	bool (*f_i)(lbm_flat_value_t *v, lbm_int i);
+	bool (*f_b)(lbm_flat_value_t *v, uint8_t b);
+	bool (*f_i32)(lbm_flat_value_t *v, int32_t w);
+	bool (*f_u32)(lbm_flat_value_t *v, uint32_t w);
+	bool (*f_float)(lbm_flat_value_t *v, float f);
+	bool (*f_i64)(lbm_flat_value_t *v, int64_t w);
+	bool (*f_u64)(lbm_flat_value_t *v, uint64_t w);
+	bool (*f_lbm_array)(lbm_flat_value_t *v, uint32_t num_elts, uint8_t *data);
+
+	// Unblock unboxed
+	bool (*lbm_unblock_ctx_unboxed)(lbm_cid cid, lbm_value unboxed);
+
 } vesc_c_if;
 
 typedef struct {

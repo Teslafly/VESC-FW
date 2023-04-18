@@ -358,6 +358,8 @@ typedef struct {
 	float l_max_vin;
 	float l_battery_cut_start;
 	float l_battery_cut_end;
+	float l_battery_regen_cut_start;
+	float l_battery_regen_cut_end;
 	bool l_slow_abs_current;
 	float l_temp_fet_start;
 	float l_temp_fet_end;
@@ -431,6 +433,7 @@ typedef struct {
 	mc_foc_sensor_mode foc_sensor_mode;
 	uint8_t foc_hall_table[8];
 	float foc_hall_interp_erpm;
+	float foc_sl_erpm_start;
 	float foc_sl_erpm;
 	bool foc_sample_v0_v7;
 	bool foc_sample_high_current;

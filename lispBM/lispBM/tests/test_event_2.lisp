@@ -7,4 +7,4 @@
 
 
 
-(recv (((? x) . (? arr)) (and (eq x 'apa) (eq arr "Hello world"))))
+(check (recv (((? x) . (? arr)) (and (eq x 'apa) (eq arr "hello world")))))

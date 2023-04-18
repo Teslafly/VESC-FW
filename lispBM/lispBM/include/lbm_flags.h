@@ -1,6 +1,5 @@
-/** \file prelude.h */
 /*
-    Copyright 2019, 2022 Joel Svensson        svenssonjoel@yahoo.se
+    Copyright 2023 Joel Svensson    svenssonjoel@yahoo.se
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,25 +15,26 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _PRELUDE_H_
-#define _PRELUDE_H_
+#ifndef LBM_FLAGS_H_
+#define LBM_FLAGS_H_
 
-#include "lbm_types.h"
+#include <stdint.h>
+
+#define LBM_FLAG_ATOMIC_MALFUNCTION              (1 << 0)
+#define LBM_FLAG_HANDLER_EVENT_DELIVERY_FAILED   (1 << 1)
+#define LBM_FLAG_UNFLATTENING_FAILED             (1 << 2)
+#define LBM_FLAG_BLOCKED_NOT_FOUND               (1 << 3)
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-
-/** Creates the tokenizer state needed to load the prelude library into the heap.
- *
- * \param lbm_tokenizer_string_state_t pointer
- * \param lbm_tokenizer_char_stream_t pointer
- */
-void prelude_load(lbm_tokenizer_string_state_t *,
-		  lbm_tokenizer_char_stream_t *);
+  
+extern uint32_t lbm_get_flags(void); 
+extern void lbm_set_flags(uint32_t flags);  
+extern void lbm_clr_flags(uint32_t flags);
 
 #ifdef __cplusplus
 }
-#endif
+#endif 
+
 #endif

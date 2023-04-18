@@ -42,6 +42,7 @@
 #include "servo_dec.h"
 #include "servo_simple.h"
 #include "flash_helper.h"
+#include "mcpwm_foc.h"
 
 // Function prototypes otherwise missing
 void packet_init(void (*s_func)(unsigned char *data, unsigned int len),
@@ -96,10 +97,10 @@ static lib_thread lib_spawn(void (*func)(void*), size_t stack_size, char *name, 
 		return 0;
 	}
 
-	void *mem = lbm_malloc(stack_size);
+	void *mem = lbm_malloc_reserve(stack_size);
 
 	if (mem) {
-		lib_thd_info *info = lbm_malloc(sizeof(lib_thd_info));
+		lib_thd_info *info = lbm_malloc_reserve(sizeof(lib_thd_info));
 
 		if (info) {
 			info->arg = arg;
@@ -549,7 +550,7 @@ static bool lib_store_cfg(void) {
 }
 
 static bool lib_create_byte_array(lbm_value *value, lbm_uint num_elt) {
-	return lbm_heap_allocate_array(value, num_elt, LBM_TYPE_BYTE);
+	return lbm_heap_allocate_array(value, num_elt);
 }
 
 static bool lib_eval_is_paused(void) {
@@ -557,7 +558,7 @@ static bool lib_eval_is_paused(void) {
 }
 
 static lib_mutex lib_mutex_create(void) {
-	mutex_t *m = lbm_malloc(sizeof(mutex_t));
+	mutex_t *m = lbm_malloc_reserve(sizeof(mutex_t));
 	chMtxObjectInit(m);
 	return (lib_mutex)m;
 }
@@ -588,14 +589,11 @@ static float lib_get_ppm_age(void) {
 lbm_value ext_load_native_lib(lbm_value *args, lbm_uint argn) {
 	lbm_value res = lbm_enc_sym(SYM_EERROR);
 
-	if (argn != 1 || !lbm_is_array(args[0])) {
+	if (argn != 1 || !lbm_is_array_r(args[0])) {
 		return res;
 	}
 
 	lbm_array_header_t *array = (lbm_array_header_t *)lbm_car(args[0]);
-	if (array->elt_type != LBM_TYPE_BYTE) {
-		return res;
-	}
 
 	if (!lib_init_done) {
 		memset((char*)cif.pad, 0, 2048);
@@ -635,7 +633,7 @@ lbm_value ext_load_native_lib(lbm_value *args, lbm_uint argn) {
 		cif.cif.lbm_dec_str = lbm_dec_str;
 		cif.cif.lbm_dec_sym = lbm_dec_sym;
 
-		cif.cif.lbm_is_byte_array = lbm_is_byte_array;
+		cif.cif.lbm_is_byte_array = lbm_is_array_r;
 		cif.cif.lbm_is_cons = lbm_is_cons;
 		cif.cif.lbm_is_number = lbm_is_number;
 		cif.cif.lbm_is_char = lbm_is_char;
@@ -656,7 +654,7 @@ lbm_value ext_load_native_lib(lbm_value *args, lbm_uint argn) {
 		cif.cif.system_time = lib_system_time;
 		cif.cif.ts_to_age_s = lib_ts_to_age_s;
 		cif.cif.printf = commands_printf_lisp;
-		cif.cif.malloc = lbm_malloc;
+		cif.cif.malloc = lbm_malloc_reserve;
 		cif.cif.free = lbm_free;
 		cif.cif.spawn = lib_spawn;
 		cif.cif.request_terminate = lib_request_terminate;
@@ -806,11 +804,6 @@ lbm_value ext_load_native_lib(lbm_value *args, lbm_uint argn) {
 		cif.cif.read_eeprom_var = conf_general_read_eeprom_var_custom;
 		cif.cif.store_eeprom_var = conf_general_store_eeprom_var_custom;
 
-		// NVM
-		cif.cif.read_nvm = 	flash_helper_read_nvm;
-		cif.cif.write_nvm = 	flash_helper_write_nvm;
-		cif.cif.wipe_nvm = 	flash_helper_wipe_nvm;
-
 		// Timeout
 		cif.cif.timeout_reset = timeout_reset;
 		cif.cif.timeout_has_timeout = timeout_has_timeout;
@@ -878,6 +871,38 @@ lbm_value ext_load_native_lib(lbm_value *args, lbm_uint argn) {
 		cif.cif.get_ppm_age = lib_get_ppm_age;
 		cif.cif.app_is_output_disabled = app_is_output_disabled;
 
+		// NVM
+		cif.cif.read_nvm = flash_helper_read_nvm;
+		cif.cif.write_nvm = flash_helper_write_nvm;
+		cif.cif.wipe_nvm = flash_helper_wipe_nvm;
+
+		// FOC
+		cif.cif.foc_get_id = mcpwm_foc_get_id_filter;
+		cif.cif.foc_get_iq = mcpwm_foc_get_iq_filter;
+		cif.cif.foc_get_vd = mcpwm_foc_get_vd;
+		cif.cif.foc_get_vq = mcpwm_foc_get_vq;
+		cif.cif.foc_set_openloop_current = mcpwm_foc_set_openloop_current;
+		cif.cif.foc_set_openloop_phase = mcpwm_foc_set_openloop_phase;
+		cif.cif.foc_set_openloop_duty = mcpwm_foc_set_openloop_duty;
+		cif.cif.foc_set_openloop_duty_phase = mcpwm_foc_set_openloop_duty_phase;
+
+		// Flat values
+		cif.cif.lbm_start_flatten = lbm_start_flatten;
+		cif.cif.lbm_finish_flatten = lbm_finish_flatten;
+		cif.cif.f_b = f_b;
+		cif.cif.f_cons = f_cons;
+		cif.cif.f_float = f_float;
+		cif.cif.f_i = f_i;
+		cif.cif.f_i32 = f_i32;
+		cif.cif.f_i64 = f_i64;
+		cif.cif.f_lbm_array = f_lbm_array;
+		cif.cif.f_sym = f_sym;
+		cif.cif.f_u32 = f_u32;
+		cif.cif.f_u64 = f_u64;
+
+		// Unblock unboxed
+		cif.cif.lbm_unblock_ctx_unboxed = lbm_unblock_ctx_unboxed;
+
 		lib_init_done = true;
 	}
 
@@ -920,15 +945,11 @@ lbm_value ext_load_native_lib(lbm_value *args, lbm_uint argn) {
 lbm_value ext_unload_native_lib(lbm_value *args, lbm_uint argn) {
 	lbm_value res = lbm_enc_sym(SYM_EERROR);
 
-	if (argn != 1 || !lbm_is_array(args[0])) {
+	if (argn != 1 || !lbm_is_array_r(args[0])) {
 		return res;
 	}
 
 	lbm_array_header_t *array = (lbm_array_header_t *)lbm_car(args[0]);
-	if (array->elt_type != LBM_TYPE_BYTE) {
-		return res;
-	}
-
 	uint32_t addr = (uint32_t)array->data;
 
 	bool ok = false;
