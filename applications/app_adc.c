@@ -178,6 +178,13 @@ static THD_FUNCTION(adc_thread, arg) {
 		// Read the external ADC pin voltage
 		float pwr = ADC_VOLTS(ADC_IND_EXT);
 
+		// Read the external ADC pin and convert the value to a voltage.
+		#ifdef ADC_IND_EXT2
+				float brake = ADC_VOLTS(ADC_IND_EXT2);
+		#else
+				float brake = 0.0;
+		#endif
+
 		// Override pwr value, when used from LISP
 		if (adc_detached == 1 || adc_detached == 2) {
 			pwr = adc1_override;
@@ -226,12 +233,7 @@ static THD_FUNCTION(adc_thread, arg) {
 
 		decoded_level = pwr;
 
-		// Read the external ADC pin and convert the value to a voltage.
-#ifdef ADC_IND_EXT2
-		float brake = ADC_VOLTS(ADC_IND_EXT2);
-#else
-		float brake = 0.0;
-#endif
+
 
 #ifdef HW_HAS_BRAKE_OVERRIDE
 		hw_brake_override(&brake);
@@ -266,33 +268,64 @@ static THD_FUNCTION(adc_thread, arg) {
 		// Read the button pins
 		bool cc_button = false;
 		bool rev_button = false;
-		if (use_rx_tx_as_buttons) {
-			cc_button = !palReadPad(HW_UART_TX_PORT, HW_UART_TX_PIN);
-			if ((config.buttons >> 1) & 1) {
-				cc_button = !cc_button;
-			}
-			rev_button = !palReadPad(HW_UART_RX_PORT, HW_UART_RX_PIN);
-			if ((config.buttons >> 2) & 1) {
-				rev_button = !rev_button;
-			}
-		} else {
-			// When only one button input is available, use it differently depending on the control mode
-			if (config.ctrl_type == ADC_CTRL_TYPE_CURRENT_REV_BUTTON ||
-                    config.ctrl_type == ADC_CTRL_TYPE_CURRENT_REV_BUTTON_BRAKE_CENTER ||
-					config.ctrl_type == ADC_CTRL_TYPE_CURRENT_NOREV_BRAKE_BUTTON ||
-					config.ctrl_type == ADC_CTRL_TYPE_DUTY_REV_BUTTON ||
-					config.ctrl_type == ADC_CTRL_TYPE_PID_REV_BUTTON) {
-				rev_button = !palReadPad(HW_ICU_GPIO, HW_ICU_PIN);
-				if ((config.buttons >> 2) & 1) {
-					rev_button = !rev_button;
-				}
-			} else {
-				cc_button = !palReadPad(HW_ICU_GPIO, HW_ICU_PIN);
-				if ((config.buttons >> 1) & 1) {
-					cc_button = !cc_button;
-				}
-			}
+		// if (use_rx_tx_as_buttons) {
+		// 	cc_button = !palReadPad(HW_UART_TX_PORT, HW_UART_TX_PIN);
+		// 	if ((config.buttons >> 1) & 1) {
+		// 		cc_button = !cc_button;
+		// 	}
+		// 	rev_button = !palReadPad(HW_UART_RX_PORT, HW_UART_RX_PIN);
+		// 	if ((config.buttons >> 2) & 1) {
+		// 		rev_button = !rev_button;
+		// 	}
+		// } else {
+		// 	// When only one button input is available, use it differently depending on the control mode
+		// 	if (config.ctrl_type == ADC_CTRL_TYPE_CURRENT_REV_BUTTON ||
+        //             config.ctrl_type == ADC_CTRL_TYPE_CURRENT_REV_BUTTON_BRAKE_CENTER ||
+		// 			config.ctrl_type == ADC_CTRL_TYPE_CURRENT_NOREV_BRAKE_BUTTON ||
+		// 			config.ctrl_type == ADC_CTRL_TYPE_DUTY_REV_BUTTON ||
+		// 			config.ctrl_type == ADC_CTRL_TYPE_PID_REV_BUTTON) {
+		// 		rev_button = !palReadPad(HW_ICU_GPIO, HW_ICU_PIN);
+		// 		if ((config.buttons >> 2) & 1) {
+		// 			rev_button = !rev_button;
+		// 		}
+		// 	} else {
+		// 		cc_button = !palReadPad(HW_ICU_GPIO, HW_ICU_PIN);
+		// 		if ((config.buttons >> 1) & 1) {
+		// 			cc_button = !cc_button;
+		// 		}
+		// 	}
+		// }
+
+		const io_pin_definition io_list[]= {
+		// {
+		// 	char [15] pin_name; 
+		// 	stm32_gpio_t gpio_port;
+		// 	int gpio_pin;
+		// 	int gpio_adc_index = -1; // if no adc.
+		// },
+			{
+				"digital_io1", 			// name. 15 chars max
+				// GPIOB,			// io port
+				1, 				// port pin #
+				-1, 			// adc index. -1 = no adc.
+			},
+			{
+				"digital_io2", 			// name. 15 chars max
+				// GPIOB,			// io port
+				2, 				// port pin #
+				4, 				// adc index.
+			},
+		};
+		
+		rev_button = !palReadPad(io_list[config.io_map_rev].gpio_port, io_list[config.io_map_rev].gpio_pin);
+		if ((config.buttons >> 2) & 1) {
+			rev_button = !rev_button;
 		}
+		// cc_button = !palReadPad(HW_UART_TX_PORT, HW_UART_TX_PIN);
+		// if ((config.buttons >> 1) & 1) {
+		// 	cc_button = !cc_button;
+		// }
+
 
 		// Override button values, when used from LISP
 		if (buttons_detached) {
