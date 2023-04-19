@@ -703,7 +703,7 @@ bool conf_general_detect_motor_param(float current, float min_rpm, float low_dut
 
 	// Try to figure out the coupling factor
 	avg_cycle_integrator_running -= *int_limit;
-	avg_cycle_integrator_running /= (float)ADC_Value[ADC_IND_VIN_SENS];
+	avg_cycle_integrator_running /= INPUT_VOLTAGE_RAW_ADC();
 	avg_cycle_integrator_running *= rpm;
 	*bemf_coupling_k = avg_cycle_integrator_running;
 
