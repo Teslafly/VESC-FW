@@ -20,5 +20,8 @@
             "binaryPath": "c:\\dev\\teslafly_bldc_dev\\build\\60_mk4\\60_mk4.elf",
             "binaryArgs": []
         }
-    ]
+    ],
+    "files.associations": {
+        "mcuconf.h": "c"
+    }
 }

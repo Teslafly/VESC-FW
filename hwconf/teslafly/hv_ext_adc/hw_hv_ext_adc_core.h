@@ -27,6 +27,29 @@
 #define HW_USE_25MHZ_EXT_CLOCK
 #define HW_HAS_LV_OUTPUT_PROTECTION
 
+
+// external adc stuff:
+// hw: spi3
+// mosi PC12
+// miso PC11
+// sck PC10
+// cs PA15
+
+// dma
+// STM32_SPI_SPI3_RX_DMA_STREAM 
+// STM32_SPI_SPI3_TX_DMA_STREAM
+
+// bit setup: 0b1xxx0111 (for ADS7841-Q1)
+// channel_sequence = [0b10010111, 0b11010111, 0b10100111, 0b11100111] // ch 0,1,2,3
+// # channels = 4
+// 16 bit transfer with 8 bit control word
+
+// chibios spi v2 driver
+// spi_lld_exchange
+
+
+
+
 #define HW_ADC_CHANNELS			18
 #define HW_ADC_INJ_CHANNELS		3
 #define HW_ADC_NBR_CONV			6

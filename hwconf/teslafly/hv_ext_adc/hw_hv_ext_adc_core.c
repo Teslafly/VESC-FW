@@ -184,6 +184,44 @@ void hw_setup_adc_channels(void) {
 	ADC_InjectedChannelConfig(ADC3, ADC_Channel_12, 3, ADC_SampleTime_15Cycles);			// ADC_IND_CURR3
 }
 
+void hw_setup_spi_adc(void) {
+	// sets up spi adc with dma
+
+	//spi dma example in encoder\enc_as5x47u.c
+
+	palSetPadMode(cfg->sck_gpio, cfg->sck_pin,
+			PAL_MODE_ALTERNATE(cfg->spi_af) | PAL_STM32_OSPEED_HIGHEST);
+	palSetPadMode(cfg->mosi_gpio, cfg->mosi_pin,
+			PAL_MODE_ALTERNATE(cfg->spi_af) | PAL_STM32_OSPEED_HIGHEST);
+	palSetPadMode(cfg->miso_gpio, cfg->miso_pin,
+			PAL_MODE_ALTERNATE(cfg->spi_af) | PAL_STM32_OSPEED_HIGHEST);
+
+	palSetPadMode(cfg->nss_gpio, cfg->nss_pin,
+			PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
+
+\
+	const SPIConfig ls_spicfg = {
+		.circular         = false,
+		.slave            = false,
+		.data_cb          = NULL,
+		.error_cb         = NULL,
+		.ssport           = GPIOB,
+		.sspad            = 12U,
+		.cr1              = SPI_CR1_BR_2 | SPI_CR1_BR_1 | SPI_CR1_BR_0,
+		.cr2              = SPI_CR2_DS_2 | SPI_CR2_DS_1 | SPI_CR2_DS_0
+	};
+
+	// Set in encoder_cfg.c, kept here for visability
+	// cfg->spi_dev->config->end_cb = enc_as5x47u_spi_callback;
+
+	spiStart(SPID3, &(cfg->hw_spi_cfg));
+
+	spiSelectI(SPID3);
+	int data_length = 4;
+	// need to det up tx and rx buffers
+	spiStartExchangeI(SPID3, data_length, cfg->state.tx_buf, cfg->state.rx_buf); 
+}
+
 
 void hw_start_i2c(void) {
 	i2cAcquireBus(&HW_I2C_DEV);
