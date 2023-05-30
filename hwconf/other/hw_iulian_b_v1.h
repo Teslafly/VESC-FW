@@ -20,7 +20,7 @@
 #ifndef HW_IULIAN_B_V1_H_
 #define HW_IULIAN_B_V1_H_
 
-#define HW_NAME					"JLM_A200V700"
+#define HW_NAME					"JLM_A200V650"
 
 // HW properties
 #define HW_HAS_3_SHUNTS
