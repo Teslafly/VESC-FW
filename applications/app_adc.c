@@ -17,6 +17,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#pragma GCC push_options
+#pragma GCC optimize ("Os")
+
 #include "app.h"
 
 #include "ch.h"
@@ -87,10 +90,11 @@ static volatile float smart_reverse_safety_erpm = 300;
 static volatile float smart_reverse_safety_throttle = 0.001; // set to 1 (100%) to disable this check.
 // end config replacements 
 
-static volatile bool adc_detached = false;
+static volatile int adc_detached = 0;
 static volatile bool buttons_detached = false;
 static volatile bool rev_override = false;
 static volatile bool cc_override = false;
+static volatile bool range_ok = true;
 
 void app_adc_configure(adc_config *conf) {
 
@@ -157,34 +161,41 @@ float app_adc_get_voltage2(void) {
 	return read_voltage2;
 }
 
-void app_adc_detach_adc(bool detach){
+void app_adc_detach_adc(int detach) {
 	adc_detached = detach;
+	timeout_reset();
 }
 
-void app_adc_adc1_override(float val){
-	val = utils_map(val, 0.0, 1.0, 0.0, 3.3);
+void app_adc_adc1_override(float val) {
 	utils_truncate_number(&val, 0, 3.3);
 	adc1_override = val;
+	timeout_reset();
 }
 
-void app_adc_adc2_override(float val){
-	val = utils_map(val, 0.0, 1.0, 0.0, 3.3);
+void app_adc_adc2_override(float val) {
 	utils_truncate_number(&val, 0, 3.3);
 	adc2_override = val;
+	timeout_reset();
 }
 
-void app_adc_detach_buttons(bool state){
+void app_adc_detach_buttons(bool state) {
 	buttons_detached = state;
+	timeout_reset();
 }
 
-void app_adc_rev_override(bool state){
+void app_adc_rev_override(bool state) {
 	rev_override = state;
+	timeout_reset();
 }
 
-void app_adc_cc_override(bool state){
+void app_adc_cc_override(bool state) {
 	cc_override = state;
+	timeout_reset();
 }
 
+bool app_adc_range_ok(void) {
+	return range_ok;
+}
 
 static THD_FUNCTION(adc_thread, arg) {
 	(void)arg;
@@ -216,19 +227,21 @@ static THD_FUNCTION(adc_thread, arg) {
 		float pwr = ADC_VOLTS(ADC_IND_EXT);
 
 		// Override pwr value, when used from LISP
-		if(adc_detached){
+		if (adc_detached == 1 || adc_detached == 2) {
 			pwr = adc1_override;
 		}
 
-		read_voltage = pwr;
-
-		// Optionally apply a filter
-		static float filter_val = 0.0;
-		UTILS_LP_MOVING_AVG_APPROX(filter_val, pwr, FILTER_SAMPLES);
+		// Read voltage and range check
+		static float read_filter = 0.0;
+		UTILS_LP_MOVING_AVG_APPROX(read_filter, pwr, FILTER_SAMPLES);
 
 		if (config.use_filter) {
-			pwr = filter_val;
+			read_voltage = read_filter;
+		} else {
+			read_voltage = pwr;
 		}
+
+		range_ok = read_voltage >= config.voltage_min && read_voltage <= config.voltage_max;
 
 		// Map the read voltage
 		switch (config.ctrl_type) {
@@ -253,6 +266,14 @@ static THD_FUNCTION(adc_thread, arg) {
 			break;
 		}
 
+		// Optionally apply a filter
+		static float pwr_filter = 0.0;
+		UTILS_LP_MOVING_AVG_APPROX(pwr_filter, pwr, FILTER_SAMPLES);
+
+		if (config.use_filter) {
+			pwr = pwr_filter;
+		}
+
 		// Truncate the read voltage
 		utils_truncate_number(&pwr, 0.0, 1.0);
 
@@ -275,7 +296,7 @@ static THD_FUNCTION(adc_thread, arg) {
 #endif
 
 		// Override brake value, when used from LISP
-		if(adc_detached == true){
+		if (adc_detached == 1 || adc_detached == 3) {
 			brake = adc2_override;
 		}
 
@@ -417,6 +438,10 @@ static THD_FUNCTION(adc_thread, arg) {
 		}
 
 
+		if (adc_detached && timeout_has_timeout()) {
+			continue;
+		}
+
 		switch (config.ctrl_type) {
 		case ADC_CTRL_TYPE_CURRENT_REV_CENTER:
 		case ADC_CTRL_TYPE_CURRENT_REV_BUTTON_BRAKE_CENTER:
@@ -555,8 +580,6 @@ static THD_FUNCTION(adc_thread, arg) {
 			continue;
 		}
 
-		bool range_ok = read_voltage >= config.voltage_min && read_voltage <= config.voltage_max;
-
 		// If safe start is enabled and the output has not been zero for long enough
 		if ((ms_without_power < MIN_MS_WITHOUT_POWER && config.safe_start) || !range_ok) {
 			static int pulses_without_power_before = 0;
@@ -579,8 +602,10 @@ static THD_FUNCTION(adc_thread, arg) {
 			continue;
 		}
 
-		// Reset timeout
-		timeout_reset();
+		// Reset timeout only when the ADC-app is not detached
+		if (!adc_detached) {
+			timeout_reset();
+		}
 
 		// If c is pressed and no throttle is used, maintain the current speed with PID control
 		// static bool was_pid = false;
@@ -728,3 +753,5 @@ static THD_FUNCTION(adc_thread, arg) {
 		}
 	}
 }
+
+#pragma GCC pop_options
